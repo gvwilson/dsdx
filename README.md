@@ -50,7 +50,5 @@ FIXME
   </em>
 </p>
 
-[email]: mailto:gvwilson@third-bit.com
-[repo]: https://github.com/gvwilson/dsdx
 [sdxpy]: https://third-bit.com/sdxpy/
 [wilson-greg]: https://third-bit.com/

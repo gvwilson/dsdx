@@ -57,6 +57,5 @@ Why is this material free?
 [draw-io]: https://www.drawio.com/
 [email]: mailto:gvwilson@third-bit.com
 [jinja]: https://jinja.palletsprojects.com/
-[mccole]: https://pypi.org/project/mccole/
 [repo]: https://github.com/gvwilson/dsdx
 [uv]: https://github.com/astral-sh/uv
