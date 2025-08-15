@@ -1,30 +1,10 @@
-# At the End of the Day
+# Distributed Systems Design by Example
 
-This workshop is a short introduction to handing projects over,
-winding them down,
-and moving on.
-All of the material is available under an [open license](./LICENSE.md),
-and contributions through our [repository][repo] are welcome.
-All participants are required to respect our [Code of Conduct](./CODE_OF_CONDUCT.md).
+A sequel to *[Software Design by Example][sdxpy]*.
 
 ## Learner Persona
 
--   Vaida, 33, has a PhD in oceanography
-    and now works as a data analyst for the Ministry of the Environment.
--   Vaida has been collecting and publishing beach erosion data for the past six years.
-    She also co-founded a volunteer group that teaches environmental science to high school students,
-    and has been its leader for the past five years.
--   Vaida is relocating to pursue a new career opportunity,
-    so she wants to wind down her data collection project.
-    She also wants the volunteer group to continue its work,
-    but the only documentation of how it operates is
-    one slide deck and a couple of out-of-date blog posts.
--   Vaida is working hard to prepare for her new job,
-    which means only has two or three hours a week for the next couple of months
-    to put into tidying things up.
-
-This workshop teaches Vaida how to shut down a project gracefully
-or hand one over to new leadership.
+FIXME
 
 ## Syllabus
 
@@ -47,10 +27,11 @@ or hand one over to new leadership.
 
 </div>
 
-## Acknowledgments
+## Acknowledgments {: #acknowledgments}
 
-Many thanks to [Yanina Bellini Saibene][bellini-saibene-yanina]
-and [Richard Littauer][littauer-richard].
+-   *[Greg Wilson][wilson-greg]* is a programmer, author, and educator based in Toronto, Canada.
+    He was the co-founder and first Executive Director of Software Carpentry
+    and received ACM SIGSOFT's Influential Educator Award in 2020.
 
 <p class="center">
   <em>
@@ -62,7 +43,7 @@ and [Richard Littauer][littauer-richard].
   </em>
 </p>
 
-[bellini-saibene-yanina]: https://yabellini.netlify.app/
 [email]: mailto:gvwilson@third-bit.com
-[littauer-richard]: https://www.burntfen.com/
-[repo]: https://github.com/gvwilson/succession
+[repo]: https://github.com/gvwilson/dsdx
+[sdxpy]: https://third-bit.com/sdxpy/
+[wilson-greg]: https://third-bit.com/
