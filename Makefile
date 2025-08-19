@@ -1,5 +1,7 @@
 # Runnable tasks.
 
+SLUG=dsdx
+
 all: commands
 
 HTML_IGNORES = 'Attribute "x-' 'Attribute "@click' 'Attribute "file"'
@@ -23,7 +25,7 @@ clean:
 
 ## links: check links in published site
 links:
-	linkchecker -F text https://gvwilson.github.io/succession/
+	linkchecker -F text https://gvwilson.github.io/${SLUG}/
 
 ## lint: check code and project
 lint:
