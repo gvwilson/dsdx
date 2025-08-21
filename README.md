@@ -6,9 +6,9 @@ A sequel to *[Software Design by Example][sdxpy]*.
 
 FIXME
 
-## Syllabus
+## Lessons
 
-<div id="syllabus" markdown="1">
+<div id="lessons" markdown="1">
 
 1.  [Introduction](./intro/): what this training does and doesn't cover.
 1.  [Discrete Event Simulator](./sim/): to understand the tools we're going to use.

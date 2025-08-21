@@ -14,26 +14,18 @@
       <span class="dropdown">
 	<a href="#">Lessons</a>
 	<span id="nav-lessons" class="dropdown-content">
-          <a href="@/intro/">Introduction</a>
-          <a href="@/sim/">Discrete Event Simulator</a>
-          <a href="@/taskman/">Task Manager</a>
-          <a href="@/oauth/">Open Authentication</a>
-          <a href="@/raft/">The RAFT Consensus Protocol</a>
-          <a href="@/framework/">A Web Application Framework</a>
-          <a href="@/tcp/">TCP</a>
-          <a href="@/fuzzer/">A Fuzz Tester</a>
-          <a href="@/finale/">Conclusion</a>
+{% for key in lessons %}
+          <a href="{{key}}">{{lessons[key]}}</a>
+{% endfor %}
 	</span>
       </span>
       &middot;
       <span class="dropdown">
         <a href="#">Extras</a>
         <span id="nav-extras" class="dropdown-content">
-	  <a href="@/license/">License</a>
-	  <a href="@/conduct/">Code of Conduct</a>
-	  <a href="@/contrib/">Contributing</a>
-	  <a href="@/bibliography/">Bibliography</a>
-	  <a href="@/glossary/">Glossary</a>
+{% for key in appendices %}
+          <a href="{{key}}">{{appendices[key]}}</a>
+{% endfor %}
         </span>
       </span>
     </nav>
@@ -41,7 +33,7 @@
 {{content}}
     </main>
     <footer>
-      <a href="@/">Distributed Systems Design by Example</a>
+      <a href="@/">{{title}}</a>
       copyright &copy; 2025
       <a href="@/#acknowledgments">the authors</a>
     </footer>
