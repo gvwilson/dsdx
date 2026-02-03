@@ -32,11 +32,6 @@ Our system has three main components: publishers that send messages, a broker th
 Let's start with the message broker itself:
 
 ```python
-from asimpy import Environment, Process, Queue, FirstOf
-from dataclasses import dataclass
-from collections import defaultdict
-from typing import Dict, List
-
 @dataclass
 class Message:
     """A message sent through the queue system."""
