@@ -12,6 +12,7 @@ FIXME
 
 1.  [Introduction](@/intro/): what this training does and doesn't cover.
 1.  [A Message Queue](@/msgque/): loosely-coupled communication.
+1.  [Distributed Locks](@/distlock/): coordinating access to shared resources.
 1.  [Conclusion](@/finale/): looking back and next steps.
 
 </div>

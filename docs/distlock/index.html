@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Distributed Lock Manager</title>
+<link href="../static/favicon.ico" rel="icon" type="image/x-icon"/>
+<link href="../static/pygments.css" rel="stylesheet" type="text/css"/>
+<link href="../static/page.css" rel="stylesheet" type="text/css"/>
+</head>
+<body>
+<nav>
+<a href="../">Home</a>
+      ·
+      <span class="dropdown">
+<a href="#">Lessons</a>
+<span class="dropdown-content" id="nav-lessons">
+<a href="../intro/">Introduction</a>
+<a href="../msgque/">A Message Queue</a>
+<a href="../distlock/">Distributed Locks</a>
+<a href="../finale/">Conclusion</a>
+</span>
+</span>
+      ·
+      <span class="dropdown">
+<a href="#">Appendices</a>
+<span class="dropdown-content" id="nav-appendices">
+<a href="../license/">License</a>
+<a href="../conduct/">Code of Conduct</a>
+<a href="../contributing/">Contributing</a>
+<a href="../bibliography/">Bibliography</a>
+<a href="../glossary/">Glossary</a>
+</span>
+</span>
+</nav>
+<main>
+<h1>Distributed Lock Manager</h1>
+<p>In a distributed system,
+multiple processes running on different machines often need to coordinate access to shared resources.
+When a database migration runs, you want exactly one instance to execute it—not zero, not two.
+When multiple workers process jobs from a queue, each job should be handled by exactly one worker.
+When services elect a leader to coordinate cluster operations, exactly one service should become the leader.</p>
+<p>These coordination problems all require mutual exclusion: ensuring that only one process can hold a lock at any given time.
+In a single-machine system, this is straightforward—the operating system provides mutexes and semaphores.
+But in a distributed system, there is no shared memory, processes can fail independently, network messages can be delayed or lost, and clocks on different machines drift apart.</p>
+<p>Systems like Apache ZooKeeper, etcd, and Google's Chubby provide distributed locking as a service.
+These systems use consensus algorithms like Raft or Paxos to maintain consistent state across multiple servers, even when some servers fail.
+Redis implements distributed locks through the Redlock algorithm.
+CockroachDB uses distributed locks internally to coordinate schema changes across nodes.</p>
+<p>This chapter builds a distributed lock manager that demonstrates the key challenges and techniques: lease-based locks with expiration, fencing tokens to prevent split-brain scenarios, and a simplified consensus protocol to ensure lock state remains consistent across multiple lock servers.</p>
+<h2>The Challenge of Distributed Locking</h2>
+<p>Why is distributed locking so much harder than local locking? Consider this scenario:</p>
+<ol>
+<li>Process A acquires a lock on resource X</li>
+<li>Process A pauses due to garbage collection (or network partition)</li>
+<li>The lock manager thinks A has died and grants the lock to Process B</li>
+<li>Process A wakes up, still believing it holds the lock</li>
+<li>Both A and B now access the resource, violating mutual exclusion</li>
+</ol>
+<p>This is called a split-brain scenario.
+We need mechanisms to detect and prevent it.
+The key insight is that we cannot rely on timeouts alone—we need explicit coordination between the lock holder and the lock service.</p>
+<h2>Our Implementation Strategy</h2>
+<p>We'll build a distributed lock manager with three main components:</p>
+<ol>
+<li><strong>Lock servers</strong> that maintain lock state and coordinate through consensus</li>
+<li><strong>Clients</strong> that acquire and release locks</li>
+<li><strong>Fencing tokens</strong> that prevent stale lock holders from accessing resources</li>
+</ol>
+<p>Our system will use lease-based locks: when a client acquires a lock, it receives a lease that expires after a timeout.
+The client must periodically renew the lease to keep the lock.
+If the client fails or becomes partitioned, the lease expires and the lock becomes available.</p>
+<p>Each lock acquisition receives a monotonically increasing fencing token.
+Resources check this token—if they see a request with an older token, they reject it.
+This prevents a zombie process with a stale lock from corrupting the resource.</p>
+<h2>Basic Lock Server</h2>
+<p>Let's start with a single lock server that manages locks for multiple resources:</p>
+<div class="codehilite"><pre class=""><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">asimpy</span><span class="w"> </span><span class="kn">import</span> <span class="n">Environment</span><span class="p">,</span> <span class="n">Process</span><span class="p">,</span> <span class="n">Queue</span><span class="p">,</span> <span class="n">Timeout</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
+
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">LockRequest</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Request to acquire or release a lock."""</span>
+    <span class="n">client_id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">resource</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">operation</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># "acquire" or "release"</span>
+    <span class="n">response_queue</span><span class="p">:</span> <span class="n">Queue</span>
+
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">LockResponse</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Response to a lock request."""</span>
+    <span class="n">success</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">token</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">message</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span>
+
+
+<span class="nd">@dataclass</span> 
+<span class="k">class</span><span class="w"> </span><span class="nc">LockState</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""State of a single lock."""</span>
+    <span class="n">holder</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">token</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">lease_expiry</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">waiters</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">waiters</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">waiters</span> <span class="o">=</span> <span class="p">[]</span>
+</code></pre></div>
+<p>The <code>LockServer</code> maintains state for each resource and processes lock requests:</p>
+<div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">LockServer</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""A single lock server managing multiple resources."""</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">lease_duration</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">5.0</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lease_duration</span> <span class="o">=</span> <span class="n">lease_duration</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">request_queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_env</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">locks</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">LockState</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">next_token</span> <span class="o">=</span> <span class="mi">1</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Process lock requests."""</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">request</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">request_queue</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">operation</span> <span class="o">==</span> <span class="s2">"acquire"</span><span class="p">:</span>
+                <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle_acquire</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">request</span><span class="o">.</span><span class="n">operation</span> <span class="o">==</span> <span class="s2">"release"</span><span class="p">:</span>
+                <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle_release</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">response</span> <span class="o">=</span> <span class="n">LockResponse</span><span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="n">message</span><span class="o">=</span><span class="s2">"Unknown operation"</span><span class="p">)</span>
+
+            <span class="k">await</span> <span class="n">request</span><span class="o">.</span><span class="n">response_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_handle_acquire</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">LockRequest</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">LockResponse</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Try to acquire a lock."""</span>
+        <span class="n">resource</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">resource</span>
+
+        <span class="c1"># Create lock state if needed</span>
+        <span class="k">if</span> <span class="n">resource</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">locks</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">locks</span><span class="p">[</span><span class="n">resource</span><span class="p">]</span> <span class="o">=</span> <span class="n">LockState</span><span class="p">()</span>
+
+        <span class="n">lock</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">locks</span><span class="p">[</span><span class="n">resource</span><span class="p">]</span>
+
+        <span class="c1"># Check if lock is expired</span>
+        <span class="k">if</span> <span class="n">lock</span><span class="o">.</span><span class="n">holder</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">now</span> <span class="o">&gt;=</span> <span class="n">lock</span><span class="o">.</span><span class="n">lease_expiry</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: Lock on </span><span class="si">{</span><span class="n">resource</span><span class="si">}</span><span class="s2"> "</span>
+                  <span class="sa">f</span><span class="s2">"expired (was held by </span><span class="si">{</span><span class="n">lock</span><span class="o">.</span><span class="n">holder</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
+            <span class="n">lock</span><span class="o">.</span><span class="n">holder</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># Try to acquire</span>
+        <span class="k">if</span> <span class="n">lock</span><span class="o">.</span><span class="n">holder</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">lock</span><span class="o">.</span><span class="n">holder</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">client_id</span>
+            <span class="n">lock</span><span class="o">.</span><span class="n">token</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">next_token</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">next_token</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">lock</span><span class="o">.</span><span class="n">lease_expiry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">now</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">lease_duration</span>
+
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: Granted lock on </span><span class="si">{</span><span class="n">resource</span><span class="si">}</span><span class="s2"> "</span>
+                  <span class="sa">f</span><span class="s2">"to </span><span class="si">{</span><span class="n">request</span><span class="o">.</span><span class="n">client_id</span><span class="si">}</span><span class="s2"> (token </span><span class="si">{</span><span class="n">lock</span><span class="o">.</span><span class="n">token</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="n">LockResponse</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">token</span><span class="o">=</span><span class="n">lock</span><span class="o">.</span><span class="n">token</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">lock</span><span class="o">.</span><span class="n">holder</span> <span class="o">==</span> <span class="n">request</span><span class="o">.</span><span class="n">client_id</span><span class="p">:</span>
+            <span class="c1"># Renew lease for current holder</span>
+            <span class="n">lock</span><span class="o">.</span><span class="n">lease_expiry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">now</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">lease_duration</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: Renewed lease on </span><span class="si">{</span><span class="n">resource</span><span class="si">}</span><span class="s2"> "</span>
+                  <span class="sa">f</span><span class="s2">"for </span><span class="si">{</span><span class="n">request</span><span class="o">.</span><span class="n">client_id</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">LockResponse</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">token</span><span class="o">=</span><span class="n">lock</span><span class="o">.</span><span class="n">token</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Lock is held by someone else</span>
+            <span class="k">return</span> <span class="n">LockResponse</span><span class="p">(</span><span class="kc">False</span><span class="p">,</span> 
+                              <span class="n">message</span><span class="o">=</span><span class="sa">f</span><span class="s2">"Lock held by </span><span class="si">{</span><span class="n">lock</span><span class="o">.</span><span class="n">holder</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_handle_release</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">LockRequest</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">LockResponse</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Release a lock."""</span>
+        <span class="n">resource</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">resource</span>
+
+        <span class="k">if</span> <span class="n">resource</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">locks</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">LockResponse</span><span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="n">message</span><span class="o">=</span><span class="s2">"Lock not found"</span><span class="p">)</span>
+
+        <span class="n">lock</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">locks</span><span class="p">[</span><span class="n">resource</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">lock</span><span class="o">.</span><span class="n">holder</span> <span class="o">==</span> <span class="n">request</span><span class="o">.</span><span class="n">client_id</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: Released lock on </span><span class="si">{</span><span class="n">resource</span><span class="si">}</span><span class="s2"> "</span>
+                  <span class="sa">f</span><span class="s2">"by </span><span class="si">{</span><span class="n">request</span><span class="o">.</span><span class="n">client_id</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+            <span class="n">lock</span><span class="o">.</span><span class="n">holder</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">return</span> <span class="n">LockResponse</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">LockResponse</span><span class="p">(</span><span class="kc">False</span><span class="p">,</span> 
+                              <span class="n">message</span><span class="o">=</span><span class="sa">f</span><span class="s2">"Lock not held by </span><span class="si">{</span><span class="n">request</span><span class="o">.</span><span class="n">client_id</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</code></pre></div>
+<h2>Lock Clients</h2>
+<p>Clients acquire locks, do work in critical sections, and release locks:</p>
+<div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">LockClient</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Client that acquires locks to access resources."""</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">client_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">server</span><span class="p">:</span> <span class="n">LockServer</span><span class="p">,</span> 
+             <span class="n">resource</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">work_duration</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">client_id</span> <span class="o">=</span> <span class="n">client_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">server</span> <span class="o">=</span> <span class="n">server</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="o">=</span> <span class="n">resource</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">work_duration</span> <span class="o">=</span> <span class="n">work_duration</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_token</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Acquire lock, do work, release lock."""</span>
+        <span class="c1"># Try to acquire lock</span>
+        <span class="n">acquired</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">acquire_lock</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">acquired</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">client_id</span><span class="si">}</span><span class="s2">: Failed to acquire lock"</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="c1"># Do work with the lock held</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">client_id</span><span class="si">}</span><span class="s2">: Starting critical section "</span>
+              <span class="sa">f</span><span class="s2">"(token </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">current_token</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">work_duration</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">client_id</span><span class="si">}</span><span class="s2">: Finished critical section"</span><span class="p">)</span>
+
+        <span class="c1"># Release lock</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">release_lock</span><span class="p">()</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">acquire_lock</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Request lock from server."""</span>
+        <span class="n">response_queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_env</span><span class="p">)</span>
+        <span class="n">request</span> <span class="o">=</span> <span class="n">LockRequest</span><span class="p">(</span>
+            <span class="n">client_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">client_id</span><span class="p">,</span>
+            <span class="n">resource</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="p">,</span>
+            <span class="n">operation</span><span class="o">=</span><span class="s2">"acquire"</span><span class="p">,</span>
+            <span class="n">response_queue</span><span class="o">=</span><span class="n">response_queue</span>
+        <span class="p">)</span>
+
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">request_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">response_queue</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">success</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_token</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">token</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">release_lock</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Release lock back to server."""</span>
+        <span class="n">response_queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_env</span><span class="p">)</span>
+        <span class="n">request</span> <span class="o">=</span> <span class="n">LockRequest</span><span class="p">(</span>
+            <span class="n">client_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">client_id</span><span class="p">,</span>
+            <span class="n">resource</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="p">,</span>
+            <span class="n">operation</span><span class="o">=</span><span class="s2">"release"</span><span class="p">,</span>
+            <span class="n">response_queue</span><span class="o">=</span><span class="n">response_queue</span>
+        <span class="p">)</span>
+
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">request_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+        <span class="k">await</span> <span class="n">response_queue</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_token</span> <span class="o">=</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Let's run a simple simulation where multiple clients compete for the same lock:</p>
+<div class="codehilite"><pre class=""><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">run_basic_simulation</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">"""Simulate multiple clients competing for a lock."""</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
+
+    <span class="c1"># Create lock server</span>
+    <span class="n">server</span> <span class="o">=</span> <span class="n">LockServer</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s2">"Server1"</span><span class="p">,</span> <span class="n">lease_duration</span><span class="o">=</span><span class="mf">5.0</span><span class="p">)</span>
+
+    <span class="c1"># Create clients that want the same resource</span>
+    <span class="n">client1</span> <span class="o">=</span> <span class="n">LockClient</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s2">"Client1"</span><span class="p">,</span> <span class="n">server</span><span class="p">,</span> <span class="s2">"database"</span><span class="p">,</span> <span class="n">work_duration</span><span class="o">=</span><span class="mf">3.0</span><span class="p">)</span>
+    <span class="n">client2</span> <span class="o">=</span> <span class="n">LockClient</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s2">"Client2"</span><span class="p">,</span> <span class="n">server</span><span class="p">,</span> <span class="s2">"database"</span><span class="p">,</span> <span class="n">work_duration</span><span class="o">=</span><span class="mf">2.0</span><span class="p">)</span>
+    <span class="n">client3</span> <span class="o">=</span> <span class="n">LockClient</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s2">"Client3"</span><span class="p">,</span> <span class="n">server</span><span class="p">,</span> <span class="s2">"database"</span><span class="p">,</span> <span class="n">work_duration</span><span class="o">=</span><span class="mf">4.0</span><span class="p">)</span>
+
+    <span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
+    <span class="n">run_basic_simulation</span><span class="p">()</span>
+</code></pre></div>
+<p>When you run this, you'll see clients taking turns acquiring the lock.
+The mutual exclusion property is preserved—only one client holds the lock at a time.</p>
+<h2>Handling Failures with Lease Expiration</h2>
+<p>What happens if a client crashes while holding a lock? Without lease expiration, the lock would be stuck forever.
+Let's create a client that fails:</p>
+<div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">FailingClient</span><span class="p">(</span><span class="n">LockClient</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Client that crashes while holding a lock."""</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">client_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">server</span><span class="p">:</span> <span class="n">LockServer</span><span class="p">,</span> 
+             <span class="n">resource</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">work_duration</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">fail_after</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">client_id</span><span class="p">,</span> <span class="n">server</span><span class="p">,</span> <span class="n">resource</span><span class="p">,</span> <span class="n">work_duration</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fail_after</span> <span class="o">=</span> <span class="n">fail_after</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Acquire lock, work, then crash."""</span>
+        <span class="n">acquired</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">acquire_lock</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">acquired</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">client_id</span><span class="si">}</span><span class="s2">: Starting work"</span><span class="p">)</span>
+
+        <span class="c1"># Simulate crash after some time</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fail_after</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">client_id</span><span class="si">}</span><span class="s2">: CRASHED!"</span><span class="p">)</span>
+        <span class="c1"># Client stops here without releasing the lock</span>
+</code></pre></div>
+<p>Now let's see what happens:</p>
+<div class="codehilite"><pre class=""><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">run_failure_simulation</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">"""Demonstrate lease expiration after client failure."""</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
+
+    <span class="n">server</span> <span class="o">=</span> <span class="n">LockServer</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s2">"Server1"</span><span class="p">,</span> <span class="n">lease_duration</span><span class="o">=</span><span class="mf">3.0</span><span class="p">)</span>
+
+    <span class="c1"># Client that will crash</span>
+    <span class="n">failing</span> <span class="o">=</span> <span class="n">FailingClient</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s2">"FailClient"</span><span class="p">,</span> <span class="n">server</span><span class="p">,</span> <span class="s2">"database"</span><span class="p">,</span> 
+                           <span class="n">work_duration</span><span class="o">=</span><span class="mf">10.0</span><span class="p">,</span> <span class="n">fail_after</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+
+    <span class="c1"># Client that waits and then tries to acquire</span>
+    <span class="n">client2</span> <span class="o">=</span> <span class="n">LockClient</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s2">"Client2"</span><span class="p">,</span> <span class="n">server</span><span class="p">,</span> <span class="s2">"database"</span><span class="p">,</span> <span class="n">work_duration</span><span class="o">=</span><span class="mf">2.0</span><span class="p">)</span>
+
+    <span class="c1"># Start client2 after a delay</span>
+    <span class="n">LockClient</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s2">"Client2"</span><span class="p">,</span> <span class="n">server</span><span class="p">,</span> <span class="s2">"database"</span><span class="p">,</span> <span class="n">work_duration</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">initial_delay</span><span class="o">=</span><span class="mf">5.0</span><span class="p">)</span>
+
+    <span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+</code></pre></div>
+<p>The failing client crashes at time 1.0 without releasing the lock.
+But the lease expires at time 4.0 (1.0 + 3.0), allowing the second client to acquire the lock.
+This demonstrates how lease expiration provides fault tolerance.</p>
+<h2>Fencing Tokens</h2>
+<p>Lease expiration solves one problem but introduces another.
+Consider this sequence:</p>
+<ol>
+<li>Client A acquires lock (token 1) with lease expiring at time 10</li>
+<li>Client A pauses (GC, network partition) from time 2 to time 12</li>
+<li>At time 10, the lease expires</li>
+<li>Client B acquires lock (token 2) at time 10.5</li>
+<li>Client A wakes up at time 12, still thinks it has the lock</li>
+</ol>
+<p>If both clients now access the shared resource, we've violated mutual exclusion.
+The solution is fencing tokens.</p>
+<p>Here's a protected resource that checks tokens:</p>
+<div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ProtectedResource</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""A resource that validates fencing tokens."""</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">:</span> <span class="n">Environment</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="n">env</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">highest_token_seen</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_accessor</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">access</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">client_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">token</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">duration</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Access the resource with a fencing token."""</span>
+        <span class="k">if</span> <span class="n">token</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">highest_token_seen</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] FENCING: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> rejected "</span>
+                  <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">client_id</span><span class="si">}</span><span class="s2"> (stale token </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">, seen </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">highest_token_seen</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">highest_token_seen</span> <span class="o">=</span> <span class="n">token</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_accessor</span> <span class="o">=</span> <span class="n">client_id</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">client_id</span><span class="si">}</span><span class="s2"> accessing "</span>
+              <span class="sa">f</span><span class="s2">"(token </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
+
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="n">duration</span><span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">client_id</span><span class="si">}</span><span class="s2"> finished"</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_accessor</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="kc">True</span>
+</code></pre></div>
+<p>Now let's create a client that uses fencing tokens:</p>
+<div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">FencedClient</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Client that uses fencing tokens when accessing resources."""</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">client_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">server</span><span class="p">:</span> <span class="n">LockServer</span><span class="p">,</span> 
+             <span class="n">resource_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">protected_resource</span><span class="p">:</span> <span class="n">ProtectedResource</span><span class="p">,</span>
+             <span class="n">work_duration</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">pause_duration</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">client_id</span> <span class="o">=</span> <span class="n">client_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">server</span> <span class="o">=</span> <span class="n">server</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">resource_name</span> <span class="o">=</span> <span class="n">resource_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">protected_resource</span> <span class="o">=</span> <span class="n">protected_resource</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">work_duration</span> <span class="o">=</span> <span class="n">work_duration</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pause_duration</span> <span class="o">=</span> <span class="n">pause_duration</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_token</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Acquire lock and access resource with token."""</span>
+        <span class="c1"># Acquire lock</span>
+        <span class="n">acquired</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">acquire_lock</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">acquired</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="c1"># Simulate pause (GC, network delay, etc.)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pause_duration</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">client_id</span><span class="si">}</span><span class="s2">: Pausing for "</span>
+                  <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">pause_duration</span><span class="si">}</span><span class="s2">s"</span><span class="p">)</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pause_duration</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">client_id</span><span class="si">}</span><span class="s2">: Resuming"</span><span class="p">)</span>
+
+        <span class="c1"># Try to access resource with our token</span>
+        <span class="n">success</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">protected_resource</span><span class="o">.</span><span class="n">access</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">client_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_token</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">work_duration</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">success</span><span class="p">:</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">release_lock</span><span class="p">()</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">acquire_lock</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Acquire lock from server."""</span>
+        <span class="n">response_queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_env</span><span class="p">)</span>
+        <span class="n">request</span> <span class="o">=</span> <span class="n">LockRequest</span><span class="p">(</span>
+            <span class="n">client_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">client_id</span><span class="p">,</span>
+            <span class="n">resource</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">resource_name</span><span class="p">,</span>
+            <span class="n">operation</span><span class="o">=</span><span class="s2">"acquire"</span><span class="p">,</span>
+            <span class="n">response_queue</span><span class="o">=</span><span class="n">response_queue</span>
+        <span class="p">)</span>
+
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">request_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">response_queue</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">success</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_token</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">token</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">client_id</span><span class="si">}</span><span class="s2">: Acquired lock "</span>
+                  <span class="sa">f</span><span class="s2">"(token </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">current_token</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">release_lock</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Release lock."""</span>
+        <span class="n">response_queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_env</span><span class="p">)</span>
+        <span class="n">request</span> <span class="o">=</span> <span class="n">LockRequest</span><span class="p">(</span>
+            <span class="n">client_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">client_id</span><span class="p">,</span>
+            <span class="n">resource</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">resource_name</span><span class="p">,</span>
+            <span class="n">operation</span><span class="o">=</span><span class="s2">"release"</span><span class="p">,</span>
+            <span class="n">response_queue</span><span class="o">=</span><span class="n">response_queue</span>
+        <span class="p">)</span>
+
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">server</span><span class="o">.</span><span class="n">request_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+        <span class="k">await</span> <span class="n">response_queue</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+</code></pre></div>
+<p>Now we can demonstrate split-brain prevention:</p>
+<div class="codehilite"><pre class=""><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">run_fencing_simulation</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">"""Demonstrate fencing tokens preventing split-brain."""</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
+
+    <span class="n">server</span> <span class="o">=</span> <span class="n">LockServer</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s2">"Server1"</span><span class="p">,</span> <span class="n">lease_duration</span><span class="o">=</span><span class="mf">3.0</span><span class="p">)</span>
+    <span class="n">resource</span> <span class="o">=</span> <span class="n">ProtectedResource</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s2">"Database"</span><span class="p">)</span>
+
+    <span class="c1"># Client that will pause long enough for lease to expire</span>
+    <span class="n">client1</span> <span class="o">=</span> <span class="n">FencedClient</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s2">"Client1"</span><span class="p">,</span> <span class="n">server</span><span class="p">,</span> <span class="s2">"db_lock"</span><span class="p">,</span> <span class="n">resource</span><span class="p">,</span>
+                          <span class="n">work_duration</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">pause_duration</span><span class="o">=</span><span class="mf">5.0</span><span class="p">)</span>
+
+    <span class="c1"># Client that acquires lock after client1's lease expires</span>
+    <span class="n">FencedClient</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s2">"Client2"</span><span class="p">,</span> <span class="n">server</span><span class="p">,</span> <span class="s2">"db_lock"</span><span class="p">,</span> <span class="n">resource</span><span class="p">,</span>
+                 <span class="n">work_duration</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">pause_duration</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">initial_delay</span><span class="o">=</span><span class="mf">4.0</span><span class="p">)</span>
+
+    <span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+</code></pre></div>
+<p>Here's what happens:</p>
+<ol>
+<li>Client1 acquires the lock (token 1) at time 0</li>
+<li>Client1 pauses for 5 seconds</li>
+<li>The lease expires at time 3</li>
+<li>Client2 acquires the lock (token 2) at time 4</li>
+<li>Client2 accesses the resource successfully</li>
+<li>Client1 wakes up at time 5 with stale token 1</li>
+<li>The resource rejects Client1 because it has already seen token 2</li>
+</ol>
+<p>The fencing token prevents Client1 from corrupting the resource despite still believing it holds the lock.</p>
+<h2>Replicated Lock Servers</h2>
+<p>A single lock server is a single point of failure.
+Real distributed lock managers replicate state across multiple servers.
+When implementing full consensus (Raft or Paxos), a client must get agreement from a majority of servers before considering the lock acquired.</p>
+<p>Here's a simplified version with replicated lock servers:</p>
+<div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ReplicatedLockManager</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Manages multiple lock servers with majority voting."""</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">:</span> <span class="n">Environment</span><span class="p">,</span> <span class="n">num_servers</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+                 <span class="n">lease_duration</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">5.0</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="n">env</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">servers</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_servers</span><span class="p">):</span>
+            <span class="n">server</span> <span class="o">=</span> <span class="n">LockServer</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"Server</span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">lease_duration</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">servers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">server</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">majority</span> <span class="o">=</span> <span class="p">(</span><span class="n">num_servers</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">acquire_lock</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">client_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">resource</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Try to acquire lock from majority of servers."""</span>
+        <span class="n">responses</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">response_queues</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Send request to all servers</span>
+        <span class="k">for</span> <span class="n">server</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">servers</span><span class="p">:</span>
+            <span class="n">response_queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">)</span>
+            <span class="n">response_queues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">response_queue</span><span class="p">)</span>
+
+            <span class="n">request</span> <span class="o">=</span> <span class="n">LockRequest</span><span class="p">(</span>
+                <span class="n">client_id</span><span class="o">=</span><span class="n">client_id</span><span class="p">,</span>
+                <span class="n">resource</span><span class="o">=</span><span class="n">resource</span><span class="p">,</span>
+                <span class="n">operation</span><span class="o">=</span><span class="s2">"acquire"</span><span class="p">,</span>
+                <span class="n">response_queue</span><span class="o">=</span><span class="n">response_queue</span>
+            <span class="p">)</span>
+            <span class="k">await</span> <span class="n">server</span><span class="o">.</span><span class="n">request_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+
+        <span class="c1"># Collect responses</span>
+        <span class="k">for</span> <span class="n">queue</span> <span class="ow">in</span> <span class="n">response_queues</span><span class="p">:</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">queue</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+            <span class="n">responses</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+
+        <span class="c1"># Check if we got majority approval</span>
+        <span class="n">successful</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">responses</span> <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">success</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">successful</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">majority</span><span class="p">:</span>
+            <span class="c1"># Use the highest token from successful responses</span>
+            <span class="n">token</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">token</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">successful</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Lock acquired by </span><span class="si">{</span><span class="n">client_id</span><span class="si">}</span><span class="s2"> "</span>
+                  <span class="sa">f</span><span class="s2">"(</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">successful</span><span class="p">)</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">servers</span><span class="p">)</span><span class="si">}</span><span class="s2"> servers, token </span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">token</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Lock acquisition failed for </span><span class="si">{</span><span class="n">client_id</span><span class="si">}</span><span class="s2"> "</span>
+                  <span class="sa">f</span><span class="s2">"(</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">successful</span><span class="p">)</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">servers</span><span class="p">)</span><span class="si">}</span><span class="s2"> servers)"</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">release_lock</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">client_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">resource</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Release lock from all servers."""</span>
+        <span class="k">for</span> <span class="n">server</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">servers</span><span class="p">:</span>
+            <span class="n">response_queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">)</span>
+            <span class="n">request</span> <span class="o">=</span> <span class="n">LockRequest</span><span class="p">(</span>
+                <span class="n">client_id</span><span class="o">=</span><span class="n">client_id</span><span class="p">,</span>
+                <span class="n">resource</span><span class="o">=</span><span class="n">resource</span><span class="p">,</span>
+                <span class="n">operation</span><span class="o">=</span><span class="s2">"release"</span><span class="p">,</span>
+                <span class="n">response_queue</span><span class="o">=</span><span class="n">response_queue</span>
+            <span class="p">)</span>
+            <span class="k">await</span> <span class="n">server</span><span class="o">.</span><span class="n">request_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+            <span class="k">await</span> <span class="n">response_queue</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+</code></pre></div>
+<p>A client using the replicated manager:</p>
+<div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ReplicatedLockClient</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Client using replicated lock manager."""</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">client_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">manager</span><span class="p">:</span> <span class="n">ReplicatedLockManager</span><span class="p">,</span>
+             <span class="n">resource</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">work_duration</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">client_id</span> <span class="o">=</span> <span class="n">client_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">manager</span> <span class="o">=</span> <span class="n">manager</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="o">=</span> <span class="n">resource</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">work_duration</span> <span class="o">=</span> <span class="n">work_duration</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Acquire lock from majority, do work, release."""</span>
+        <span class="n">token</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">acquire_lock</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">client_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">token</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">client_id</span><span class="si">}</span><span class="s2">: Working with lock"</span><span class="p">)</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">work_duration</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">client_id</span><span class="si">}</span><span class="s2">: Work complete"</span><span class="p">)</span>
+
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">release_lock</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">client_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">run_replicated_simulation</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">"""Demonstrate replicated lock manager."""</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
+
+    <span class="c1"># Create manager with 3 servers</span>
+    <span class="n">manager</span> <span class="o">=</span> <span class="n">ReplicatedLockManager</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">num_servers</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">lease_duration</span><span class="o">=</span><span class="mf">5.0</span><span class="p">)</span>
+
+    <span class="c1"># Create competing clients</span>
+    <span class="n">client1</span> <span class="o">=</span> <span class="n">ReplicatedLockClient</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s2">"Client1"</span><span class="p">,</span> <span class="n">manager</span><span class="p">,</span> <span class="s2">"resource"</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">)</span>
+
+    <span class="n">ReplicatedLockClient</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s2">"Client2"</span><span class="p">,</span> <span class="n">manager</span><span class="p">,</span> <span class="s2">"resource"</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">initial_delay</span><span class="o">=</span><span class="mf">2.0</span><span class="p">)</span>
+
+    <span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+</code></pre></div>
+<p>With replication, even if one server fails, the lock manager can continue operating as long as a majority of servers remain available.
+This provides fault tolerance.</p>
+<h2>Real-World Considerations</h2>
+<p>Our implementation demonstrates the core concepts, but production distributed lock managers need additional features:</p>
+<p><strong>Watch mechanism</strong>: Clients can watch for lock release events rather than polling.
+ZooKeeper provides this through ephemeral nodes and watches.</p>
+<p><strong>Session management</strong>: Clients maintain sessions with heartbeats.
+When a session expires, all locks held by that client are automatically released.</p>
+<p><strong>Lock queuing</strong>: Instead of failing when a lock is held, clients can queue and be notified when the lock becomes available.</p>
+<p><strong>Deadlock detection</strong>: If Client A holds Lock 1 and waits for Lock 2, while Client B holds Lock 2 and waits for Lock 1, the system should detect and break the deadlock.</p>
+<p><strong>Performance optimization</strong>: Real systems use techniques like read-write locks (multiple readers, single writer), hierarchical locking (lock entire subtrees), and lock-free algorithms where possible.</p>
+<h2>Conclusion</h2>
+<p>Distributed locking is fundamental to coordination in distributed systems.
+The key challenges are:</p>
+<ol>
+<li><strong>Fault tolerance</strong>: Servers and clients can fail independently</li>
+<li><strong>Network unreliability</strong>: Messages can be delayed, lost, or reordered  </li>
+<li><strong>Clock skew</strong>: Different machines have different notions of time</li>
+<li><strong>Split-brain</strong>: Preventing multiple processes from believing they hold the same lock</li>
+</ol>
+<p>Our solutions include:</p>
+<ol>
+<li><strong>Lease-based locks</strong> with expiration to handle failures</li>
+<li><strong>Fencing tokens</strong> to prevent stale lock holders from accessing resources</li>
+<li><strong>Consensus protocols</strong> to maintain consistent state across servers</li>
+<li><strong>Majority voting</strong> to tolerate server failures</li>
+</ol>
+<p>These techniques appear throughout distributed systems.
+Leader election uses the same mechanisms we've seen here—a candidate acquires a special lock, and the fencing token becomes the leader's epoch number.
+Distributed databases use locks to coordinate schema migrations.
+Cluster managers use locks to ensure only one instance of a service runs.</p>
+<p>The asimpy simulation approach lets us verify these protocols work correctly under various failure scenarios—client crashes, network delays, lease expirations—before deploying them in production where debugging is much harder.</p>
+</main>
+<footer>
+<div class="row">
+<div class="col-3 left">
+	  ⇐ <a href="../msgque/">A Message Queue</a>
+</div>
+<div class="col-6 center">
+<a href="../"></a>
+	  © 2025
+	  <a href="../#acknowledgments">the authors</a>
+</div>
+<div class="col-3 right">
+<a href="../finale/">Conclusion</a> ⇒
+	</div>
+</div>
+</footer>
+</body>
+</html>
