@@ -1,18 +1,51 @@
 [project]
 name = "dsdx"
+version = "0.2.0"
 description = "distributed software design by example"
-version = "0.1.0"
-requires-python = ">=3.12"
+authors = [{name = "Greg Wilson", email = "gvwilson@third-bit.com"}]
+license = {file = "LICENSE.md"}
+readme = "README.md"
+requires-python = ">=3.13"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+]
 dependencies = [
-    "linkchecker",
-    "mccole"
+    "asimpy>=0.5.1",
+    "mccole>=1.4.3",
+    "ruff>=0.1.0",
+    "taskipy>=1.14.1"
 ]
 
-[tool.mccole]
-skips = ["extras/**", "uv.lock"]
+[project.urls]
+Homepage = "https://gvwilson.github.io/dsdx"
+Repository = "https://github.com/gvwilson/dsdx"
 
-[tool.mccole.renames]
-"README.md" = ""
-"CODE_OF_CONDUCT.md" = "conduct"
-"CONTRIBUTING.md" = "contrib"
-"LICENSE.md" = "license"
+[tool.mccole]
+skips = [
+    "*~",
+    "*.egg-info/**",
+    "*.py",
+    "*.sh",
+    "*.txt",
+    "extras/**",
+    "old/**",
+    "uv.lock"
+]
+
+[tool.taskipy.tasks]
+build = {help = "build HTML", cmd = "mccole build --src . --dst docs && touch docs/.nojekyll"}
+check = {help = "check HTML", cmd = "mccole check --src . --dst docs"}
+clean = {help = "clean up", cmd = """
+find . -path './.venv' -prune -o -type d -name '__pycache__' -exec rm -rf {} + &&
+find . -path './.venv' -prune -o -type d -name '.ruff_cache' -exec rm -rf {} + &&
+find . -path './.venv' -prune -o -type f -name '*~' -exec rm {} +
+"""}
+fix = {help = "fix code issues", cmd = "ruff check --fix ."}
+format = {help = "format code", cmd = "ruff format ."}
+lint = {help = "check code", cmd = "ruff check ."}
+serve = {help = "serve HTML", cmd = "python -m http.server -d docs"}
