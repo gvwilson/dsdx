@@ -2,7 +2,6 @@
 """Basic lock client implementation."""
 
 from asimpy import Process, Queue
-from typing import Optional
 from basic_lock_server import LockServer, LockRequest
 
 
@@ -22,7 +21,7 @@ class LockClient(Process):
         self.resource = resource
         self.work_duration = work_duration
         self.initial_delay = initial_delay
-        self.current_token: Optional[int] = None
+        self.current_token: int | None = None
 
     async def run(self):
         """Acquire lock, do work, release lock."""

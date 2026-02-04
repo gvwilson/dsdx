@@ -2,7 +2,6 @@
 
 from asimpy import Process, Queue
 from collections import defaultdict
-from typing import Dict, List
 from vector_clock import VectorClock
 from versioned_value import VersionedValue
 from messages import ReadRequest, WriteRequest, ReadResponse, WriteResponse
@@ -15,7 +14,7 @@ class StorageNode(Process):
         self.node_id = node_id
         self.request_queue = Queue(self._env)
         # Key -> list of concurrent versioned values
-        self.data: Dict[str, List[VersionedValue]] = defaultdict(list)
+        self.data: dict[str, list[VersionedValue]] = defaultdict(list)
         self.clock = VectorClock()
 
     async def run(self):

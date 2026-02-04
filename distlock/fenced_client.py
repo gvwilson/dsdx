@@ -2,7 +2,6 @@
 """Client implementation with fencing token support."""
 
 from asimpy import Process, Queue
-from typing import Optional
 from basic_lock_server import LockServer, LockRequest
 from protected_resource import ProtectedResource
 
@@ -27,7 +26,7 @@ class FencedClient(Process):
         self.work_duration = work_duration
         self.pause_duration = pause_duration
         self.initial_delay = initial_delay
-        self.current_token: Optional[int] = None
+        self.current_token: int = 0
 
     async def run(self):
         """Acquire lock and access resource with token."""

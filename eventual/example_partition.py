@@ -1,9 +1,25 @@
 """Simulation demonstrating behavior during network partition."""
 
-from asimpy import Environment
+from asimpy import Environment, Process
 from storage_node import StorageNode
 from partitioned_coordinator import PartitionedCoordinator
 from kv_client import KVClient
+
+
+class PartitionManager(Process):
+    """Process that creates and heals network partitions."""
+
+    def init(self, coordinator: PartitionedCoordinator):
+        self.coordinator = coordinator
+
+    async def run(self):
+        """Create partition, wait, then heal."""
+        await self.timeout(2.0)
+        self.coordinator.partition_node("Node3")
+
+        # Wait for partition to heal
+        await self.timeout(3.0)
+        self.coordinator.heal_partition("Node3")
 
 
 def run_partition_simulation():
@@ -26,28 +42,21 @@ def run_partition_simulation():
         ],
     )
 
-    # Cause a partition
-    async def create_partition():
-        await env.timeout(2.0)
-        coordinator.partition_node("Node3")
+    # Client that writes after partition
+    KVClient(
+        env,
+        "Client2",
+        coordinator,
+        [
+            ("write", "status", "degraded"),
+            ("read", "status", None),
+        ],
+        initial_delay=3.0,
+    )
 
-        # Client still succeeds with remaining nodes
-        await env.timeout(1.0)
-        KVClient(
-            env,
-            "Client2",
-            coordinator,
-            [
-                ("write", "status", "degraded"),
-                ("read", "status", None),
-            ],
-        )
+    # Create partition manager
+    PartitionManager(env, coordinator)
 
-        # Heal partition
-        await env.timeout(2.0)
-        coordinator.heal_partition("Node3")
-
-    env.process(create_partition())
     env.run(until=10)
 
 

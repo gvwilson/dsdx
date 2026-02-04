@@ -14,9 +14,10 @@ class FailingClient(LockClient):
         server: LockServer,
         resource: str,
         work_duration: float,
-        fail_after: float,
+        initial_delay: float | None = None,
+        fail_after: float = 0.0,
     ):
-        super().init(client_id, server, resource, work_duration)
+        super().init(client_id, server, resource, work_duration, initial_delay=initial_delay)
         self.fail_after = fail_after
 
     async def run(self):

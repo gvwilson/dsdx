@@ -1,7 +1,7 @@
 """Client for reading and writing to the key-value store."""
 
 from asimpy import Process
-from typing import Dict, List, Tuple, Any, Optional
+from typing import Any
 from coordinator import Coordinator
 from vector_clock import VectorClock
 
@@ -13,19 +13,20 @@ class KVClient(Process):
         self,
         client_id: str,
         coordinator: Coordinator,
-        operations: List[Tuple[str, str, Any]],
+        operations: list[tuple[str, str, Any]],
         initial_delay: float | None = None,
     ):
         self.client_id = client_id
         self.coordinator = coordinator
-        self.operations = operations  # List of (op, key, value) tuples
+        self.operations = operations  # list of (op, key, value) tuples
         self.initial_delay = initial_delay
-        self.context: Dict[str, VectorClock] = {}  # Track causality per key
+        self.context: dict[str, VectorClock | None] = {}  # Track causality per key
 
     async def run(self):
         """Execute operations."""
+        # Wait for initial delay if specified
         if self.initial_delay is not None:
-            self.timeout(self.initial_delay)
+            await self.timeout(self.initial_delay)
 
         for op, key, value in self.operations:
             if op == "write":
@@ -35,7 +36,7 @@ class KVClient(Process):
                 await self.read(key)
                 await self.timeout(0.5)
 
-    async def read(self, key: str) -> Optional[Any]:
+    async def read(self, key: str) -> Any:
         """Read a key and handle conflicts."""
         versions = await self.coordinator.read(key, self.client_id)
 

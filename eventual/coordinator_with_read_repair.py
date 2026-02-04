@@ -1,7 +1,6 @@
 """Coordinator that performs read repair to converge replicas."""
 
 from asimpy import Queue
-from typing import List
 from coordinator import Coordinator
 from storage_node import StorageNode
 from versioned_value import VersionedValue
@@ -11,7 +10,7 @@ from messages import ReadRequest, WriteRequest, ReadResponse
 class CoordinatorWithReadRepair(Coordinator):
     """Coordinator that performs read repair."""
 
-    async def read(self, key: str, client_id: str) -> List[VersionedValue]:
+    async def read(self, key: str, client_id: str) -> list[VersionedValue]:
         """Read from R replicas and repair inconsistencies."""
         replicas = self._get_replicas(key)
 
@@ -61,9 +60,9 @@ class CoordinatorWithReadRepair(Coordinator):
     async def _perform_read_repair(
         self,
         key: str,
-        merged_versions: List[VersionedValue],
-        replicas: List[StorageNode],
-        responses: List[ReadResponse],
+        merged_versions: list[VersionedValue],
+        replicas: list[StorageNode],
+        responses: list[ReadResponse],
     ):
         """Update lagging replicas."""
         # Determine which replicas need updates

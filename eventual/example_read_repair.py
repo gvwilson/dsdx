@@ -25,30 +25,28 @@ def run_read_repair_simulation():
         ],
     )
 
-    # Later read that triggers read repair
-    async def delayed_read():
-        await env.timeout(2.0)
-        KVClient(
-            env,
-            "Client2",
-            coordinator,
-            [
-                ("read", "data", None),
-            ],
-        )
+    # Client that reads after delay (triggers read repair)
+    KVClient(
+        env,
+        "Client2",
+        coordinator,
+        [
+            ("read", "data", None),
+        ],
+        initial_delay=2.0,
+    )
 
-        # Another read should show all nodes now have the data
-        await env.timeout(2.0)
-        KVClient(
-            env,
-            "Client3",
-            coordinator,
-            [
-                ("read", "data", None),
-            ],
-        )
+    # Another client reads later to verify all nodes have the data
+    KVClient(
+        env,
+        "Client3",
+        coordinator,
+        [
+            ("read", "data", None),
+        ],
+        initial_delay=4.0,
+    )
 
-    env.process(delayed_read())
     env.run(until=10)
 
 

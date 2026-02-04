@@ -1,7 +1,7 @@
 """Coordinator that manages replication with quorum protocol."""
 
 from asimpy import Environment, Queue
-from typing import List, Optional, Any
+from typing import Any
 from storage_node import StorageNode
 from vector_clock import VectorClock
 from versioned_value import VersionedValue
@@ -14,7 +14,7 @@ class Coordinator:
     def __init__(
         self,
         env: Environment,
-        nodes: List[StorageNode],
+        nodes: list[StorageNode],
         replication_factor: int = 3,
         read_quorum: int = 2,
         write_quorum: int = 2,
@@ -28,7 +28,7 @@ class Coordinator:
         # Simple consistent hashing: hash key to determine replicas
         # In production, use proper consistent hashing ring
 
-    def _get_replicas(self, key: str) -> List[StorageNode]:
+    def _get_replicas(self, key: str) -> list[StorageNode]:
         """Determine which nodes should store this key."""
         # Hash key to starting position, then take N consecutive nodes
         hash_val = hash(key) % len(self.nodes)
@@ -38,7 +38,7 @@ class Coordinator:
             replicas.append(self.nodes[idx])
         return replicas
 
-    async def read(self, key: str, client_id: str) -> List[VersionedValue]:
+    async def read(self, key: str, client_id: str) -> list[VersionedValue]:
         """Read from R replicas and return all versions."""
         replicas = self._get_replicas(key)
 
@@ -73,8 +73,8 @@ class Coordinator:
         return merged_versions
 
     async def write(
-        self, key: str, value: Any, context: Optional[VectorClock], client_id: str
-    ) -> VectorClock:
+        self, key: str, value: Any, context: VectorClock | None, client_id: str
+    ) -> VectorClock | None:
         """Write to W replicas."""
         replicas = self._get_replicas(key)
 
@@ -101,7 +101,7 @@ class Coordinator:
 
         return merged_clock
 
-    def _merge_versions(self, versions: List[VersionedValue]) -> List[VersionedValue]:
+    def _merge_versions(self, versions: list[VersionedValue]) -> list[VersionedValue]:
         """Merge versions, keeping only concurrent ones."""
         if not versions:
             return []

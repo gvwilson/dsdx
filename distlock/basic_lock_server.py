@@ -2,8 +2,7 @@
 """Basic lock server with lease-based locking."""
 
 from asimpy import Process, Queue
-from dataclasses import dataclass
-from typing import Dict, Optional
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -21,7 +20,7 @@ class LockResponse:
     """Response to a lock request."""
 
     success: bool
-    token: Optional[int] = None
+    token: int | None = None
     message: str = ""
 
 
@@ -29,14 +28,10 @@ class LockResponse:
 class LockState:
     """State of a single lock."""
 
-    holder: Optional[str] = None
+    holder: str | None = None
     token: int = 0
     lease_expiry: float = 0
-    waiters: list = None
-
-    def __post_init__(self):
-        if self.waiters is None:
-            self.waiters = []
+    waiters: list = field(default_factory=list)
 
 
 class LockServer(Process):
@@ -46,7 +41,7 @@ class LockServer(Process):
         self.name = name
         self.lease_duration = lease_duration
         self.request_queue = Queue(self._env)
-        self.locks: Dict[str, LockState] = {}
+        self.locks: dict[str, LockState] = {}
         self.next_token = 1
 
     async def run(self):

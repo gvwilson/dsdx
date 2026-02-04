@@ -1,7 +1,7 @@
 """Request and response message types for the key-value store."""
 
 from dataclasses import dataclass
-from typing import Optional, Any, List
+from typing import Any
 from asimpy import Queue
 from vector_clock import VectorClock
 from versioned_value import VersionedValue
@@ -22,7 +22,7 @@ class WriteRequest:
 
     key: str
     value: Any
-    context: Optional[VectorClock]  # Client's version context
+    context: VectorClock | None  # Client's version context
     client_id: str
     response_queue: Queue
 
@@ -32,7 +32,7 @@ class ReadResponse:
     """Response to a read request."""
 
     key: str
-    versions: List[VersionedValue]  # May have multiple concurrent versions
+    versions: list[VersionedValue]  # May have multiple concurrent versions
 
 
 @dataclass

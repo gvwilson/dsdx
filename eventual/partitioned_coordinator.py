@@ -1,7 +1,7 @@
 """Coordinator that can simulate network partitions."""
 
 from asimpy import Environment, Queue
-from typing import List, Optional, Any, Set
+from typing import Any
 from coordinator import Coordinator
 from storage_node import StorageNode
 from vector_clock import VectorClock
@@ -15,13 +15,13 @@ class PartitionedCoordinator(Coordinator):
     def __init__(
         self,
         env: Environment,
-        nodes: List[StorageNode],
+        nodes: list[StorageNode],
         replication_factor: int = 3,
         read_quorum: int = 2,
         write_quorum: int = 2,
     ):
         super().__init__(env, nodes, replication_factor, read_quorum, write_quorum)
-        self.partitioned_nodes: Set[str] = set()
+        self.partitioned_nodes: set[str] = set()
 
     def partition_node(self, node_id: str):
         """Simulate network partition for a node."""
@@ -33,7 +33,7 @@ class PartitionedCoordinator(Coordinator):
         self.partitioned_nodes.discard(node_id)
         print(f"[{self.env.now:.1f}] HEALED: {node_id} is reachable")
 
-    async def read(self, key: str, client_id: str) -> List[VersionedValue]:
+    async def read(self, key: str, client_id: str) -> list[VersionedValue]:
         """Read, skipping partitioned nodes."""
         replicas = self._get_replicas(key)
         available_replicas = [
@@ -65,8 +65,8 @@ class PartitionedCoordinator(Coordinator):
         return self._merge_versions(all_versions)
 
     async def write(
-        self, key: str, value: Any, context: Optional[VectorClock], client_id: str
-    ) -> Optional[VectorClock]:
+        self, key: str, value: Any, context: VectorClock | None, client_id: str
+    ) -> VectorClock | None:
         """Write, skipping partitioned nodes."""
         replicas = self._get_replicas(key)
         available_replicas = [

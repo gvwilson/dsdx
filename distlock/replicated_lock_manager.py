@@ -2,7 +2,6 @@
 """Replicated lock manager with majority voting."""
 
 from asimpy import Environment, Queue
-from typing import Optional
 from basic_lock_server import LockServer, LockRequest
 
 
@@ -21,7 +20,7 @@ class ReplicatedLockManager:
 
         self.majority = (num_servers // 2) + 1
 
-    async def acquire_lock(self, client_id: str, resource: str) -> Optional[int]:
+    async def acquire_lock(self, client_id: str, resource: str) -> int | None:
         """Try to acquire lock from majority of servers."""
         responses = []
         response_queues = []

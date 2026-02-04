@@ -2,7 +2,6 @@
 """Protected resource that validates fencing tokens."""
 
 from asimpy import Environment
-from typing import Optional
 
 
 class ProtectedResource:
@@ -12,7 +11,7 @@ class ProtectedResource:
         self.env = env
         self.name = name
         self.highest_token_seen = 0
-        self.current_accessor: Optional[str] = None
+        self.current_accessor: str | None = None
 
     async def access(self, client_id: str, token: int, duration: float):
         """Access the resource with a fencing token."""
