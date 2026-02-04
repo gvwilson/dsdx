@@ -9,7 +9,14 @@ from basic_lock_server import LockServer, LockRequest
 class LockClient(Process):
     """Client that acquires locks to access resources."""
 
-    def init(self, client_id: str, server: LockServer, resource: str, work_duration: float, initial_delay: float | None = None):
+    def init(
+        self,
+        client_id: str,
+        server: LockServer,
+        resource: str,
+        work_duration: float,
+        initial_delay: float | None = None,
+    ):
         self.client_id = client_id
         self.server = server
         self.resource = resource
