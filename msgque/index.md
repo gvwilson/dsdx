@@ -5,7 +5,8 @@ When a web server processes an order, it might need to notify the inventory syst
 If the web server called each of these services directly, a failure in any one would block the entire operation.
 This is where message queues come in.
 
-Systems like RabbitMQ, Apache Kafka, and Amazon SQS act as intermediaries that decouple message producers from consumers.
+Systems like [RabbitMQ][rabbitmq], [Apache Kafka][kafka], and [Amazon SQS][amazon-sqs]
+act as intermediaries that decouple message producers from consumers.
 A publisher sends messages to a named topic without knowing who (if anyone) will receive them.
 Subscribers express interest in topics and receive messages asynchronously, processing them at their own pace.
 This pattern is fundamental to event-driven architectures used throughout the industry—from LinkedIn's data pipeline that processes billions of events daily, to Netflix's recommendation engine that reacts to viewing patterns, to real-time analytics platforms that aggregate clickstream data.
@@ -235,16 +236,16 @@ Our implementation provides unbounded queuing, which means messages are never dr
 This is closer to "at-least-once" delivery, though we haven't implemented acknowledgments or redelivery on failure.
 Let's discuss the spectrum of delivery guarantees:
 
-**At-most-once delivery** ensures that messages are delivered zero or one time—never duplicated, but possibly lost.
+-   **At-most-once delivery** ensures that messages are delivered zero or one time—never duplicated, but possibly lost.
 This is achieved by dropping messages when queues are full or when subscribers are unavailable.
 It's the weakest guarantee but the simplest to implement and the fastest.
 
-**At-least-once delivery** ensures every message is delivered, possibly multiple times.
+-   **At-least-once delivery** ensures every message is delivered, possibly multiple times.
 This requires acknowledgments: the broker keeps messages until subscribers confirm receipt.
 If a subscriber crashes before acknowledging, the broker redelivers to another subscriber or retries.
 Kafka and RabbitMQ support this mode.
 
-**Exactly-once delivery** is the strongest guarantee: each message is processed exactly once.
+-   **Exactly-once delivery** is the strongest guarantee: each message is processed exactly once.
 This is surprisingly difficult in distributed systems due to failures and network issues.
 Kafka achieves this through idempotent producers and transactional consumers—essentially assigning each message a unique ID and having consumers track which IDs they've processed.
 

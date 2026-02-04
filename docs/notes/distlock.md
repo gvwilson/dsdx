@@ -188,8 +188,5 @@ Real distributed lock managers need additional features:
 
 ## Further Reading
 
-- [ZooKeeper Documentation](https://zookeeper.apache.org/)
-- [etcd Documentation](https://etcd.io/)
-- [Chubby: The lock service for loosely-coupled distributed systems](https://research.google/pubs/pub27897/)
 - [How to do distributed locking](https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html)
 - [Is Redlock safe?](http://antirez.com/news/101)

@@ -1,15 +1,24 @@
 # Work-Stealing Scheduler
 
 Modern programs need to efficiently utilize multiple CPU cores to achieve high performance.
-When you have hundreds or thousands of tasks to execute and a handful of CPU cores, how do you distribute the work? A naive approach would use a central queue: workers pull tasks from one end, and new tasks are added to the other.
+When you have hundreds or thousands of tasks to execute and a handful of CPU cores,
+how do you distribute the work?
+A naive approach would use a central queue: workers pull tasks from one end,
+and new tasks are added to the other.
 But this creates a bottleneck—every worker must compete for access to the shared queue.
 
 Work-stealing schedulers solve this problem through decentralization.
 Each worker maintains its own local deque (double-ended queue) of tasks.
-Workers execute tasks from one end of their own deque, but when a worker runs out of work, it can "steal" tasks from the other end of another worker's deque.
-This design minimizes contention—workers mostly operate on their own queues, only interacting when load balancing is needed.
+Workers execute tasks from one end of their own deque,
+but when a worker runs out of work
+it can "steal" tasks from the other end of another worker's deque.
+This design minimizes contention—workers mostly operate on their own queues,
+only interacting when load balancing is needed.
 
-This pattern appears throughout high-performance computing: Go's runtime scheduler uses work-stealing to distribute goroutines across threads, Java's Fork/Join framework enables parallel divide-and-conquer algorithms, and Tokio (Rust's async runtime) schedules futures across worker threads.
+This pattern appears throughout high-performance computing:
+[Go's runtime scheduler][go-scheduler] uses work-stealing to distribute goroutines across threads,
+[Java's Fork/Join framework][java-fork-join] enables parallel divide-and-conquer algorithms,
+and [Tokio][tokio] (Rust's async runtime) schedules futures across worker threads.
 Understanding work-stealing is essential for writing efficient parallel programs.
 
 ## The Work-Stealing Pattern
@@ -502,20 +511,20 @@ Fine-grained tasks enable better load balancing but increase overhead.
 
 Our implementation demonstrates core concepts, but production work-stealing schedulers need:
 
-**Lock-free deques**: Use atomic compare-and-swap operations instead of locks.
-The Chase-Lev deque is a popular choice.
+-   **Lock-free deques**: Use atomic compare-and-swap operations instead of locks.
+The [Chase-Lev deque][chase-lev-deque] is a popular choice.
 
-**Bounded stealing attempts**: Prevent livelock by limiting how long a worker searches for victims.
+-   **Bounded stealing attempts**: Prevent livelock by limiting how long a worker searches for victims.
 
-**NUMA awareness**: On multi-socket systems, prefer stealing from nearby workers to maintain cache locality.
+-   **NUMA awareness**: On multi-socket systems, prefer stealing from nearby workers to maintain cache locality.
 
-**Priority queues**: Some tasks are more important than others and should execute first.
+-   **Priority queues**: Some tasks are more important than others and should execute first.
 
-**Backoff strategies**: Idle workers should back off exponentially rather than spinning continuously.
+-   **Backoff strategies**: Idle workers should back off exponentially rather than spinning continuously.
 
-**Work affinity**: Tasks that share data should execute on the same worker when possible.
+-   **Work affinity**: Tasks that share data should execute on the same worker when possible.
 
-**Termination detection**: Determining when all work is complete in a distributed system is non-trivial.
+-   **Termination detection**: Determining when all work is complete in a distributed system is non-trivial.
 
 ## Conclusion
 
@@ -529,6 +538,3 @@ The key principles are:
 1.  **Random victim selection** prevents pathological patterns
 1.  **Task spawning** naturally supports divide-and-conquer algorithms
 1.  **Granularity** must balance overhead against load balancing
-
-These patterns appear throughout parallel computing: Go schedules goroutines, Java's Fork/Join parallelizes recursive algorithms, and async runtimes like Tokio distribute futures across threads.
-Understanding work-stealing is essential for writing high-performance parallel code.

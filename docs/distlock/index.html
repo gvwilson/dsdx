@@ -46,11 +46,17 @@ When services elect a leader to coordinate cluster operations, exactly one servi
 <p>These coordination problems all require mutual exclusion: ensuring that only one process can hold a lock at any given time.
 In a single-machine system, this is straightforward—the operating system provides mutexes and semaphores.
 But in a distributed system, there is no shared memory, processes can fail independently, network messages can be delayed or lost, and clocks on different machines drift apart.</p>
-<p>Systems like Apache ZooKeeper, etcd, and Google's Chubby provide distributed locking as a service.
-These systems use consensus algorithms like Raft or Paxos to maintain consistent state across multiple servers, even when some servers fail.
-Redis implements distributed locks through the Redlock algorithm.
-CockroachDB uses distributed locks internally to coordinate schema changes across nodes.</p>
-<p>This chapter builds a distributed lock manager that demonstrates the key challenges and techniques: lease-based locks with expiration, fencing tokens to prevent split-brain scenarios, and a simplified consensus protocol to ensure lock state remains consistent across multiple lock servers.</p>
+<p>Systems like <a href="https://zookeeper.apache.org/">Apache ZooKeeper</a>,
+<a href="https://etcd.io/">etcd</a>,
+and Google's <a href="https://research.google/pubs/pub27897/">Chubby</a> provide distributed locking as a service.
+These systems use consensus algorithms like <a href="https://en.wikipedia.org/wiki/Raft_(algorithm)">Raft</a> or <a href="https://en.wikipedia.org/wiki/Paxos_(computer_science)">Paxos</a>
+to maintain consistent state across multiple servers, even when some servers fail.
+<a href="https://redis.io/">Redis</a> implements distributed locks through the <a href="https://redis.io/docs/latest/develop/clients/patterns/distributed-locks/">Redlock</a> algorithm.
+<a href="https://www.cockroachlabs.com/">CockroachDB</a> uses distributed locks internally to coordinate schema changes across nodes.</p>
+<p>This chapter builds a distributed lock manager that demonstrates the key challenges and techniques:
+lease-based locks with expiration,
+fencing tokens to prevent split-brain scenarios,
+and a simplified consensus protocol to ensure lock state remains consistent across multiple lock servers.</p>
 <h2>The Challenge of Distributed Locking</h2>
 <p>Why is distributed locking so much harder than local locking? Consider this scenario:</p>
 <ol>
@@ -281,7 +287,8 @@ This prevents a zombie process with a stale lock from corrupting the resource.</
 <p>When you run this, you'll see clients taking turns acquiring the lock.
 The mutual exclusion property is preserved—only one client holds the lock at a time.</p>
 <h2>Handling Failures with Lease Expiration</h2>
-<p>What happens if a client crashes while holding a lock? Without lease expiration, the lock would be stuck forever.
+<p>What happens if a client crashes while holding a lock?
+Without lease expiration, the lock would be stuck forever.
 Let's create a client that fails:</p>
 <div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">FailingClient</span><span class="p">(</span><span class="n">LockClient</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""Client that crashes while holding a lock."""</span>
@@ -579,13 +586,25 @@ When implementing full consensus (Raft or Paxos), a client must get agreement fr
 This provides fault tolerance.</p>
 <h2>Real-World Considerations</h2>
 <p>Our implementation demonstrates the core concepts, but production distributed lock managers need additional features:</p>
+<ol>
+<li>
 <p><strong>Watch mechanism</strong>: Clients can watch for lock release events rather than polling.
 ZooKeeper provides this through ephemeral nodes and watches.</p>
+</li>
+<li>
 <p><strong>Session management</strong>: Clients maintain sessions with heartbeats.
 When a session expires, all locks held by that client are automatically released.</p>
+</li>
+<li>
 <p><strong>Lock queuing</strong>: Instead of failing when a lock is held, clients can queue and be notified when the lock becomes available.</p>
+</li>
+<li>
 <p><strong>Deadlock detection</strong>: If Client A holds Lock 1 and waits for Lock 2, while Client B holds Lock 2 and waits for Lock 1, the system should detect and break the deadlock.</p>
+</li>
+<li>
 <p><strong>Performance optimization</strong>: Real systems use techniques like read-write locks (multiple readers, single writer), hierarchical locking (lock entire subtrees), and lock-free algorithms where possible.</p>
+</li>
+</ol>
 <h2>Conclusion</h2>
 <p>Distributed locking is fundamental to coordination in distributed systems.
 The key challenges are:</p>
@@ -606,7 +625,7 @@ The key challenges are:</p>
 Leader election uses the same mechanisms we've seen here—a candidate acquires a special lock, and the fencing token becomes the leader's epoch number.
 Distributed databases use locks to coordinate schema migrations.
 Cluster managers use locks to ensure only one instance of a service runs.</p>
-<p>The asimpy simulation approach lets us verify these protocols work correctly under various failure scenarios—client crashes, network delays, lease expirations—before deploying them in production where debugging is much harder.</p>
+<p>The <a href="https://asimpy.readthedocs.io/">asimpy</a> simulation approach lets us verify these protocols work correctly under various failure scenarios—client crashes, network delays, lease expirations—before deploying them in production where debugging is much harder.</p>
 </main>
 <footer>
 <div class="row">

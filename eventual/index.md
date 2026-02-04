@@ -1,15 +1,24 @@
 # Eventually Consistent Key-Value Store
 
-Modern distributed systems often face an impossible choice known as the CAP theorem: when network partitions occur, you must choose between consistency (all nodes see the same data) and availability (the system continues to respond).
+Modern distributed systems often face an impossible choice known as the [CAP theorem][cap-theorem]:
+when network partitions occur, you must choose between consistency (all nodes see the same data) and availability (the system continues to respond).
 Traditional databases choose consistency—they stop accepting writes during a partition to avoid conflicts.
 But for many applications, availability is more valuable than immediate consistency.
 
-Amazon's DynamoDB, Apache Cassandra, and Riak take a different approach: they remain available during partitions and accept that replicas might temporarily disagree.
-They use techniques like vector clocks to track causality, quorum protocols to balance consistency and availability, and anti-entropy mechanisms to eventually converge all replicas to the same state.
+Amazon's [DynamoDB][dynamodb],
+[Apache Cassandra][apache-cassandra],
+and [Riak][riak] take a different approach:
+they remain available during partitions and accept that replicas might temporarily disagree.
+They use techniques like vector clocks to track causality,
+quorum protocols to balance consistency and availability,
+and anti-entropy mechanisms to eventually converge all replicas to the same state.
 
 This chapter builds a simplified eventually consistent key-value store that demonstrates these core concepts.
-You'll see how the system handles concurrent writes, detects conflicts using vector clocks, and uses read repair to synchronize replicas.
-We'll implement tunable consistency with quorum reads and writes, and show how the gossip protocol spreads knowledge of failures throughout the cluster.
+You'll see how the system handles concurrent writes,
+detects conflicts using vector clocks,
+and uses read repair to synchronize replicas.
+We'll implement tunable consistency with quorum reads and writes,
+and show how the gossip protocol spreads knowledge of failures throughout the cluster.
 
 ## The CAP Theorem in Practice
 
@@ -360,9 +369,9 @@ class Coordinator:
 The quorum protocol is the heart of tunable consistency.
 With N=3, R=2, W=2:
 
-- Writes succeed after 2 nodes acknowledge (available even if 1 node is down)
-- Reads query 2 nodes (at least one will have the latest write)
-- R + W = 4 > N = 3, ensuring reads see the latest writes
+-   Writes succeed after 2 nodes acknowledge (available even if 1 node is down)
+-   Reads query 2 nodes (at least one will have the latest write)
+-   R + W = 4 > N = 3, ensuring reads see the latest writes
 
 ## Client Implementation
 
@@ -655,7 +664,8 @@ def run_partition_simulation():
 ## Anti-Entropy and Read Repair
 
 In a real system, we need mechanisms to ensure all replicas eventually converge.
-Read repair happens during reads: if we detect replicas are out of sync, we push the latest version to lagging replicas.
+Read repair happens during reads:
+if we detect replicas are out of sync, we push the latest version to lagging replicas.
 
 ```python
 class CoordinatorWithReadRepair(Coordinator):
@@ -741,18 +751,18 @@ Over time, this brings all replicas into sync.
 
 Our implementation demonstrates core concepts, but production systems need additional features:
 
-**Hinted handoff**: When a node is temporarily down, writes intended for it are stored on another node with a hint.
+1.  **Hinted handoff**: When a node is temporarily down, writes intended for it are stored on another node with a hint.
 When the node recovers, the hints are replayed.
 
-**Merkle trees**: For anti-entropy, nodes periodically exchange Merkle tree hashes to efficiently identify which keys differ and need synchronization.
+1.  **Merkle trees**: For anti-entropy, nodes periodically exchange Merkle tree hashes to efficiently identify which keys differ and need synchronization.
 
-**Gossip protocol**: Nodes exchange information about cluster membership and failure detection through epidemic-style gossip.
+1.  **Gossip protocol**: Nodes exchange information about cluster membership and failure detection through epidemic-style gossip.
 
-**Sloppy quorums**: Instead of requiring specific replicas, accept writes from any N healthy nodes.
+1.  **Sloppy quorums**: Instead of requiring specific replicas, accept writes from any N healthy nodes.
 
-**Multi-datacenter replication**: Replicate across geographic regions with different consistency guarantees.
+1.  **Multi-datacenter replication**: Replicate across geographic regions with different consistency guarantees.
 
-**Compaction**: Merge version history periodically to avoid unbounded growth.
+1.  **Compaction**: Merge version history periodically to avoid unbounded growth.
 
 ## Conclusion
 

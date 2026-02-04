@@ -10,22 +10,28 @@ These coordination problems all require mutual exclusion: ensuring that only one
 In a single-machine system, this is straightforward—the operating system provides mutexes and semaphores.
 But in a distributed system, there is no shared memory, processes can fail independently, network messages can be delayed or lost, and clocks on different machines drift apart.
 
-Systems like Apache ZooKeeper, etcd, and Google's Chubby provide distributed locking as a service.
-These systems use consensus algorithms like Raft or Paxos to maintain consistent state across multiple servers, even when some servers fail.
-Redis implements distributed locks through the Redlock algorithm.
-CockroachDB uses distributed locks internally to coordinate schema changes across nodes.
+Systems like [Apache ZooKeeper][apache-zookeeper],
+[etcd][etcd],
+and Google's [Chubby][chubby] provide distributed locking as a service.
+These systems use consensus algorithms like [Raft][raft] or [Paxos][paxos]
+to maintain consistent state across multiple servers, even when some servers fail.
+[Redis][redis] implements distributed locks through the [Redlock][redlock] algorithm.
+[CockroachDB][cockroachdb] uses distributed locks internally to coordinate schema changes across nodes.
 
-This chapter builds a distributed lock manager that demonstrates the key challenges and techniques: lease-based locks with expiration, fencing tokens to prevent split-brain scenarios, and a simplified consensus protocol to ensure lock state remains consistent across multiple lock servers.
+This chapter builds a distributed lock manager that demonstrates the key challenges and techniques:
+lease-based locks with expiration,
+fencing tokens to prevent split-brain scenarios,
+and a simplified consensus protocol to ensure lock state remains consistent across multiple lock servers.
 
 ## The Challenge of Distributed Locking
 
 Why is distributed locking so much harder than local locking? Consider this scenario:
 
-1. Process A acquires a lock on resource X
-2. Process A pauses due to garbage collection (or network partition)
-3. The lock manager thinks A has died and grants the lock to Process B
-4. Process A wakes up, still believing it holds the lock
-5. Both A and B now access the resource, violating mutual exclusion
+1.  Process A acquires a lock on resource X
+1.  Process A pauses due to garbage collection (or network partition)
+1.  The lock manager thinks A has died and grants the lock to Process B
+1.  Process A wakes up, still believing it holds the lock
+1.  Both A and B now access the resource, violating mutual exclusion
 
 This is called a split-brain scenario.
 We need mechanisms to detect and prevent it.
@@ -35,9 +41,9 @@ The key insight is that we cannot rely on timeouts alone—we need explicit coor
 
 We'll build a distributed lock manager with three main components:
 
-1. **Lock servers** that maintain lock state and coordinate through consensus
-2. **Clients** that acquire and release locks
-3. **Fencing tokens** that prevent stale lock holders from accessing resources
+1.  **Lock servers** that maintain lock state and coordinate through consensus
+1.  **Clients** that acquire and release locks
+1.  **Fencing tokens** that prevent stale lock holders from accessing resources
 
 Our system will use lease-based locks: when a client acquires a lock, it receives a lease that expires after a timeout.
 The client must periodically renew the lease to keep the lock.
@@ -268,7 +274,8 @@ The mutual exclusion property is preserved—only one client holds the lock at a
 
 ## Handling Failures with Lease Expiration
 
-What happens if a client crashes while holding a lock? Without lease expiration, the lock would be stuck forever.
+What happens if a client crashes while holding a lock?
+Without lease expiration, the lock would be stuck forever.
 Let's create a client that fails:
 
 ```python
@@ -326,11 +333,11 @@ This demonstrates how lease expiration provides fault tolerance.
 Lease expiration solves one problem but introduces another.
 Consider this sequence:
 
-1. Client A acquires lock (token 1) with lease expiring at time 10
-2. Client A pauses (GC, network partition) from time 2 to time 12
-3. At time 10, the lease expires
-4. Client B acquires lock (token 2) at time 10.5
-5. Client A wakes up at time 12, still thinks it has the lock
+1.  Client A acquires lock (token 1) with lease expiring at time 10
+1.  Client A pauses (GC, network partition) from time 2 to time 12
+1.  At time 10, the lease expires
+1.  Client B acquires lock (token 2) at time 10.5
+1.  Client A wakes up at time 12, still thinks it has the lock
 
 If both clients now access the shared resource, we've violated mutual exclusion.
 The solution is fencing tokens.
@@ -463,13 +470,13 @@ def run_fencing_simulation():
 
 Here's what happens:
 
-1. Client1 acquires the lock (token 1) at time 0
-2. Client1 pauses for 5 seconds
-3. The lease expires at time 3
-4. Client2 acquires the lock (token 2) at time 4
-5. Client2 accesses the resource successfully
-6. Client1 wakes up at time 5 with stale token 1
-7. The resource rejects Client1 because it has already seen token 2
+1.  Client1 acquires the lock (token 1) at time 0
+1.  Client1 pauses for 5 seconds
+1.  The lease expires at time 3
+1.  Client2 acquires the lock (token 2) at time 4
+1.  Client2 accesses the resource successfully
+1.  Client1 wakes up at time 5 with stale token 1
+1.  The resource rejects Client1 because it has already seen token 2
 
 The fencing token prevents Client1 from corrupting the resource despite still believing it holds the lock.
 
@@ -596,38 +603,38 @@ This provides fault tolerance.
 
 Our implementation demonstrates the core concepts, but production distributed lock managers need additional features:
 
-**Watch mechanism**: Clients can watch for lock release events rather than polling.
+1.  **Watch mechanism**: Clients can watch for lock release events rather than polling.
 ZooKeeper provides this through ephemeral nodes and watches.
 
-**Session management**: Clients maintain sessions with heartbeats.
+1.  **Session management**: Clients maintain sessions with heartbeats.
 When a session expires, all locks held by that client are automatically released.
 
-**Lock queuing**: Instead of failing when a lock is held, clients can queue and be notified when the lock becomes available.
+1.  **Lock queuing**: Instead of failing when a lock is held, clients can queue and be notified when the lock becomes available.
 
-**Deadlock detection**: If Client A holds Lock 1 and waits for Lock 2, while Client B holds Lock 2 and waits for Lock 1, the system should detect and break the deadlock.
+1.  **Deadlock detection**: If Client A holds Lock 1 and waits for Lock 2, while Client B holds Lock 2 and waits for Lock 1, the system should detect and break the deadlock.
 
-**Performance optimization**: Real systems use techniques like read-write locks (multiple readers, single writer), hierarchical locking (lock entire subtrees), and lock-free algorithms where possible.
+1.  **Performance optimization**: Real systems use techniques like read-write locks (multiple readers, single writer), hierarchical locking (lock entire subtrees), and lock-free algorithms where possible.
 
 ## Conclusion
 
 Distributed locking is fundamental to coordination in distributed systems.
 The key challenges are:
 
-1. **Fault tolerance**: Servers and clients can fail independently
-2. **Network unreliability**: Messages can be delayed, lost, or reordered  
-3. **Clock skew**: Different machines have different notions of time
-4. **Split-brain**: Preventing multiple processes from believing they hold the same lock
+1.  **Fault tolerance**: Servers and clients can fail independently
+1.  **Network unreliability**: Messages can be delayed, lost, or reordered  
+1.  **Clock skew**: Different machines have different notions of time
+1.  **Split-brain**: Preventing multiple processes from believing they hold the same lock
 
 Our solutions include:
 
-1. **Lease-based locks** with expiration to handle failures
-2. **Fencing tokens** to prevent stale lock holders from accessing resources
-3. **Consensus protocols** to maintain consistent state across servers
-4. **Majority voting** to tolerate server failures
+1.  **Lease-based locks** with expiration to handle failures
+1.  **Fencing tokens** to prevent stale lock holders from accessing resources
+1.  **Consensus protocols** to maintain consistent state across servers
+1.  **Majority voting** to tolerate server failures
 
 These techniques appear throughout distributed systems.
 Leader election uses the same mechanisms we've seen here—a candidate acquires a special lock, and the fencing token becomes the leader's epoch number.
 Distributed databases use locks to coordinate schema migrations.
 Cluster managers use locks to ensure only one instance of a service runs.
 
-The asimpy simulation approach lets us verify these protocols work correctly under various failure scenarios—client crashes, network delays, lease expirations—before deploying them in production where debugging is much harder.
+The [asimpy][asimpy] simulation approach lets us verify these protocols work correctly under various failure scenarios—client crashes, network delays, lease expirations—before deploying them in production where debugging is much harder.

@@ -166,8 +166,5 @@ Real work-stealing schedulers need:
 
 ## Further Reading
 
-- [Go scheduler design](https://golang.org/s/go11sched)
-- [Java Fork/Join Framework](https://docs.oracle.com/javase/tutorial/essential/concurrency/forkjoin.html)
 - [Cilk: An Efficient Multithreaded Runtime System](http://supertech.csail.mit.edu/papers/PPoPP95.pdf)
 - [The Chase-Lev Deque](https://www.dre.vanderbilt.edu/~schmidt/PDF/work-stealing-dequeue.pdf)
-- [Tokio runtime internals](https://tokio.rs/blog/2019-10-scheduler)

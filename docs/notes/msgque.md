@@ -120,7 +120,4 @@ Real message queue systems need:
 
 ## Further Reading
 
-- [Apache Kafka Documentation](https://kafka.apache.org/documentation/)
-- [RabbitMQ Tutorials](https://www.rabbitmq.com/getstarted.html)
-- [Amazon SQS Documentation](https://aws.amazon.com/sqs/)
 - [Enterprise Integration Patterns](https://www.enterpriseintegrationpatterns.com/)
