@@ -16,6 +16,7 @@ FIXME
 1.  [Eventually Consistent Key-Value Store](@/eventual/): when availability matters more than consistency.
 1.  [Work-Stealing Scheduler](@/worksteal/): sharing work more efficiently.
 1.  [Conflict-Free Replicated Data Types](@/crdt/): scalable data structures.
+1.  [MapReduce](@/mapreduce/): processing large datasets.
 1.  [Conclusion](@/finale/): looking back and next steps.
 
 </div>

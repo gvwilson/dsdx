@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>MapReduce Framework</title>
+<link href="../static/favicon.ico" rel="icon" type="image/x-icon"/>
+<link href="../static/pygments.css" rel="stylesheet" type="text/css"/>
+<link href="../static/page.css" rel="stylesheet" type="text/css"/>
+</head>
+<body>
+<nav>
+<a href="../">Home</a>
+      ·
+      <span class="dropdown">
+<a href="#">Lessons</a>
+<span class="dropdown-content" id="nav-lessons">
+<a href="../intro/">Introduction</a>
+<a href="../msgque/">A Message Queue</a>
+<a href="../distlock/">Distributed Locks</a>
+<a href="../eventual/">Eventually Consistent Key-Value Store</a>
+<a href="../worksteal/">Work-Stealing Scheduler</a>
+<a href="../crdt/">Conflict-Free Replicated Data Types</a>
+<a href="../mapreduce/">MapReduce</a>
+<a href="../finale/">Conclusion</a>
+</span>
+</span>
+      ·
+      <span class="dropdown">
+<a href="#">Appendices</a>
+<span class="dropdown-content" id="nav-appendices">
+<a href="../license/">License</a>
+<a href="../conduct/">Code of Conduct</a>
+<a href="../contributing/">Contributing</a>
+<a href="../bibliography/">Bibliography</a>
+<a href="../glossary/">Glossary</a>
+</span>
+</span>
+</nav>
+<main>
+<h1>MapReduce Framework</h1>
+<p>In 2004, Google published a paper that changed how we think about processing large datasets.
+The MapReduce framework made it possible for programmers to process terabytes of data
+across thousands of machines without worrying about parallelization,
+fault tolerance,
+or data distribution.
+By providing two simple abstractions—map and reduce—the framework handles
+all the distributed systems complexity behind the scenes.</p>
+<p>Hadoop brought MapReduce to the open-source world,
+powering early data processing at companies like Yahoo, Facebook, and Twitter.
+While newer frameworks like Apache Spark have largely superseded MapReduce,
+understanding this pattern remains essential,
+as it demonstrates fundamental principles of distributed computation
+that appear throughout modern data processing systems.</p>
+<p>MapReduce works by breaking computation into two phases:
+<em>map</em> transforms input records independently,
+and <em>reduce</em> aggregates results by key.
+Between these phases the framework handles shuffling data across machines,
+sorting by key,
+and managing failures.
+This simple model enables processing massive datasets with relatively simple code.</p>
+<h2>The MapReduce Pattern</h2>
+<p>The MapReduce computation model consists of:</p>
+<ol>
+<li><strong>Input splitting</strong>: Divide the input into chunks</li>
+<li><strong>Map phase</strong>: Apply a function to each input record, producing key-value pairs</li>
+<li><strong>Shuffle and sort</strong>: Group all values by key and distribute to reducers</li>
+<li><strong>Reduce phase</strong>: Process each key's values to produce final output</li>
+<li><strong>Output</strong>: Write results</li>
+</ol>
+<p>The power comes from constraints:
+map operations must be independent (no shared state between maps),
+and reduce operations must be associative and commutative (can be applied in any order).
+These constraints enable parallelism and fault tolerance.</p>
+<h2>Core Data Structures</h2>
+<p>Let's start with the basic types:</p>
+<div class="codehilite"><pre class=""><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">asimpy</span><span class="w"> </span><span class="kn">import</span> <span class="n">Environment</span><span class="p">,</span> <span class="n">Process</span><span class="p">,</span> <span class="n">Queue</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">defaultdict</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
+
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">InputSplit</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""A partition of input data."""</span>
+    <span class="n">split_id</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">data</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">"Split</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">split_id</span><span class="si">}</span><span class="s2">(size=</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span><span class="si">}</span><span class="s2">)"</span>
+
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MapTask</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""A map task to be executed."""</span>
+    <span class="n">task_id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">input_split</span><span class="p">:</span> <span class="n">InputSplit</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">"MapTask(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">task_id</span><span class="si">}</span><span class="s2">)"</span>
+
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ReduceTask</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""A reduce task to be executed."""</span>
+    <span class="n">task_id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">partition_id</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">keys</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span>  <span class="c1"># Keys this reducer is responsible for</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">"ReduceTask(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">task_id</span><span class="si">}</span><span class="s2">, partition=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">partition_id</span><span class="si">}</span><span class="s2">)"</span>
+
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">IntermediateData</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Intermediate key-value pairs from map phase."""</span>
+    <span class="n">pairs</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Add a key-value pair."""</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pairs</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">partition</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_partitions</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="s1">'IntermediateData'</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Partition by key hash."""</span>
+        <span class="n">partitions</span> <span class="o">=</span> <span class="p">[</span><span class="n">IntermediateData</span><span class="p">()</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_partitions</span><span class="p">)]</span>
+
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">pairs</span><span class="p">:</span>
+            <span class="n">partition_id</span> <span class="o">=</span> <span class="nb">hash</span><span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="o">%</span> <span class="n">num_partitions</span>
+            <span class="n">partitions</span><span class="p">[</span><span class="n">partition_id</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">partitions</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">group_by_key</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">"""Group values by key."""</span>
+        <span class="n">grouped</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">pairs</span><span class="p">:</span>
+            <span class="n">grouped</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="n">grouped</span><span class="p">)</span>
+</code></pre></div>
+<p>These structures represent the data flowing through the framework.
+Input is split into chunks, map tasks process splits, and intermediate data is partitioned for reducers.</p>
+<h2>Worker Implementation</h2>
+<p>Workers execute map and reduce tasks:</p>
+<div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">MapReduceWorker</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Worker that executes map and reduce tasks."""</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">worker_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">coordinator</span><span class="p">:</span> <span class="s1">'MapReduceCoordinator'</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">worker_id</span> <span class="o">=</span> <span class="n">worker_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span> <span class="o">=</span> <span class="n">coordinator</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_env</span><span class="p">)</span>
+
+        <span class="c1"># Statistics</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">maps_executed</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reduces_executed</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_task</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># Simulate failure probability</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">failure_rate</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Main worker loop: fetch and execute tasks."""</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="c1"># Get task from queue</span>
+            <span class="n">task</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_queue</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+
+            <span class="c1"># Check for simulated failure</span>
+            <span class="k">if</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">failure_rate</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Worker </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">worker_id</span><span class="si">}</span><span class="s2">: FAILED during </span><span class="si">{</span><span class="n">task</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span><span class="o">.</span><span class="n">report_failure</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">worker_id</span><span class="p">)</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># Execute task</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">MapTask</span><span class="p">):</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">execute_map</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">ReduceTask</span><span class="p">):</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">execute_reduce</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">execute_map</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">MapTask</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Execute a map task."""</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_task</span> <span class="o">=</span> <span class="n">task</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">maps_executed</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Worker </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">worker_id</span><span class="si">}</span><span class="s2">: "</span>
+              <span class="sa">f</span><span class="s2">"Starting </span><span class="si">{</span><span class="n">task</span><span class="si">}</span><span class="s2"> with </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">input_split</span><span class="o">.</span><span class="n">data</span><span class="p">)</span><span class="si">}</span><span class="s2"> records"</span><span class="p">)</span>
+
+        <span class="c1"># Simulate processing time</span>
+        <span class="n">processing_time</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">input_split</span><span class="o">.</span><span class="n">data</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.1</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="n">processing_time</span><span class="p">)</span>
+
+        <span class="c1"># Apply map function</span>
+        <span class="n">intermediate</span> <span class="o">=</span> <span class="n">IntermediateData</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">task</span><span class="o">.</span><span class="n">input_split</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span><span class="o">.</span><span class="n">map_fn</span><span class="p">(</span><span class="n">record</span><span class="p">):</span>
+                <span class="n">intermediate</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+        <span class="c1"># Partition intermediate data</span>
+        <span class="n">partitions</span> <span class="o">=</span> <span class="n">intermediate</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span><span class="o">.</span><span class="n">num_reducers</span><span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Worker </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">worker_id</span><span class="si">}</span><span class="s2">: "</span>
+              <span class="sa">f</span><span class="s2">"Completed </span><span class="si">{</span><span class="n">task</span><span class="si">}</span><span class="s2">, produced </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">intermediate</span><span class="o">.</span><span class="n">pairs</span><span class="p">)</span><span class="si">}</span><span class="s2"> pairs"</span><span class="p">)</span>
+
+        <span class="c1"># Send results to coordinator</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span><span class="o">.</span><span class="n">map_completed</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">task_id</span><span class="p">,</span> <span class="n">partitions</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">worker_id</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_task</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">execute_reduce</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">ReduceTask</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Execute a reduce task."""</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_task</span> <span class="o">=</span> <span class="n">task</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reduces_executed</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Worker </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">worker_id</span><span class="si">}</span><span class="s2">: "</span>
+              <span class="sa">f</span><span class="s2">"Starting </span><span class="si">{</span><span class="n">task</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+        <span class="c1"># Fetch intermediate data for this partition</span>
+        <span class="n">intermediate_data</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span><span class="o">.</span><span class="n">get_intermediate_data</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">partition_id</span><span class="p">)</span>
+
+        <span class="c1"># Group by key</span>
+        <span class="n">grouped</span> <span class="o">=</span> <span class="n">intermediate_data</span><span class="o">.</span><span class="n">group_by_key</span><span class="p">()</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Worker </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">worker_id</span><span class="si">}</span><span class="s2">: "</span>
+              <span class="sa">f</span><span class="s2">"Processing </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">grouped</span><span class="p">)</span><span class="si">}</span><span class="s2"> keys"</span><span class="p">)</span>
+
+        <span class="c1"># Simulate processing time</span>
+        <span class="n">processing_time</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">grouped</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.1</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="n">processing_time</span><span class="p">)</span>
+
+        <span class="c1"># Apply reduce function</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">values</span> <span class="ow">in</span> <span class="n">grouped</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span><span class="o">.</span><span class="n">reduce_fn</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">values</span><span class="p">)</span>
+            <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">key</span><span class="p">,</span> <span class="n">result</span><span class="p">))</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Worker </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">worker_id</span><span class="si">}</span><span class="s2">: "</span>
+              <span class="sa">f</span><span class="s2">"Completed </span><span class="si">{</span><span class="n">task</span><span class="si">}</span><span class="s2">, produced </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">)</span><span class="si">}</span><span class="s2"> results"</span><span class="p">)</span>
+
+        <span class="c1"># Send results to coordinator</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span><span class="o">.</span><span class="n">reduce_completed</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">task_id</span><span class="p">,</span> <span class="n">results</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">worker_id</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_task</span> <span class="o">=</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Workers are stateless—they fetch tasks, execute them, and report results.
+If a worker fails, the coordinator can reassign the task to another worker.</p>
+<h2>MapReduce Coordinator</h2>
+<p>The coordinator orchestrates the entire computation:</p>
+<div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">MapReduceCoordinator</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Coordinates MapReduce computation."""</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">:</span> <span class="n">Environment</span><span class="p">,</span> 
+                 <span class="n">map_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span> 
+                 <span class="n">reduce_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span>
+                 <span class="n">num_reducers</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="n">env</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">map_fn</span> <span class="o">=</span> <span class="n">map_fn</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reduce_fn</span> <span class="o">=</span> <span class="n">reduce_fn</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_reducers</span> <span class="o">=</span> <span class="n">num_reducers</span>
+
+        <span class="c1"># Workers</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">workers</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">MapReduceWorker</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Task tracking</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pending_map_tasks</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">MapTask</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pending_reduce_tasks</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ReduceTask</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">completed_map_tasks</span><span class="p">:</span> <span class="nb">set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">completed_reduce_tasks</span><span class="p">:</span> <span class="nb">set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">failed_tasks</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Intermediate data storage (indexed by partition)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">intermediate_storage</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">IntermediateData</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">i</span><span class="p">:</span> <span class="n">IntermediateData</span><span class="p">()</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_reducers</span><span class="p">)</span>
+        <span class="p">}</span>
+
+        <span class="c1"># Final results</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Statistics</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">map_phase_complete</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reduce_phase_complete</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">end_time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_worker</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">worker</span><span class="p">:</span> <span class="n">MapReduceWorker</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Register a worker."""</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">workers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">worker</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_data</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span> <span class="n">num_splits</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Run MapReduce job on input data - returns a coroutine."""</span>
+        <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_execute</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Starting MapReduce job"</span><span class="p">)</span>
+
+            <span class="c1"># Split input data</span>
+            <span class="n">splits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_split_input</span><span class="p">(</span><span class="n">input_data</span><span class="p">,</span> <span class="n">num_splits</span><span class="p">)</span>
+
+            <span class="c1"># Create map tasks</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">split</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">splits</span><span class="p">):</span>
+                <span class="n">task</span> <span class="o">=</span> <span class="n">MapTask</span><span class="p">(</span><span class="sa">f</span><span class="s2">"map_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">split</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">pending_map_tasks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+
+            <span class="c1"># Dispatch map tasks</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dispatch_map_tasks</span><span class="p">()</span>
+
+            <span class="c1"># Wait for map phase to complete</span>
+            <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_phase_complete</span><span class="p">:</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Map phase complete, starting reduce phase"</span><span class="p">)</span>
+
+            <span class="c1"># Create reduce tasks</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_reducers</span><span class="p">):</span>
+                <span class="n">task</span> <span class="o">=</span> <span class="n">ReduceTask</span><span class="p">(</span><span class="sa">f</span><span class="s2">"reduce_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="p">[])</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">pending_reduce_tasks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+
+            <span class="c1"># Dispatch reduce tasks</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dispatch_reduce_tasks</span><span class="p">()</span>
+
+            <span class="c1"># Wait for reduce phase to complete</span>
+            <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">reduce_phase_complete</span><span class="p">:</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">end_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+            <span class="n">elapsed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">end_time</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span>
+
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] MapReduce job complete in </span><span class="si">{</span><span class="n">elapsed</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">s"</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Total results: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span>
+
+        <span class="k">return</span> <span class="n">_execute</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_split_input</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span> <span class="n">num_splits</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">InputSplit</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Split input data into roughly equal chunks."""</span>
+        <span class="n">splits</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">chunk_size</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">//</span> <span class="n">num_splits</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_splits</span><span class="p">):</span>
+            <span class="n">start</span> <span class="o">=</span> <span class="n">i</span> <span class="o">*</span> <span class="n">chunk_size</span>
+            <span class="n">end</span> <span class="o">=</span> <span class="n">start</span> <span class="o">+</span> <span class="n">chunk_size</span> <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">num_splits</span> <span class="o">-</span> <span class="mi">1</span> <span class="k">else</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+            <span class="n">splits</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">InputSplit</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="n">start</span><span class="p">:</span><span class="n">end</span><span class="p">]))</span>
+
+        <span class="k">return</span> <span class="n">splits</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_dispatch_map_tasks</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Assign map tasks to workers."""</span>
+        <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">pending_map_tasks</span><span class="p">:</span>
+            <span class="c1"># Find available worker</span>
+            <span class="n">worker</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_available_worker</span><span class="p">()</span>
+            <span class="k">await</span> <span class="n">worker</span><span class="o">.</span><span class="n">task_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_dispatch_reduce_tasks</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Assign reduce tasks to workers."""</span>
+        <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">pending_reduce_tasks</span><span class="p">:</span>
+            <span class="n">worker</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_available_worker</span><span class="p">()</span>
+            <span class="k">await</span> <span class="n">worker</span><span class="o">.</span><span class="n">task_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_available_worker</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MapReduceWorker</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Get next available worker (round-robin)."""</span>
+        <span class="k">return</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">workers</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">map_completed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">partitions</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">IntermediateData</span><span class="p">],</span> 
+                           <span class="n">worker_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Handle map task completion."""</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">completed_map_tasks</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">task_id</span><span class="p">)</span>
+
+        <span class="c1"># Store intermediate data by partition</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">partition_data</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">partitions</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">partition_data</span><span class="o">.</span><span class="n">pairs</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">intermediate_storage</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+        <span class="c1"># Check if all map tasks are done</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">completed_map_tasks</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pending_map_tasks</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">map_phase_complete</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">reduce_completed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">results</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span> 
+                              <span class="n">worker_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Handle reduce task completion."""</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">completed_reduce_tasks</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">task_id</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+
+        <span class="c1"># Check if all reduce tasks are done</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">completed_reduce_tasks</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pending_reduce_tasks</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reduce_phase_complete</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">report_failure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">worker_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Handle task failure."""</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Task </span><span class="si">{</span><span class="n">task</span><span class="si">}</span><span class="s2"> failed on worker </span><span class="si">{</span><span class="n">worker_id</span><span class="si">}</span><span class="s2">, "</span>
+              <span class="sa">f</span><span class="s2">"will retry"</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">failed_tasks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+
+        <span class="c1"># Reschedule task</span>
+        <span class="n">worker</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_available_worker</span><span class="p">()</span>
+        <span class="k">await</span> <span class="n">worker</span><span class="o">.</span><span class="n">task_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_intermediate_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">partition_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">IntermediateData</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Fetch intermediate data for a partition."""</span>
+        <span class="c1"># In real system, this would involve network transfer</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>  <span class="c1"># Simulate network delay</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">intermediate_storage</span><span class="p">[</span><span class="n">partition_id</span><span class="p">]</span>
+</code></pre></div>
+<p>The coordinator manages the entire lifecycle:
+splitting input, dispatching tasks, collecting results, and handling failures by re-executing failed tasks.</p>
+<p>Note that <code>run()</code> returns a coroutine (by returning the result of <code>_execute()</code>), which must be awaited.
+This pattern allows the coordinator to be a regular object (not a Process) while still providing async execution.
+A Process wraps the coroutine to integrate it into the simulation.</p>
+<h2>Example: Word Count</h2>
+<p>The classic MapReduce example is word count—count occurrences of each word in a document:</p>
+<div class="codehilite"><pre class=""><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">word_count_map</span><span class="p">(</span><span class="n">record</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Map function: emit (word, 1) for each word."""</span>
+    <span class="n">words</span> <span class="o">=</span> <span class="n">record</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">words</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="p">(</span><span class="n">word</span><span class="o">.</span><span class="n">lower</span><span class="p">(),</span> <span class="mi">1</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">word_count_reduce</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">values</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Reduce function: sum all counts for a word."""</span>
+    <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">WordCountJob</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Process that runs the MapReduce job."""</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coordinator</span><span class="p">:</span> <span class="n">MapReduceCoordinator</span><span class="p">,</span> 
+             <span class="n">input_data</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">num_splits</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span> <span class="o">=</span> <span class="n">coordinator</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_data</span> <span class="o">=</span> <span class="n">input_data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_splits</span> <span class="o">=</span> <span class="n">num_splits</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Run the job and display results."""</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">input_data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_splits</span><span class="p">)</span>
+
+        <span class="c1"># Sort and display results</span>
+        <span class="n">results</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">=== Word Count Results ==="</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">word</span><span class="p">,</span> <span class="n">count</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">word</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">count</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">run_word_count</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">"""Run word count example."""</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
+
+    <span class="c1"># Create coordinator</span>
+    <span class="n">coordinator</span> <span class="o">=</span> <span class="n">MapReduceCoordinator</span><span class="p">(</span>
+        <span class="n">env</span><span class="p">,</span>
+        <span class="n">map_fn</span><span class="o">=</span><span class="n">word_count_map</span><span class="p">,</span>
+        <span class="n">reduce_fn</span><span class="o">=</span><span class="n">word_count_reduce</span><span class="p">,</span>
+        <span class="n">num_reducers</span><span class="o">=</span><span class="mi">3</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Create workers</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+        <span class="n">worker</span> <span class="o">=</span> <span class="n">MapReduceWorker</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">coordinator</span><span class="p">)</span>
+        <span class="n">coordinator</span><span class="o">.</span><span class="n">add_worker</span><span class="p">(</span><span class="n">worker</span><span class="p">)</span>
+
+    <span class="c1"># Input data: lines of text</span>
+    <span class="n">input_data</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s2">"the quick brown fox"</span><span class="p">,</span>
+        <span class="s2">"jumps over the lazy dog"</span><span class="p">,</span>
+        <span class="s2">"the dog was not amused"</span><span class="p">,</span>
+        <span class="s2">"the quick brown fox jumps again"</span><span class="p">,</span>
+        <span class="s2">"the lazy dog sleeps"</span><span class="p">,</span>
+    <span class="p">]</span>
+
+    <span class="c1"># Run job (creates a Process that orchestrates the computation)</span>
+    <span class="n">WordCountJob</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">coordinator</span><span class="p">,</span> <span class="n">input_data</span><span class="p">,</span> <span class="n">num_splits</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+
+    <span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
+    <span class="n">run_word_count</span><span class="p">()</span>
+</code></pre></div>
+<p>This demonstrates MapReduce's power: the programmer writes two simple functions (map and reduce),
+wraps the job execution in a Process,
+and the framework handles distribution, parallelization, and aggregation.</p>
+<h2>Combiner Functions</h2>
+<p>A combiner is a local reduce that runs on each mapper's output before shuffling.
+This reduces network traffic:</p>
+<div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">MapReduceCoordinatorWithCombiner</span><span class="p">(</span><span class="n">MapReduceCoordinator</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Coordinator with combiner support."""</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">:</span> <span class="n">Environment</span><span class="p">,</span> 
+                 <span class="n">map_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span> 
+                 <span class="n">reduce_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span>
+                 <span class="n">combiner_fn</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">num_reducers</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">map_fn</span><span class="p">,</span> <span class="n">reduce_fn</span><span class="p">,</span> <span class="n">num_reducers</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">combiner_fn</span> <span class="o">=</span> <span class="n">combiner_fn</span> <span class="ow">or</span> <span class="n">reduce_fn</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">WorkerWithCombiner</span><span class="p">(</span><span class="n">MapReduceWorker</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Worker that applies combiner to map output."""</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">execute_map</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">MapTask</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Execute map task with local combining."""</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_task</span> <span class="o">=</span> <span class="n">task</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">maps_executed</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Worker </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">worker_id</span><span class="si">}</span><span class="s2">: "</span>
+              <span class="sa">f</span><span class="s2">"Starting </span><span class="si">{</span><span class="n">task</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+        <span class="n">processing_time</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">input_split</span><span class="o">.</span><span class="n">data</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.1</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="n">processing_time</span><span class="p">)</span>
+
+        <span class="c1"># Apply map function</span>
+        <span class="n">intermediate</span> <span class="o">=</span> <span class="n">IntermediateData</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">task</span><span class="o">.</span><span class="n">input_split</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span><span class="o">.</span><span class="n">map_fn</span><span class="p">(</span><span class="n">record</span><span class="p">):</span>
+                <span class="n">intermediate</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+        <span class="c1"># Apply combiner locally</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span><span class="o">.</span><span class="n">combiner_fn</span><span class="p">:</span>
+            <span class="n">grouped</span> <span class="o">=</span> <span class="n">intermediate</span><span class="o">.</span><span class="n">group_by_key</span><span class="p">()</span>
+            <span class="n">combined</span> <span class="o">=</span> <span class="n">IntermediateData</span><span class="p">()</span>
+
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">values</span> <span class="ow">in</span> <span class="n">grouped</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">combined_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span><span class="o">.</span><span class="n">combiner_fn</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">values</span><span class="p">)</span>
+                <span class="n">combined</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">combined_value</span><span class="p">)</span>
+
+            <span class="n">intermediate</span> <span class="o">=</span> <span class="n">combined</span>
+
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Worker </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">worker_id</span><span class="si">}</span><span class="s2">: "</span>
+                  <span class="sa">f</span><span class="s2">"Combiner reduced to </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">intermediate</span><span class="o">.</span><span class="n">pairs</span><span class="p">)</span><span class="si">}</span><span class="s2"> pairs"</span><span class="p">)</span>
+
+        <span class="c1"># Partition intermediate data</span>
+        <span class="n">partitions</span> <span class="o">=</span> <span class="n">intermediate</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span><span class="o">.</span><span class="n">num_reducers</span><span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Worker </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">worker_id</span><span class="si">}</span><span class="s2">: "</span>
+              <span class="sa">f</span><span class="s2">"Completed </span><span class="si">{</span><span class="n">task</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span><span class="o">.</span><span class="n">map_completed</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">task_id</span><span class="p">,</span> <span class="n">partitions</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">worker_id</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_task</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">run_word_count_with_combiner</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">"""Word count with combiner optimization."""</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
+
+    <span class="c1"># Combiner is same as reducer for word count</span>
+    <span class="n">coordinator</span> <span class="o">=</span> <span class="n">MapReduceCoordinatorWithCombiner</span><span class="p">(</span>
+        <span class="n">env</span><span class="p">,</span>
+        <span class="n">map_fn</span><span class="o">=</span><span class="n">word_count_map</span><span class="p">,</span>
+        <span class="n">reduce_fn</span><span class="o">=</span><span class="n">word_count_reduce</span><span class="p">,</span>
+        <span class="n">combiner_fn</span><span class="o">=</span><span class="n">word_count_reduce</span><span class="p">,</span>  <span class="c1"># Sum locally before shuffle</span>
+        <span class="n">num_reducers</span><span class="o">=</span><span class="mi">3</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Create workers with combiner support</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+        <span class="n">worker</span> <span class="o">=</span> <span class="n">WorkerWithCombiner</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">coordinator</span><span class="p">)</span>
+        <span class="n">coordinator</span><span class="o">.</span><span class="n">add_worker</span><span class="p">(</span><span class="n">worker</span><span class="p">)</span>
+
+    <span class="c1"># Larger input to show combiner benefit</span>
+    <span class="n">input_data</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s2">"the quick brown fox "</span> <span class="o">*</span> <span class="mi">10</span><span class="p">,</span>
+        <span class="s2">"jumps over the lazy dog "</span> <span class="o">*</span> <span class="mi">10</span><span class="p">,</span>
+        <span class="s2">"the dog was not amused "</span> <span class="o">*</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="p">]</span> <span class="o">*</span> <span class="mi">5</span>
+
+    <span class="c1"># Create job process</span>
+    <span class="k">class</span><span class="w"> </span><span class="nc">CombinerJob</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coordinator</span><span class="p">,</span> <span class="n">input_data</span><span class="p">,</span> <span class="n">num_splits</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span> <span class="o">=</span> <span class="n">coordinator</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">input_data</span> <span class="o">=</span> <span class="n">input_data</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">num_splits</span> <span class="o">=</span> <span class="n">num_splits</span>
+
+        <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">input_data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_splits</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">=== Results: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">)</span><span class="si">}</span><span class="s2"> unique words ==="</span><span class="p">)</span>
+
+    <span class="n">CombinerJob</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">coordinator</span><span class="p">,</span> <span class="n">input_data</span><span class="p">,</span> <span class="n">num_splits</span><span class="o">=</span><span class="mi">6</span><span class="p">)</span>
+    <span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
+    <span class="n">run_word_count_with_combiner</span><span class="p">()</span>
+</code></pre></div>
+<p>The combiner reduces data before it crosses the network,
+which can dramatically improve performance for operations like summation or counting.</p>
+<h2>Handling Stragglers with Speculative Execution</h2>
+<p>Some workers may be slow (stragglers) due to hardware issues, resource contention, or other reasons.
+MapReduce handles this with speculative execution—launching backup copies of slow tasks:</p>
+<div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SpeculativeCoordinator</span><span class="p">(</span><span class="n">MapReduceCoordinator</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Coordinator with speculative execution for stragglers."""</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">:</span> <span class="n">Environment</span><span class="p">,</span> 
+                 <span class="n">map_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span> 
+                 <span class="n">reduce_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span>
+                 <span class="n">num_reducers</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+                 <span class="n">speculative_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">5.0</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">map_fn</span><span class="p">,</span> <span class="n">reduce_fn</span><span class="p">,</span> <span class="n">num_reducers</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">speculative_threshold</span> <span class="o">=</span> <span class="n">speculative_threshold</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_start_times</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">speculative_tasks</span><span class="p">:</span> <span class="nb">set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_dispatch_map_tasks</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Dispatch map tasks with speculative execution."""</span>
+        <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_dispatch_map_tasks</span><span class="p">()</span>
+
+        <span class="c1"># Start monitoring for stragglers</span>
+        <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">monitor_stragglers</span><span class="p">():</span>
+            <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_phase_complete</span><span class="p">:</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_for_stragglers</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="n">monitor_stragglers</span><span class="p">())</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_check_for_stragglers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Launch speculative tasks for stragglers."""</span>
+        <span class="n">now</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
+
+        <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">pending_map_tasks</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">task</span><span class="o">.</span><span class="n">task_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">completed_map_tasks</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="k">if</span> <span class="n">task</span><span class="o">.</span><span class="n">task_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_start_times</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">task_start_times</span><span class="p">[</span><span class="n">task</span><span class="o">.</span><span class="n">task_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">now</span>
+                <span class="k">continue</span>
+
+            <span class="n">elapsed</span> <span class="o">=</span> <span class="n">now</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_start_times</span><span class="p">[</span><span class="n">task</span><span class="o">.</span><span class="n">task_id</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="p">(</span><span class="n">elapsed</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">speculative_threshold</span> <span class="ow">and</span> 
+                <span class="n">task</span><span class="o">.</span><span class="n">task_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">speculative_tasks</span><span class="p">):</span>
+
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Launching speculative copy of </span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">task_id</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">speculative_tasks</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">task_id</span><span class="p">)</span>
+
+                <span class="c1"># Launch backup copy</span>
+                <span class="n">worker</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_available_worker</span><span class="p">()</span>
+                <span class="k">await</span> <span class="n">worker</span><span class="o">.</span><span class="n">task_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+</code></pre></div>
+<p>Speculative execution ensures one slow worker doesn't delay the entire job.
+The first copy to complete wins; others are discarded.</p>
+<h2>Fault Tolerance Simulation</h2>
+<p>Let's simulate worker failures:</p>
+<div class="codehilite"><pre class=""><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">run_fault_tolerance_test</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">"""Demonstrate fault tolerance with worker failures."""</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
+
+    <span class="n">coordinator</span> <span class="o">=</span> <span class="n">MapReduceCoordinator</span><span class="p">(</span>
+        <span class="n">env</span><span class="p">,</span>
+        <span class="n">map_fn</span><span class="o">=</span><span class="n">word_count_map</span><span class="p">,</span>
+        <span class="n">reduce_fn</span><span class="o">=</span><span class="n">word_count_reduce</span><span class="p">,</span>
+        <span class="n">num_reducers</span><span class="o">=</span><span class="mi">2</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Create workers with varying failure rates</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+        <span class="n">worker</span> <span class="o">=</span> <span class="n">MapReduceWorker</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">coordinator</span><span class="p">)</span>
+        <span class="n">worker</span><span class="o">.</span><span class="n">failure_rate</span> <span class="o">=</span> <span class="mf">0.2</span> <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">2</span> <span class="k">else</span> <span class="mf">0.0</span>  <span class="c1"># First two workers fail sometimes</span>
+        <span class="n">coordinator</span><span class="o">.</span><span class="n">add_worker</span><span class="p">(</span><span class="n">worker</span><span class="p">)</span>
+
+    <span class="n">input_data</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s2">"hello world hello"</span><span class="p">,</span>
+        <span class="s2">"goodbye world goodbye"</span><span class="p">,</span>
+        <span class="s2">"hello goodbye hello world"</span><span class="p">,</span>
+    <span class="p">]</span> <span class="o">*</span> <span class="mi">3</span>
+
+    <span class="c1"># Create job process</span>
+    <span class="k">class</span><span class="w"> </span><span class="nc">FaultToleranceJob</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coordinator</span><span class="p">,</span> <span class="n">input_data</span><span class="p">,</span> <span class="n">num_splits</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span> <span class="o">=</span> <span class="n">coordinator</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">input_data</span> <span class="o">=</span> <span class="n">input_data</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">num_splits</span> <span class="o">=</span> <span class="n">num_splits</span>
+
+        <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">input_data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_splits</span><span class="p">)</span>
+
+            <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">=== Final Results ==="</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">word</span><span class="p">,</span> <span class="n">count</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">results</span><span class="p">):</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">word</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">count</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Failed tasks: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span><span class="o">.</span><span class="n">failed_tasks</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+    <span class="n">FaultToleranceJob</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">coordinator</span><span class="p">,</span> <span class="n">input_data</span><span class="p">,</span> <span class="n">num_splits</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+    <span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
+    <span class="n">run_fault_tolerance_test</span><span class="p">()</span>
+</code></pre></div>
+<p>The framework automatically retries failed tasks, ensuring computation completes despite failures.</p>
+<h2>Real-World Example: Inverted Index</h2>
+<p>An inverted index maps words to documents—essential for search engines:</p>
+<div class="codehilite"><pre class=""><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">inverted_index_map</span><span class="p">(</span><span class="n">record</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]):</span>
+<span class="w">    </span><span class="sd">"""Map function: record is (doc_id, text)."""</span>
+    <span class="n">doc_id</span><span class="p">,</span> <span class="n">text</span> <span class="o">=</span> <span class="n">record</span>
+    <span class="n">words</span> <span class="o">=</span> <span class="n">text</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+
+    <span class="n">seen</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">words</span><span class="p">:</span>
+        <span class="n">word</span> <span class="o">=</span> <span class="n">word</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">word</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">seen</span><span class="p">:</span>
+            <span class="n">seen</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">word</span><span class="p">)</span>
+            <span class="k">yield</span> <span class="p">(</span><span class="n">word</span><span class="p">,</span> <span class="n">doc_id</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">inverted_index_reduce</span><span class="p">(</span><span class="n">word</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">doc_ids</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Reduce function: collect unique document IDs."""</span>
+    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">doc_ids</span><span class="p">))</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">run_inverted_index</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">"""Build inverted index for search."""</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
+
+    <span class="n">coordinator</span> <span class="o">=</span> <span class="n">MapReduceCoordinator</span><span class="p">(</span>
+        <span class="n">env</span><span class="p">,</span>
+        <span class="n">map_fn</span><span class="o">=</span><span class="n">inverted_index_map</span><span class="p">,</span>
+        <span class="n">reduce_fn</span><span class="o">=</span><span class="n">inverted_index_reduce</span><span class="p">,</span>
+        <span class="n">num_reducers</span><span class="o">=</span><span class="mi">3</span>
+    <span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+        <span class="n">worker</span> <span class="o">=</span> <span class="n">MapReduceWorker</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">coordinator</span><span class="p">)</span>
+        <span class="n">coordinator</span><span class="o">.</span><span class="n">add_worker</span><span class="p">(</span><span class="n">worker</span><span class="p">)</span>
+
+    <span class="c1"># Input: (document_id, text) pairs</span>
+    <span class="n">documents</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s2">"doc1"</span><span class="p">,</span> <span class="s2">"the quick brown fox"</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">"doc2"</span><span class="p">,</span> <span class="s2">"the lazy dog"</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">"doc3"</span><span class="p">,</span> <span class="s2">"the quick dog"</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">"doc4"</span><span class="p">,</span> <span class="s2">"brown fox and lazy dog"</span><span class="p">),</span>
+    <span class="p">]</span>
+
+    <span class="c1"># Create job process</span>
+    <span class="k">class</span><span class="w"> </span><span class="nc">InvertedIndexJob</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coordinator</span><span class="p">,</span> <span class="n">documents</span><span class="p">,</span> <span class="n">num_splits</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span> <span class="o">=</span> <span class="n">coordinator</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">documents</span> <span class="o">=</span> <span class="n">documents</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">num_splits</span> <span class="o">=</span> <span class="n">num_splits</span>
+
+        <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">documents</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_splits</span><span class="p">)</span>
+
+            <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">=== Inverted Index ==="</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">word</span><span class="p">,</span> <span class="n">docs</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">results</span><span class="p">):</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">word</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">docs</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+    <span class="n">InvertedIndexJob</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">coordinator</span><span class="p">,</span> <span class="n">documents</span><span class="p">,</span> <span class="n">num_splits</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
+    <span class="n">run_inverted_index</span><span class="p">()</span>
+</code></pre></div>
+<p>This shows how MapReduce handles complex analytics beyond simple aggregation.</p>
+<h2>Limitations and Evolution</h2>
+<p>MapReduce has limitations that led to systems like Apache Spark:</p>
+<ul>
+<li>
+<p><strong>Disk I/O overhead</strong>: MapReduce writes intermediate data to disk between phases.
+For iterative algorithms (like machine learning), this is expensive.</p>
+</li>
+<li>
+<p><strong>Two-phase limitation</strong>: Complex computations require chaining multiple MapReduce jobs,
+each with full disk I/O overhead.</p>
+</li>
+<li>
+<p><strong>No data sharing</strong>: Each job starts from scratch.
+No way to cache intermediate results in memory across jobs.</p>
+</li>
+<li>
+<p><strong>Batch-only</strong>: MapReduce is designed for batch processing.
+Real-time stream processing requires different systems.</p>
+</li>
+</ul>
+<p>Spark addresses these limitations with in-memory processing,
+lazy evaluation,
+and a more flexible computational model.
+But MapReduce's core ideas remain fundamental:
+functional transformations,
+partition-based parallelism,
+and fault tolerance through re-execution.</p>
+<h2>Real-World Considerations</h2>
+<p>Production MapReduce systems need:</p>
+<ul>
+<li>
+<p><strong>Locality-aware scheduling</strong>:
+Schedule tasks on nodes that already have the input data (data locality) to minimize network transfer.</p>
+</li>
+<li>
+<p><strong>Dynamic task assignment</strong>:
+Don't pre-assign all tasks; let fast workers take more work than slow ones.</p>
+</li>
+<li>
+<p><strong>Compression</strong>:
+Compress intermediate data to reduce disk and network usage.</p>
+</li>
+<li>
+<p><strong>Counters and monitoring</strong>:
+Track progress, identify bottlenecks, report statistics.</p>
+</li>
+<li>
+<p><strong>Job prioritization</strong>:
+Schedule important jobs before less important ones.</p>
+</li>
+<li>
+<p><strong>Resource management</strong>:
+Integrate with cluster resource managers (YARN, Mesos).</p>
+</li>
+<li>
+<p><strong>Security</strong>:
+Authentication, authorization, data encryption.</p>
+</li>
+</ul>
+<h2>Conclusion</h2>
+<p>MapReduce demonstrates how to build scalable distributed computation through simple abstractions.
+The key principles are:</p>
+<ol>
+<li><strong>Functional programming</strong>: Map and reduce are pure functions with no side effects</li>
+<li><strong>Partitioning</strong>: Data is automatically partitioned and distributed</li>
+<li><strong>Independent processing</strong>: Map tasks don't communicate; reduce tasks are independent</li>
+<li><strong>Fault tolerance</strong>: Re-execute failed tasks; idempotent operations make this safe</li>
+<li><strong>Simplicity</strong>: Programmers write two functions; framework handles everything else</li>
+</ol>
+<p>These patterns appear throughout distributed computing: Spark uses similar transformations, Flink extends the model to streams, and data warehouse systems like BigQuery use map-reduce-style execution plans.</p>
+<p>Our simulation demonstrates the core mechanics: splitting input, distributing tasks, shuffling data, and handling failures.
+While real implementations require sophisticated optimizations—network protocols, disk management, resource scheduling—the fundamental pattern we've built captures the essence of distributed batch processing.</p>
+</main>
+<footer>
+<div class="row">
+<div class="col-3 left">
+	  ⇐ <a href="../crdt/">Conflict-Free Replicated Data Types</a>
+</div>
+<div class="col-6 center">
+<a href="../"></a>
+	  © 2025
+	  <a href="../#acknowledgments">the authors</a>
+</div>
+<div class="col-3 right">
+<a href="../finale/">Conclusion</a> ⇒
+	</div>
+</div>
+</footer>
+</body>
+</html>
