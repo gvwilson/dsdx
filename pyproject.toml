@@ -34,6 +34,7 @@ skips = [
     "*.txt",
     "extras/**",
     "old/**",
+    "__pycache__/**",
     "uv.lock"
 ]
 

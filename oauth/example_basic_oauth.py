@@ -9,24 +9,22 @@ from oauth_client import OAuthClient
 def run_basic_oauth_flow():
     """Demonstrate basic OAuth 2.0 authorization code flow."""
     env = Environment()
-    
+
     # Create authorization server
     auth_server = AuthorizationServer(env)
-    
+
     # Create resource server
     resource_server = ResourceServer(env, auth_server)
-    
+
     # Register client application
     client_id = "photo_app"
     client_secret = "secret_xyz"
     redirect_uri = "https://photoapp.example.com/callback"
-    
+
     auth_server.register_client(
-        client_id=client_id,
-        client_secret=client_secret,
-        redirect_uris=[redirect_uri]
+        client_id=client_id, client_secret=client_secret, redirect_uris=[redirect_uri]
     )
-    
+
     # Create client
     OAuthClient(
         env,
@@ -34,9 +32,9 @@ def run_basic_oauth_flow():
         client_secret=client_secret,
         redirect_uri=redirect_uri,
         auth_server=auth_server,
-        resource_server=resource_server
+        resource_server=resource_server,
     )
-    
+
     # Run simulation
     env.run(until=20)
 

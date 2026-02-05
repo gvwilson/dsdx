@@ -7,11 +7,11 @@ from crdt_replica import CRDTReplica
 
 class CRDTWorkload(Process):
     """Generate CRDT operations on a replica."""
-    
+
     def init(self, replica: CRDTReplica, operations: List[tuple]):
         self.replica = replica
         self.operations = operations
-    
+
     async def run(self):
         """Execute operations with delays."""
         for op_type, *args in self.operations:
@@ -27,6 +27,6 @@ class CRDTWorkload(Process):
                 self.replica.local_add_to_set(args[0])
             elif op_type == "remove":
                 self.replica.local_remove_from_set(args[0])
-            
+
             # Small delay between operations
             await self.timeout(0.1)

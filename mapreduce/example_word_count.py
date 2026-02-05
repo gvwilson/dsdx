@@ -20,17 +20,18 @@ def word_count_reduce(key: str, values: List[int]) -> int:
 
 class WordCountJob(Process):
     """Process that runs the MapReduce job."""
-    
-    def init(self, coordinator: MapReduceCoordinator, 
-             input_data: List[str], num_splits: int):
+
+    def init(
+        self, coordinator: MapReduceCoordinator, input_data: List[str], num_splits: int
+    ):
         self.coordinator = coordinator
         self.input_data = input_data
         self.num_splits = num_splits
-    
+
     async def run(self):
         """Run the job and display results."""
         results = await self.coordinator.run(self.input_data, self.num_splits)
-        
+
         # Sort and display results
         results.sort(key=lambda x: x[1], reverse=True)
         print("\n=== Word Count Results ===")
@@ -41,20 +42,17 @@ class WordCountJob(Process):
 def run_word_count():
     """Run word count example."""
     env = Environment()
-    
+
     # Create coordinator
     coordinator = MapReduceCoordinator(
-        env,
-        map_fn=word_count_map,
-        reduce_fn=word_count_reduce,
-        num_reducers=3
+        env, map_fn=word_count_map, reduce_fn=word_count_reduce, num_reducers=3
     )
-    
+
     # Create workers
     for i in range(4):
         worker = MapReduceWorker(env, i, coordinator)
         coordinator.add_worker(worker)
-    
+
     # Input data: lines of text
     input_data = [
         "the quick brown fox",
@@ -63,10 +61,10 @@ def run_word_count():
         "the quick brown fox jumps again",
         "the lazy dog sleeps",
     ]
-    
+
     # Run job
     WordCountJob(env, coordinator, input_data, num_splits=3)
-    
+
     env.run(until=50)
 
 

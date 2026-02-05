@@ -20,50 +20,48 @@ def word_count_reduce(key: str, values: List[int]) -> int:
 
 class FaultToleranceJob(Process):
     """Process that runs the MapReduce job and shows fault tolerance."""
-    
-    def init(self, coordinator: MapReduceCoordinator,
-             input_data: List[str], num_splits: int):
+
+    def init(
+        self, coordinator: MapReduceCoordinator, input_data: List[str], num_splits: int
+    ):
         self.coordinator = coordinator
         self.input_data = input_data
         self.num_splits = num_splits
-    
+
     async def run(self):
         """Run the job and display results."""
         results = await self.coordinator.run(self.input_data, self.num_splits)
-        
+
         print("\n=== Final Results ===")
         for word, count in sorted(results):
             print(f"{word}: {count}")
-        
+
         print(f"\nFailed tasks: {len(self.coordinator.failed_tasks)}")
 
 
 def run_fault_tolerance_test():
     """Demonstrate fault tolerance with worker failures."""
     env = Environment()
-    
+
     coordinator = MapReduceCoordinator(
-        env,
-        map_fn=word_count_map,
-        reduce_fn=word_count_reduce,
-        num_reducers=2
+        env, map_fn=word_count_map, reduce_fn=word_count_reduce, num_reducers=2
     )
-    
+
     # Create workers with varying failure rates
     for i in range(4):
         worker = MapReduceWorker(env, i, coordinator)
         worker.failure_rate = 0.2 if i < 2 else 0.0  # First two workers fail sometimes
         coordinator.add_worker(worker)
-    
+
     input_data = [
         "hello world hello",
         "goodbye world goodbye",
         "hello goodbye hello world",
     ] * 3
-    
+
     # Run job
     FaultToleranceJob(env, coordinator, input_data, num_splits=4)
-    
+
     env.run(until=50)
 
 
