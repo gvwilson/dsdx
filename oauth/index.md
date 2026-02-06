@@ -1,4 +1,4 @@
-# OAuth 2.0 Authorization Framework
+# OAuth
 
 When you click "Sign in with Google" on a website, you're using OAuth. When a mobile app requests access to your Twitter timeline, that's OAuth too. This protocol has become the standard way for applications to access user data without ever seeing the user's password. Understanding OAuth is essential for modern web development—it powers single sign-on, API access control, and third-party integrations across the internet.
 

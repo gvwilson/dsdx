@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>OAuth 2.0 Authorization Framework</title>
+<title>OAuth</title>
 <link href="../static/favicon.ico" rel="icon" type="image/x-icon"/>
 <link href="../static/pygments.css" rel="stylesheet" type="text/css"/>
 <link href="../static/page.css" rel="stylesheet" type="text/css"/>
@@ -17,16 +17,16 @@
 <a href="#">Lessons</a>
 <span class="dropdown-content" id="nav-lessons">
 <a href="../intro/">Introduction</a>
-<a href="../oauth/">OAuth</a>
 <a href="../msgque/">A Message Queue</a>
-<a href="../distlock/">Distributed Locks</a>
+<a href="../worksteal/">Work-Stealing Scheduler</a>
 <a href="../tracing/">Distributed Tracing</a>
+<a href="../crdt/">Conflict-Free Replicated Data Types</a>
+<a href="../mapreduce/">MapReduce</a>
+<a href="../oauth/">OAuth</a>
+<a href="../distlock/">Distributed Locks</a>
+<a href="../torrent/">BitTorrent</a>
 <a href="../eventual/">Eventually Consistent Key-Value Store</a>
 <a href="../saga/">The Saga Pattern</a>
-<a href="../mapreduce/">MapReduce</a>
-<a href="../worksteal/">Work-Stealing Scheduler</a>
-<a href="../crdt/">Conflict-Free Replicated Data Types</a>
-<a href="../torrent/">BitTorrent</a>
 <a href="../tcp/">TCP</a>
 <a href="../finale/">Conclusion</a>
 </span>
@@ -44,7 +44,7 @@
 </span>
 </nav>
 <main>
-<h1>OAuth 2.0 Authorization Framework</h1>
+<h1>OAuth</h1>
 <p>When you click "Sign in with Google" on a website, you're using OAuth. When a mobile app requests access to your Twitter timeline, that's OAuth too. This protocol has become the standard way for applications to access user data without ever seeing the user's password. Understanding OAuth is essential for modern web development—it powers single sign-on, API access control, and third-party integrations across the internet.</p>
 <p>OAuth 2.0 solves a fundamental problem: how do you give a third-party application limited access to your account without sharing your credentials? Before OAuth, users had to give their username and password to every app, which created security nightmares. OAuth introduces the concept of <strong>tokens</strong>—time-limited credentials with specific scopes that can be revoked without changing your password.</p>
 <p>This pattern appears everywhere: GitHub uses OAuth for app permissions, Spotify for playlist access, Slack for bot integrations, and AWS for service-to-service authentication. Whether you're building a web app, mobile app, or API, you'll encounter OAuth.</p>
@@ -650,7 +650,7 @@ token=access_token_here
 <footer>
 <div class="row">
 <div class="col-3 left">
-	  ⇐ <a href="../intro/">Introduction</a>
+	  ⇐ <a href="../mapreduce/">MapReduce</a>
 </div>
 <div class="col-6 center">
 <a href="../"></a>
@@ -658,7 +658,7 @@ token=access_token_here
 	  <a href="../#acknowledgments">the authors</a>
 </div>
 <div class="col-3 right">
-<a href="../msgque/">A Message Queue</a> ⇒
+<a href="../distlock/">Distributed Locks</a> ⇒
 	</div>
 </div>
 </footer>

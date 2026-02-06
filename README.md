@@ -11,16 +11,16 @@ FIXME
 <div id="lessons" markdown="1">
 
 1.  [Introduction](@/intro/): what this training does and doesn't cover.
-1.  [OAuth](@/oauth/): distributed authentication.
 1.  [A Message Queue](@/msgque/): loosely-coupled communication.
-1.  [Distributed Locks](@/distlock/): coordinating access to shared resources.
+1.  [Work-Stealing Scheduler](@/worksteal/): sharing work more efficiently.
 1.  [Distributed Tracing](@/tracing/): keeping track of what's happening.
+1.  [Conflict-Free Replicated Data Types](@/crdt/): scalable data structures.
+1.  [MapReduce](@/mapreduce/): processing large datasets.
+1.  [OAuth](@/oauth/): distributed authentication.
+1.  [Distributed Locks](@/distlock/): coordinating access to shared resources.
+1.  [BitTorrent](@/torrent/): sharing data at scale.
 1.  [Eventually Consistent Key-Value Store](@/eventual/): when availability matters more than consistency.
 1.  [The Saga Pattern](@/saga/): distributed transactions with compensations.
-1.  [MapReduce](@/mapreduce/): processing large datasets.
-1.  [Work-Stealing Scheduler](@/worksteal/): sharing work more efficiently.
-1.  [Conflict-Free Replicated Data Types](@/crdt/): scalable data structures.
-1.  [BitTorrent](@/torrent/): sharing data at scale.
 1.  [TCP](@/tcp/): reliable communication.
 1.  [Conclusion](@/finale/): looking back and next steps.
 
