@@ -3,6 +3,9 @@
 ACID
 :   Properties of traditional database transactions: Atomicity (all-or-nothing), Consistency (valid state transitions), Isolation (concurrent transactions don't interfere), and Durability (committed changes persist).
 
+ACK (Acknowledgment)
+:   Packet sent by receiver confirming successful receipt of data. In TCP, cumulative ACKs indicate all data up to a sequence number has been received.
+
 anti-entropy
 :   Background process in distributed systems that compares replicas and repairs inconsistencies to ensure eventual convergence, often using techniques like Merkle trees.
 
@@ -48,6 +51,9 @@ compensating transaction
 conflict-free replicated data type (CRDT)
 :   Data structure designed so concurrent updates on different replicas can always be merged automatically without conflicts, guaranteeing eventual convergence.
 
+congestion control
+:   TCP mechanism that adapts sending rate to network capacity to prevent network collapse and ensure fair bandwidth sharing among flows.
+
 consensus
 :   Process by which distributed nodes agree on a single value or decision despite failures. Algorithms like Paxos and Raft provide consensus guarantees.
 
@@ -60,11 +66,14 @@ consumer group
 context propagation
 :   Passing trace IDs, span IDs, and other metadata between services so operations can be correlated across service boundaries in distributed tracing.
 
+CmRDT (operation-based CRDT)
+:   CRDT variant where replicas send operations (deltas) that must commute. Requires reliable delivery but has lower network overhead than state-based CRDTs.
+
 CvRDT (state-based CRDT)
 :   CRDT variant where replicas send their entire state and merge states using operations that are commutative, associative, and idempotent.
 
-CmRDT (operation-based CRDT)
-:   CRDT variant where replicas send operations (deltas) that must commute. Requires reliable delivery but has lower network overhead than state-based CRDTs.
+cumulative acknowledgment
+:   ACK indicating "I've received everything up to sequence number X" rather than acknowledging individual packets. Simplifies TCP acknowledgment logic.
 
 dead letter queue
 :   Queue for messages that cannot be processed successfully after multiple retry attempts, enabling later analysis and manual intervention.
@@ -81,6 +90,9 @@ distributed lock
 distributed tracing
 :   System for tracking requests as they flow through multiple services, creating a tree of spans that shows timing, dependencies, and performance bottlenecks.
 
+duplicate ACK
+:   When receiver sends multiple ACKs for the same sequence number, typically indicating packet loss or reordering. Used by fast retransmit.
+
 end game mode
 :   BitTorrent optimization where peers nearing completion aggressively request remaining pieces from multiple peers and cancel duplicates when received, preventing slow final pieces.
 
@@ -96,8 +108,17 @@ exactly-once delivery
 fan-out
 :   Pattern where one message or request triggers multiple downstream operations, such as publishing to multiple subscribers or calling multiple services in parallel.
 
+fast retransmit
+:   TCP optimization that retransmits a packet after receiving three duplicate ACKs, without waiting for retransmission timeout.
+
 fencing token
 :   Monotonically increasing number issued with each lock acquisition. Protected resources reject operations with older tokens, preventing split-brain scenarios where multiple processes believe they hold a lock.
+
+FIN (Finish)
+:   TCP packet type used in connection teardown to indicate no more data will be sent.
+
+flow control
+:   TCP mechanism preventing sender from overwhelming receiver by limiting the amount of unacknowledged data based on receiver's advertised window.
 
 fork/join
 :   Parallel programming pattern where tasks are recursively split (forked) into subtasks and results are combined (joined). Implemented efficiently using work-stealing schedulers.
@@ -141,14 +162,26 @@ LWW-register
 MapReduce
 :   Programming model for processing large datasets across distributed clusters. Map phase transforms input independently; reduce phase aggregates by key after shuffling.
 
+maximum segment size (MSS)
+:   Largest amount of data that can be sent in a single TCP segment, typically MTU minus IP and TCP header sizes.
+
+maximum transmission unit (MTU)
+:   Largest packet size that can be transmitted on a network. Typically 1500 bytes for Ethernet. TCP segments data to fit within MTU.
+
 Merkle tree
 :   Tree of cryptographic hashes where each non-leaf node is the hash of its children. Efficiently identifies differences between replicas for anti-entropy.
 
 mutual exclusion
 :   Property ensuring only one process can access a critical section or resource at a time, fundamental requirement for distributed locks.
 
+Nagle's Algorithm
+:   TCP optimization that batches small writes into larger packets to reduce protocol overhead, trading slight latency for efficiency.
+
 OAuth
 :   Authorization framework enabling applications to obtain limited access to user accounts without exposing passwords, using tokens with specific scopes and lifetimes.
+
+observed-remove set (OR-Set)
+:   CRDT set where elements are tagged with unique identifiers. Add-wins semantics: concurrent add and remove results in element being present.
 
 OpenID Connect (OIDC)
 :   Identity layer built on OAuth 2.0 that adds user authentication through ID tokens, enabling single sign-on while OAuth provides API authorization.
@@ -162,17 +195,20 @@ optimistic locking
 optimistic unchoking
 :   BitTorrent strategy where peers periodically upload to a random peer regardless of contribution, giving new peers opportunity to participate and discovering faster peers.
 
-observed-remove set (OR-Set)
-:   CRDT set where elements are tagged with unique identifiers. Add-wins semantics: concurrent add and remove results in element being present.
-
 orchestration
 :   Saga implementation pattern where a central coordinator directs each service's actions, making the workflow easier to understand and monitor but creating a coordination point.
+
+out-of-order delivery
+:   When packets arrive in different order than sent due to network reordering. TCP's receive buffer handles this by holding segments until gaps are filled.
 
 partition
 :   Network failure where nodes are divided into groups that cannot communicate. Systems must choose between consistency and availability during partitions (CAP theorem).
 
 partition tolerance
 :   System's ability to continue operating despite network partitions. One of three properties in CAP theorem.
+
+path MTU discovery
+:   Process of determining the smallest MTU along the network path to avoid fragmentation.
 
 peer-to-peer (P2P)
 :   Network architecture where participants (peers) share resources directly with each other without requiring central servers. BitTorrent is a prominent example.
@@ -201,6 +237,9 @@ rarest first
 read repair
 :   Technique where inconsistencies detected during reads are immediately repaired by updating lagging replicas with the most recent version.
 
+receive window
+:   Buffer space advertised by receiver indicating how much data it can accept. Used for flow control.
+
 reduce
 :   MapReduce phase that aggregates values by key. Reduce functions must be associative and commutative to enable parallelization and fault tolerance.
 
@@ -216,6 +255,15 @@ replication factor
 resource server
 :   In OAuth 2.0, the API server hosting protected resources that validates access tokens and enforces scope-based access control.
 
+retransmission
+:   Resending data when acknowledgment doesn't arrive within timeout period, recovering from packet loss.
+
+retransmission timeout (RTO)
+:   Time sender waits for acknowledgment before retransmitting. Adaptive in real TCP based on measured round-trip time.
+
+round-trip time (RTT)
+:   Time for a packet to travel to destination and acknowledgment to return. Used to calculate appropriate retransmission timeout.
+
 saga
 :   Pattern for managing distributed transactions as a sequence of local transactions with compensating transactions for rollback, providing eventual consistency without distributed locks.
 
@@ -228,14 +276,26 @@ scope
 seeder
 :   In BitTorrent, a peer that has downloaded the complete file and continues uploading to help others. Essential for swarm health.
 
+segment
+:   Unit of data in TCP, corresponding to a single packet with TCP header and payload.
+
+selective acknowledgment (SACK)
+:   TCP extension allowing receiver to acknowledge non-contiguous blocks of data, enabling efficient retransmission of only lost segments.
+
 semantic locking
 :   Preventing dirty reads during Saga execution by marking records as "pending" so users don't see intermediate states from incomplete transactions.
+
+sequence number
+:   Number assigned to each byte of data in TCP stream, enabling detection of loss, reordering, and duplicate delivery.
 
 shard
 :   Horizontal partition of a database where each partition contains a subset of data. Enables scaling by distributing load across multiple servers.
 
 shuffle
 :   MapReduce phase between map and reduce where intermediate key-value pairs are partitioned, sorted by key, and distributed to reduce workers.
+
+sliding window
+:   Flow control mechanism allowing sender to have multiple unacknowledged packets in flight, maintaining throughput despite round-trip latency.
 
 sloppy quorum
 :   Variant of quorum where any N healthy nodes can accept writes rather than requiring specific replicas, improving availability during failures.
@@ -258,6 +318,12 @@ strong eventual consistency
 swarm
 :   In BitTorrent, all peers participating in sharing a particular file, including both seeders and leechers.
 
+SYN (synchronize)
+:   TCP packet type used in connection establishment to synchronize sequence numbers between client and server.
+
+three-way handshake
+:   TCP connection establishment process using three packets (SYN, SYN-ACK, ACK) to synchronize state and sequence numbers.
+
 tit-for-tat
 :   BitTorrent incentive mechanism where peers upload to those who upload to them, encouraging cooperation without central enforcement.
 
@@ -278,6 +344,12 @@ two-phase commit (2PC)
 
 vector clock
 :   Data structure tracking causality in distributed systems. Maps each replica to a counter; used to determine if events are concurrent or causally ordered.
+
+window scaling
+:   TCP option extending the 16-bit window size field to support larger windows on high-bandwidth networks.
+
+window size
+:   Number of unacknowledged packets (or bytes) sender can have in flight. Determines throughput and buffering requirements.
 
 work-stealing
 :   Scheduling strategy where each worker maintains a local task queue and idle workers "steal" tasks from others' queues, minimizing contention while balancing load.

@@ -10,12 +10,13 @@ import random
 @dataclass
 class TraceContext:
     """Context propagated between services."""
+
     trace_id: str
     span_id: str
     parent_span_id: Optional[str] = None
     sampled: bool = True
     baggage: Dict[str, str] = field(default_factory=dict)
-    
+
     def __str__(self) -> str:
         return f"TraceContext(trace={self.trace_id[:8]}..., span={self.span_id[:8]}...)"
 
@@ -23,6 +24,7 @@ class TraceContext:
 @dataclass
 class Span:
     """Represents a unit of work in a trace."""
+
     trace_id: str
     span_id: str
     parent_span_id: Optional[str]
@@ -33,25 +35,24 @@ class Span:
     duration: Optional[float] = None
     tags: Dict[str, Any] = field(default_factory=dict)
     logs: List[Dict[str, Any]] = field(default_factory=list)
-    
+
     def finish(self, end_time: float) -> None:
         """Mark span as complete."""
         self.end_time = end_time
         self.duration = end_time - self.start_time
-    
+
     def add_tag(self, key: str, value: Any) -> None:
         """Add metadata tag to span."""
         self.tags[key] = value
-    
+
     def add_log(self, message: str, **fields: Any) -> None:
         """Add log entry to span."""
         import time as stdlib_time
-        self.logs.append({
-            "message": message,
-            "timestamp": stdlib_time.time(),
-            **fields
-        })
-    
+
+        self.logs.append(
+            {"message": message, "timestamp": stdlib_time.time(), **fields}
+        )
+
     def __str__(self) -> str:
         status = f"{self.duration:.3f}s" if self.duration else "active"
         return f"Span({self.operation_name}, {status})"
@@ -60,35 +61,36 @@ class Span:
 @dataclass
 class Trace:
     """Complete trace containing all spans."""
+
     trace_id: str
     spans: List[Span] = field(default_factory=list)
     start_time: Optional[float] = None
     end_time: Optional[float] = None
-    
+
     def add_span(self, span: Span) -> None:
         """Add span to trace."""
         self.spans.append(span)
-        
+
         if self.start_time is None or span.start_time < self.start_time:
             self.start_time = span.start_time
-        
+
         if span.end_time:
             if self.end_time is None or span.end_time > self.end_time:
                 self.end_time = span.end_time
-    
+
     def get_duration(self) -> Optional[float]:
         """Get total trace duration."""
         if self.start_time and self.end_time:
             return self.end_time - self.start_time
         return None
-    
+
     def get_root_span(self) -> Optional[Span]:
         """Get root span (no parent)."""
         for span in self.spans:
             if span.parent_span_id is None:
                 return span
         return None
-    
+
     def __str__(self) -> str:
         duration = self.get_duration()
         status = f"{duration:.3f}s" if duration else "incomplete"
@@ -97,6 +99,7 @@ class Trace:
 
 class SamplingStrategy(Enum):
     """Sampling strategies for trace collection."""
+
     ALWAYS = "always"
     NEVER = "never"
     PROBABILISTIC = "probabilistic"
@@ -106,11 +109,12 @@ class SamplingStrategy(Enum):
 @dataclass
 class ServiceRequest:
     """Request between services with trace context."""
+
     request_id: str
     context: TraceContext
     payload: Dict[str, Any]
     response_queue: Queue
-    
+
     def __str__(self) -> str:
         return f"Request({self.request_id})"
 
@@ -118,11 +122,12 @@ class ServiceRequest:
 @dataclass
 class ServiceResponse:
     """Response from service."""
+
     request_id: str
     success: bool
     data: Any = None
     error: Optional[str] = None
-    
+
     def __str__(self) -> str:
         status = "success" if self.success else f"error: {self.error}"
         return f"Response({self.request_id}, {status})"
