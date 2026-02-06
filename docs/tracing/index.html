@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Distributed Tracing</title>
+<link href="../static/favicon.ico" rel="icon" type="image/x-icon"/>
+<link href="../static/pygments.css" rel="stylesheet" type="text/css"/>
+<link href="../static/page.css" rel="stylesheet" type="text/css"/>
+</head>
+<body>
+<nav>
+<a href="../">Home</a>
+      ·
+      <span class="dropdown">
+<a href="#">Lessons</a>
+<span class="dropdown-content" id="nav-lessons">
+<a href="../intro/">Introduction</a>
+<a href="../oauth/">OAuth</a>
+<a href="../msgque/">A Message Queue</a>
+<a href="../distlock/">Distributed Locks</a>
+<a href="../tracing/">Distributed Tracing</a>
+<a href="../eventual/">Eventually Consistent Key-Value Store</a>
+<a href="../saga/">The Saga Pattern</a>
+<a href="../mapreduce/">MapReduce</a>
+<a href="../worksteal/">Work-Stealing Scheduler</a>
+<a href="../crdt/">Conflict-Free Replicated Data Types</a>
+<a href="../torrent/">BitTorrent</a>
+<a href="../finale/">Conclusion</a>
+</span>
+</span>
+      ·
+      <span class="dropdown">
+<a href="#">Appendices</a>
+<span class="dropdown-content" id="nav-appendices">
+<a href="../license/">License</a>
+<a href="../conduct/">Code of Conduct</a>
+<a href="../contributing/">Contributing</a>
+<a href="../bibliography/">Bibliography</a>
+<a href="../glossary/">Glossary</a>
+</span>
+</span>
+</nav>
+<main>
+<h1>Distributed Tracing</h1>
+<p>When a user reports that your application is slow, where do you start?
+In a monolithic application, you'd profile a single process.
+But in a microservices architecture where a single request touches dozens of services, each making multiple database queries and external API calls, understanding performance becomes exponentially harder.
+Distributed tracing solves this by tracking requests as they flow through your system, showing exactly where time is spent.</p>
+<p>Google pioneered distributed tracing with Dapper in 2010, processing trillions of traces per day to monitor their vast microservices infrastructure.
+The insights from Dapper led to open-source systems like Zipkin (from Twitter) and Jaeger (from Uber).
+Today, distributed tracing is essential for any organization running microservices—it's the only way to understand system-wide behavior, diagnose latency issues, and meet SLA requirements.</p>
+<p>Distributed tracing works by assigning each request a unique trace ID and tracking it through every service it touches.
+Each service operation creates a "span" representing work done, with timing information and metadata.
+By collecting these spans and stitching them together, you can visualize the entire request path, identify bottlenecks, and understand dependencies between services.</p>
+<p>This pattern appears everywhere modern software runs: Stripe uses distributed tracing to debug payment flows, Netflix tracks video playback requests across hundreds of services, and Uber monitors ride requests through their complex service mesh.
+Understanding distributed tracing is essential for operating distributed systems at scale.</p>
+<h2>Core Concepts</h2>
+<p>Distributed tracing has several key abstractions:</p>
+<p><strong>Trace</strong>: The complete journey of a request through the system.
+Identified by a unique trace ID.</p>
+<p><strong>Span</strong>: Represents a single unit of work.
+Has a span ID, parent span ID, start time, duration, and metadata.
+Spans form a tree structure representing the call graph.</p>
+<p><strong>Context Propagation</strong>: Passing trace and span IDs between services so they can be correlated.</p>
+<p><strong>Sampling</strong>: Recording only a fraction of traces to manage overhead and storage costs.</p>
+<p><strong>Tags and Logs</strong>: Metadata attached to spans for debugging (e.g., HTTP status code, database query).</p>
+<p>The relationships work like this:
+- A trace contains many spans
+- Spans have parent-child relationships forming a tree
+- Root span has no parent
+- Context propagates through service boundaries</p>
+<h2>Data Structures</h2>
+<p>Let's define the core types for distributed tracing:</p>
+<div class="codehilite"><pre class=""><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">asimpy</span><span class="w"> </span><span class="kn">import</span> <span class="n">Environment</span><span class="p">,</span> <span class="n">Process</span><span class="p">,</span> <span class="n">Queue</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Any</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">enum</span><span class="w"> </span><span class="kn">import</span> <span class="n">Enum</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">stdlib_time</span>
+
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">TraceContext</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Context propagated between services."""</span>
+    <span class="n">trace_id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">span_id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">parent_span_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">sampled</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">baggage</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">"TraceContext(trace=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">trace_id</span><span class="p">[:</span><span class="mi">8</span><span class="p">]</span><span class="si">}</span><span class="s2">..., span=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">span_id</span><span class="p">[:</span><span class="mi">8</span><span class="p">]</span><span class="si">}</span><span class="s2">...)"</span>
+
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Span</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Represents a unit of work in a trace."""</span>
+    <span class="n">trace_id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">span_id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">parent_span_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">operation_name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">service_name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">start_time</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">end_time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">duration</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">tags</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="n">logs</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">finish</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">end_time</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Mark span as complete."""</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">end_time</span> <span class="o">=</span> <span class="n">end_time</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">duration</span> <span class="o">=</span> <span class="n">end_time</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_tag</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Add metadata tag to span."""</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_log</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">fields</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Add log entry to span."""</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logs</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+            <span class="s2">"message"</span><span class="p">:</span> <span class="n">message</span><span class="p">,</span>
+            <span class="s2">"timestamp"</span><span class="p">:</span> <span class="n">stdlib_time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+            <span class="o">**</span><span class="n">fields</span>
+        <span class="p">})</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="n">status</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">duration</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s"</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">duration</span> <span class="k">else</span> <span class="s2">"active"</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">"Span(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">operation_name</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">status</span><span class="si">}</span><span class="s2">)"</span>
+
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Trace</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Complete trace containing all spans."""</span>
+    <span class="n">trace_id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">spans</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Span</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">start_time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">end_time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_span</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">span</span><span class="p">:</span> <span class="n">Span</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Add span to trace."""</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">spans</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">span</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">span</span><span class="o">.</span><span class="n">start_time</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span> <span class="o">=</span> <span class="n">span</span><span class="o">.</span><span class="n">start_time</span>
+
+        <span class="k">if</span> <span class="n">span</span><span class="o">.</span><span class="n">end_time</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">end_time</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">span</span><span class="o">.</span><span class="n">end_time</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">end_time</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">end_time</span> <span class="o">=</span> <span class="n">span</span><span class="o">.</span><span class="n">end_time</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_duration</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Get total trace duration."""</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">end_time</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">end_time</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_root_span</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Span</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Get root span (no parent)."""</span>
+        <span class="k">for</span> <span class="n">span</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">spans</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">span</span><span class="o">.</span><span class="n">parent_span_id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">span</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="n">duration</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_duration</span><span class="p">()</span>
+        <span class="n">status</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">duration</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s"</span> <span class="k">if</span> <span class="n">duration</span> <span class="k">else</span> <span class="s2">"incomplete"</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">"Trace(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">trace_id</span><span class="p">[:</span><span class="mi">8</span><span class="p">]</span><span class="si">}</span><span class="s2">..., </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">spans</span><span class="p">)</span><span class="si">}</span><span class="s2"> spans, </span><span class="si">{</span><span class="n">status</span><span class="si">}</span><span class="s2">)"</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">SamplingStrategy</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Sampling strategies for trace collection."""</span>
+    <span class="n">ALWAYS</span> <span class="o">=</span> <span class="s2">"always"</span>
+    <span class="n">NEVER</span> <span class="o">=</span> <span class="s2">"never"</span>
+    <span class="n">PROBABILISTIC</span> <span class="o">=</span> <span class="s2">"probabilistic"</span>
+    <span class="n">RATE_LIMITED</span> <span class="o">=</span> <span class="s2">"rate_limited"</span>
+
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ServiceRequest</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Request between services with trace context."""</span>
+    <span class="n">request_id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">context</span><span class="p">:</span> <span class="n">TraceContext</span>
+    <span class="n">payload</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+    <span class="n">response_queue</span><span class="p">:</span> <span class="n">Queue</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">"Request(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">request_id</span><span class="si">}</span><span class="s2">)"</span>
+
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ServiceResponse</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Response from service."""</span>
+    <span class="n">request_id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">success</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">data</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">error</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="n">status</span> <span class="o">=</span> <span class="s2">"success"</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">success</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">"error: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">error</span><span class="si">}</span><span class="s2">"</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">"Response(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">request_id</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">status</span><span class="si">}</span><span class="s2">)"</span>
+</code></pre></div>
+<p>These structures represent the distributed tracing data model.
+TraceContext propagates between services, Span tracks individual operations, and Trace aggregates spans.</p>
+<h2>Trace Collector</h2>
+<p>The collector receives spans from services and assembles them into complete traces:</p>
+<div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">TraceCollector</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Collects and aggregates spans into traces."""</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">init</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">span_queue</span><span class="p">:</span> <span class="n">Queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_env</span><span class="p">)</span>
+
+        <span class="c1"># Active traces (trace_id -&gt; Trace)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">traces</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Trace</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># Completed traces</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">completed_traces</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Trace</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Statistics</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">spans_received</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">traces_completed</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># Sampling</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sample_rate</span> <span class="o">=</span> <span class="mf">1.0</span>  <span class="c1"># Sample 100% by default</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] TraceCollector started"</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Main collector loop."""</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">span</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">span_queue</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">process_span</span><span class="p">(</span><span class="n">span</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">process_span</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">span</span><span class="p">:</span> <span class="n">Span</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Process incoming span."""</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">spans_received</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1"># Get or create trace</span>
+        <span class="k">if</span> <span class="n">span</span><span class="o">.</span><span class="n">trace_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">traces</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">traces</span><span class="p">[</span><span class="n">span</span><span class="o">.</span><span class="n">trace_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">Trace</span><span class="p">(</span><span class="n">trace_id</span><span class="o">=</span><span class="n">span</span><span class="o">.</span><span class="n">trace_id</span><span class="p">)</span>
+
+        <span class="n">trace</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">traces</span><span class="p">[</span><span class="n">span</span><span class="o">.</span><span class="n">trace_id</span><span class="p">]</span>
+        <span class="n">trace</span><span class="o">.</span><span class="n">add_span</span><span class="p">(</span><span class="n">span</span><span class="p">)</span>
+
+        <span class="c1"># Check if trace is complete</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_trace_complete</span><span class="p">(</span><span class="n">trace</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">complete_trace</span><span class="p">(</span><span class="n">trace</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">is_trace_complete</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trace</span><span class="p">:</span> <span class="n">Trace</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Check if all spans in trace are finished."""</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">trace</span><span class="o">.</span><span class="n">spans</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># All spans must be finished</span>
+        <span class="k">return</span> <span class="nb">all</span><span class="p">(</span><span class="n">span</span><span class="o">.</span><span class="n">end_time</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">span</span> <span class="ow">in</span> <span class="n">trace</span><span class="o">.</span><span class="n">spans</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">complete_trace</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trace</span><span class="p">:</span> <span class="n">Trace</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Mark trace as complete and move to storage."""</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">completed_traces</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">trace</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">traces_completed</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">traces</span><span class="p">[</span><span class="n">trace</span><span class="o">.</span><span class="n">trace_id</span><span class="p">]</span>
+
+        <span class="c1"># Analyze trace</span>
+        <span class="n">duration</span> <span class="o">=</span> <span class="n">trace</span><span class="o">.</span><span class="n">get_duration</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Completed </span><span class="si">{</span><span class="n">trace</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Total duration: </span><span class="si">{</span><span class="n">duration</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s"</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Spans: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">trace</span><span class="o">.</span><span class="n">spans</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+        <span class="c1"># Show span tree</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">print_span_tree</span><span class="p">(</span><span class="n">trace</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">print_span_tree</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trace</span><span class="p">:</span> <span class="n">Trace</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Print span tree structure."""</span>
+        <span class="n">root</span> <span class="o">=</span> <span class="n">trace</span><span class="o">.</span><span class="n">get_root_span</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">root</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"  Span tree:"</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_print_span_recursive</span><span class="p">(</span><span class="n">trace</span><span class="p">,</span> <span class="n">root</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_print_span_recursive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trace</span><span class="p">:</span> <span class="n">Trace</span><span class="p">,</span> <span class="n">span</span><span class="p">:</span> <span class="n">Span</span><span class="p">,</span> 
+                             <span class="n">indent</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Recursively print span and children."""</span>
+        <span class="n">prefix</span> <span class="o">=</span> <span class="s2">" "</span> <span class="o">*</span> <span class="n">indent</span> <span class="o">+</span> <span class="s2">"└─"</span>
+        <span class="n">duration_str</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">span</span><span class="o">.</span><span class="n">duration</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s"</span> <span class="k">if</span> <span class="n">span</span><span class="o">.</span><span class="n">duration</span> <span class="k">else</span> <span class="s2">"?"</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">span</span><span class="o">.</span><span class="n">operation_name</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">span</span><span class="o">.</span><span class="n">service_name</span><span class="si">}</span><span class="s2">) - </span><span class="si">{</span><span class="n">duration_str</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+        <span class="c1"># Find children</span>
+        <span class="n">children</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">trace</span><span class="o">.</span><span class="n">spans</span> <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">parent_span_id</span> <span class="o">==</span> <span class="n">span</span><span class="o">.</span><span class="n">span_id</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">children</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">start_time</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_print_span_recursive</span><span class="p">(</span><span class="n">trace</span><span class="p">,</span> <span class="n">child</span><span class="p">,</span> <span class="n">indent</span> <span class="o">+</span> <span class="mi">2</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_slow_traces</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">threshold</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Trace</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Find traces slower than threshold."""</span>
+        <span class="n">slow</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">trace</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">completed_traces</span><span class="p">:</span>
+            <span class="n">duration</span> <span class="o">=</span> <span class="n">trace</span><span class="o">.</span><span class="n">get_duration</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">duration</span> <span class="ow">and</span> <span class="n">duration</span> <span class="o">&gt;</span> <span class="n">threshold</span><span class="p">:</span>
+                <span class="n">slow</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">trace</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">slow</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">generate_id</span><span class="p">(</span><span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Generate unique ID for trace or span."""</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">prefix</span><span class="si">}{</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">1000000</span><span class="p">,</span><span class="w"> </span><span class="mi">9999999</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
+</code></pre></div>
+<p>The collector aggregates spans into traces and can analyze them to find performance issues.</p>
+<h2>Instrumented Service</h2>
+<p>Services create spans for their operations and propagate context:</p>
+<div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">InstrumentedService</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Service with distributed tracing instrumentation."""</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">service_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">collector</span><span class="p">:</span> <span class="n">TraceCollector</span><span class="p">,</span>
+             <span class="n">downstream_services</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="s1">'InstrumentedService'</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">service_name</span> <span class="o">=</span> <span class="n">service_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">collector</span> <span class="o">=</span> <span class="n">collector</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">downstream_services</span> <span class="o">=</span> <span class="n">downstream_services</span> <span class="ow">or</span> <span class="p">[]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">request_queue</span><span class="p">:</span> <span class="n">Queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_env</span><span class="p">)</span>
+
+        <span class="c1"># Statistics</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">requests_handled</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">spans_created</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">service_name</span><span class="si">}</span><span class="s2"> started"</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Handle incoming requests."""</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">request</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">request_queue</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_request</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handle_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">ServiceRequest</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Handle request with tracing."""</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">requests_handled</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1"># Create span for this operation</span>
+        <span class="n">span</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_span</span><span class="p">(</span>
+            <span class="n">operation_name</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">service_name</span><span class="si">}</span><span class="s2">.handle_request"</span><span class="p">,</span>
+            <span class="n">context</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">context</span>
+        <span class="p">)</span>
+
+        <span class="n">span</span><span class="o">.</span><span class="n">add_tag</span><span class="p">(</span><span class="s2">"service"</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">service_name</span><span class="p">)</span>
+        <span class="n">span</span><span class="o">.</span><span class="n">add_tag</span><span class="p">(</span><span class="s2">"request_id"</span><span class="p">,</span> <span class="n">request</span><span class="o">.</span><span class="n">request_id</span><span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">service_name</span><span class="si">}</span><span class="s2">: Processing </span><span class="si">{</span><span class="n">request</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Simulate processing</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">))</span>
+
+            <span class="c1"># Call downstream services if any</span>
+            <span class="n">downstream_data</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">downstream_services</span><span class="p">:</span>
+                <span class="n">downstream_data</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">call_downstream_services</span><span class="p">(</span><span class="n">span</span><span class="p">)</span>
+
+            <span class="c1"># Finish span</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">finish_span</span><span class="p">(</span><span class="n">span</span><span class="p">,</span> <span class="n">success</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+            <span class="c1"># Send response</span>
+            <span class="k">await</span> <span class="n">request</span><span class="o">.</span><span class="n">response_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">ServiceResponse</span><span class="p">(</span>
+                <span class="n">request_id</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">request_id</span><span class="p">,</span>
+                <span class="n">success</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">data</span><span class="o">=</span><span class="n">downstream_data</span>
+            <span class="p">))</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="c1"># Log error in span</span>
+            <span class="n">span</span><span class="o">.</span><span class="n">add_log</span><span class="p">(</span><span class="s2">"error"</span><span class="p">,</span> <span class="n">error</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+            <span class="n">span</span><span class="o">.</span><span class="n">add_tag</span><span class="p">(</span><span class="s2">"error"</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">finish_span</span><span class="p">(</span><span class="n">span</span><span class="p">,</span> <span class="n">success</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+            <span class="k">await</span> <span class="n">request</span><span class="o">.</span><span class="n">response_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">ServiceResponse</span><span class="p">(</span>
+                <span class="n">request_id</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">request_id</span><span class="p">,</span>
+                <span class="n">success</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">error</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+            <span class="p">))</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">start_span</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">operation_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> 
+                   <span class="n">context</span><span class="p">:</span> <span class="n">TraceContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Span</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Start a new span."""</span>
+        <span class="n">span</span> <span class="o">=</span> <span class="n">Span</span><span class="p">(</span>
+            <span class="n">trace_id</span><span class="o">=</span><span class="n">context</span><span class="o">.</span><span class="n">trace_id</span><span class="p">,</span>
+            <span class="n">span_id</span><span class="o">=</span><span class="n">generate_id</span><span class="p">(</span><span class="s2">"span_"</span><span class="p">),</span>
+            <span class="n">parent_span_id</span><span class="o">=</span><span class="n">context</span><span class="o">.</span><span class="n">span_id</span><span class="p">,</span>
+            <span class="n">operation_name</span><span class="o">=</span><span class="n">operation_name</span><span class="p">,</span>
+            <span class="n">service_name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">service_name</span><span class="p">,</span>
+            <span class="n">start_time</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">spans_created</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">return</span> <span class="n">span</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">finish_span</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">span</span><span class="p">:</span> <span class="n">Span</span><span class="p">,</span> <span class="n">success</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Finish span and send to collector."""</span>
+        <span class="n">span</span><span class="o">.</span><span class="n">finish</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="p">)</span>
+        <span class="n">span</span><span class="o">.</span><span class="n">add_tag</span><span class="p">(</span><span class="s2">"success"</span><span class="p">,</span> <span class="n">success</span><span class="p">)</span>
+
+        <span class="c1"># Send to collector (async)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_env</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_send_span_to_collector</span><span class="p">(</span><span class="n">span</span><span class="p">))</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_send_span_to_collector</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">span</span><span class="p">:</span> <span class="n">Span</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Send span to collector."""</span>
+        <span class="c1"># Simulate network delay</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="mf">0.01</span><span class="p">)</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">collector</span><span class="o">.</span><span class="n">span_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">span</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">call_downstream_services</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent_span</span><span class="p">:</span> <span class="n">Span</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">"""Call downstream services with trace propagation."""</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">service</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">downstream_services</span><span class="p">:</span>
+            <span class="c1"># Create child span for downstream call</span>
+            <span class="n">call_span</span> <span class="o">=</span> <span class="n">Span</span><span class="p">(</span>
+                <span class="n">trace_id</span><span class="o">=</span><span class="n">parent_span</span><span class="o">.</span><span class="n">trace_id</span><span class="p">,</span>
+                <span class="n">span_id</span><span class="o">=</span><span class="n">generate_id</span><span class="p">(</span><span class="s2">"span_"</span><span class="p">),</span>
+                <span class="n">parent_span_id</span><span class="o">=</span><span class="n">parent_span</span><span class="o">.</span><span class="n">span_id</span><span class="p">,</span>
+                <span class="n">operation_name</span><span class="o">=</span><span class="sa">f</span><span class="s2">"call_</span><span class="si">{</span><span class="n">service</span><span class="o">.</span><span class="n">service_name</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                <span class="n">service_name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">service_name</span><span class="p">,</span>
+                <span class="n">start_time</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span>
+            <span class="p">)</span>
+
+            <span class="n">call_span</span><span class="o">.</span><span class="n">add_tag</span><span class="p">(</span><span class="s2">"downstream_service"</span><span class="p">,</span> <span class="n">service</span><span class="o">.</span><span class="n">service_name</span><span class="p">)</span>
+
+            <span class="c1"># Create context for downstream service</span>
+            <span class="n">downstream_context</span> <span class="o">=</span> <span class="n">TraceContext</span><span class="p">(</span>
+                <span class="n">trace_id</span><span class="o">=</span><span class="n">parent_span</span><span class="o">.</span><span class="n">trace_id</span><span class="p">,</span>
+                <span class="n">span_id</span><span class="o">=</span><span class="n">call_span</span><span class="o">.</span><span class="n">span_id</span><span class="p">,</span>
+                <span class="n">parent_span_id</span><span class="o">=</span><span class="n">parent_span</span><span class="o">.</span><span class="n">span_id</span>
+            <span class="p">)</span>
+
+            <span class="c1"># Make downstream call</span>
+            <span class="n">response_queue</span><span class="p">:</span> <span class="n">Queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_env</span><span class="p">)</span>
+            <span class="n">downstream_request</span> <span class="o">=</span> <span class="n">ServiceRequest</span><span class="p">(</span>
+                <span class="n">request_id</span><span class="o">=</span><span class="n">generate_id</span><span class="p">(</span><span class="s2">"req_"</span><span class="p">),</span>
+                <span class="n">context</span><span class="o">=</span><span class="n">downstream_context</span><span class="p">,</span>
+                <span class="n">payload</span><span class="o">=</span><span class="p">{},</span>
+                <span class="n">response_queue</span><span class="o">=</span><span class="n">response_queue</span>
+            <span class="p">)</span>
+
+            <span class="k">await</span> <span class="n">service</span><span class="o">.</span><span class="n">request_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">downstream_request</span><span class="p">)</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">response_queue</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+
+            <span class="c1"># Finish call span</span>
+            <span class="n">call_span</span><span class="o">.</span><span class="n">finish</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="p">)</span>
+            <span class="n">call_span</span><span class="o">.</span><span class="n">add_tag</span><span class="p">(</span><span class="s2">"success"</span><span class="p">,</span> <span class="n">response</span><span class="o">.</span><span class="n">success</span><span class="p">)</span>
+
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">collector</span><span class="o">.</span><span class="n">span_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">call_span</span><span class="p">)</span>
+
+            <span class="n">results</span><span class="p">[</span><span class="n">service</span><span class="o">.</span><span class="n">service_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">data</span>
+
+        <span class="k">return</span> <span class="n">results</span>
+</code></pre></div>
+<p>Services create spans, propagate context, and send spans to the collector.</p>
+<h2>Frontend Service</h2>
+<p>The frontend initiates traces and calls backend services:</p>
+<div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">FrontendService</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Frontend service that initiates traces."""</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">service_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">collector</span><span class="p">:</span> <span class="n">TraceCollector</span><span class="p">,</span>
+             <span class="n">backend_services</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">InstrumentedService</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">service_name</span> <span class="o">=</span> <span class="n">service_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">collector</span> <span class="o">=</span> <span class="n">collector</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">backend_services</span> <span class="o">=</span> <span class="n">backend_services</span>
+
+        <span class="c1"># Statistics</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">requests_initiated</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">service_name</span><span class="si">}</span><span class="s2"> started"</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Generate user requests."""</span>
+        <span class="c1"># Simulate user requests</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="mf">2.0</span><span class="p">)</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">initiate_request</span><span class="p">(</span><span class="sa">f</span><span class="s2">"user_req_</span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">initiate_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Initiate request with new trace."""</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">requests_initiated</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1"># Create new trace</span>
+        <span class="n">trace_id</span> <span class="o">=</span> <span class="n">generate_id</span><span class="p">(</span><span class="s2">"trace_"</span><span class="p">)</span>
+        <span class="n">root_span_id</span> <span class="o">=</span> <span class="n">generate_id</span><span class="p">(</span><span class="s2">"span_"</span><span class="p">)</span>
+
+        <span class="c1"># Create root span</span>
+        <span class="n">root_span</span> <span class="o">=</span> <span class="n">Span</span><span class="p">(</span>
+            <span class="n">trace_id</span><span class="o">=</span><span class="n">trace_id</span><span class="p">,</span>
+            <span class="n">span_id</span><span class="o">=</span><span class="n">root_span_id</span><span class="p">,</span>
+            <span class="n">parent_span_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">operation_name</span><span class="o">=</span><span class="s2">"frontend.handle_user_request"</span><span class="p">,</span>
+            <span class="n">service_name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">service_name</span><span class="p">,</span>
+            <span class="n">start_time</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span>
+        <span class="p">)</span>
+
+        <span class="n">root_span</span><span class="o">.</span><span class="n">add_tag</span><span class="p">(</span><span class="s2">"request_id"</span><span class="p">,</span> <span class="n">request_id</span><span class="p">)</span>
+        <span class="n">root_span</span><span class="o">.</span><span class="n">add_tag</span><span class="p">(</span><span class="s2">"root"</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">service_name</span><span class="si">}</span><span class="s2">: Starting trace </span><span class="si">{</span><span class="n">trace_id</span><span class="p">[:</span><span class="mi">12</span><span class="p">]</span><span class="si">}</span><span class="s2">..."</span><span class="p">)</span>
+
+        <span class="c1"># Create context</span>
+        <span class="n">context</span> <span class="o">=</span> <span class="n">TraceContext</span><span class="p">(</span>
+            <span class="n">trace_id</span><span class="o">=</span><span class="n">trace_id</span><span class="p">,</span>
+            <span class="n">span_id</span><span class="o">=</span><span class="n">root_span_id</span><span class="p">,</span>
+            <span class="n">sampled</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Call backend services</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">call_backend_services</span><span class="p">(</span><span class="n">context</span><span class="p">,</span> <span class="n">root_span</span><span class="p">)</span>
+
+        <span class="c1"># Finish root span</span>
+        <span class="n">root_span</span><span class="o">.</span><span class="n">finish</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="p">)</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">collector</span><span class="o">.</span><span class="n">span_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">root_span</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">call_backend_services</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="n">TraceContext</span><span class="p">,</span> 
+                                    <span class="n">parent_span</span><span class="p">:</span> <span class="n">Span</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Call backend services."""</span>
+        <span class="c1"># Simulate calling multiple backend services</span>
+        <span class="k">for</span> <span class="n">service</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">backend_services</span><span class="p">:</span>
+            <span class="c1"># Create context for backend</span>
+            <span class="n">backend_context</span> <span class="o">=</span> <span class="n">TraceContext</span><span class="p">(</span>
+                <span class="n">trace_id</span><span class="o">=</span><span class="n">context</span><span class="o">.</span><span class="n">trace_id</span><span class="p">,</span>
+                <span class="n">span_id</span><span class="o">=</span><span class="n">generate_id</span><span class="p">(</span><span class="s2">"span_"</span><span class="p">),</span>
+                <span class="n">parent_span_id</span><span class="o">=</span><span class="n">parent_span</span><span class="o">.</span><span class="n">span_id</span>
+            <span class="p">)</span>
+
+            <span class="n">response_queue</span><span class="p">:</span> <span class="n">Queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_env</span><span class="p">)</span>
+            <span class="n">request</span> <span class="o">=</span> <span class="n">ServiceRequest</span><span class="p">(</span>
+                <span class="n">request_id</span><span class="o">=</span><span class="n">generate_id</span><span class="p">(</span><span class="s2">"req_"</span><span class="p">),</span>
+                <span class="n">context</span><span class="o">=</span><span class="n">backend_context</span><span class="p">,</span>
+                <span class="n">payload</span><span class="o">=</span><span class="p">{},</span>
+                <span class="n">response_queue</span><span class="o">=</span><span class="n">response_queue</span>
+            <span class="p">)</span>
+
+            <span class="k">await</span> <span class="n">service</span><span class="o">.</span><span class="n">request_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+            <span class="k">await</span> <span class="n">response_queue</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+</code></pre></div>
+<p>The frontend creates root spans and initiates traces that flow through the system.</p>
+<h2>Basic Tracing Example</h2>
+<p>Let's see distributed tracing in action:</p>
+<div class="codehilite"><pre class=""><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">run_distributed_tracing</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Demonstrate distributed tracing across services."""</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
+
+    <span class="c1"># Create trace collector</span>
+    <span class="n">collector</span> <span class="o">=</span> <span class="n">TraceCollector</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
+
+    <span class="c1"># Create service topology</span>
+    <span class="c1"># Frontend -&gt; [API Gateway -&gt; [Auth Service, Data Service -&gt; Database]]</span>
+
+    <span class="n">database</span> <span class="o">=</span> <span class="n">InstrumentedService</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s2">"Database"</span><span class="p">,</span> <span class="n">collector</span><span class="p">)</span>
+
+    <span class="n">data_service</span> <span class="o">=</span> <span class="n">InstrumentedService</span><span class="p">(</span>
+        <span class="n">env</span><span class="p">,</span> <span class="s2">"DataService"</span><span class="p">,</span> <span class="n">collector</span><span class="p">,</span> 
+        <span class="n">downstream_services</span><span class="o">=</span><span class="p">[</span><span class="n">database</span><span class="p">]</span>
+    <span class="p">)</span>
+
+    <span class="n">auth_service</span> <span class="o">=</span> <span class="n">InstrumentedService</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s2">"AuthService"</span><span class="p">,</span> <span class="n">collector</span><span class="p">)</span>
+
+    <span class="n">api_gateway</span> <span class="o">=</span> <span class="n">InstrumentedService</span><span class="p">(</span>
+        <span class="n">env</span><span class="p">,</span> <span class="s2">"APIGateway"</span><span class="p">,</span> <span class="n">collector</span><span class="p">,</span>
+        <span class="n">downstream_services</span><span class="o">=</span><span class="p">[</span><span class="n">auth_service</span><span class="p">,</span> <span class="n">data_service</span><span class="p">]</span>
+    <span class="p">)</span>
+
+    <span class="n">frontend</span> <span class="o">=</span> <span class="n">FrontendService</span><span class="p">(</span>
+        <span class="n">env</span><span class="p">,</span> <span class="s2">"Frontend"</span><span class="p">,</span> <span class="n">collector</span><span class="p">,</span>
+        <span class="n">backend_services</span><span class="o">=</span><span class="p">[</span><span class="n">api_gateway</span><span class="p">]</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Run simulation</span>
+    <span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+
+    <span class="c1"># Print summary</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">"</span> <span class="o">+</span> <span class="s2">"="</span><span class="o">*</span><span class="mi">60</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"Tracing Summary:"</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"="</span><span class="o">*</span><span class="mi">60</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Total traces completed: </span><span class="si">{</span><span class="n">collector</span><span class="o">.</span><span class="n">traces_completed</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Total spans received: </span><span class="si">{</span><span class="n">collector</span><span class="o">.</span><span class="n">spans_received</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Service statistics:"</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">service</span> <span class="ow">in</span> <span class="p">[</span><span class="n">api_gateway</span><span class="p">,</span> <span class="n">auth_service</span><span class="p">,</span> <span class="n">data_service</span><span class="p">,</span> <span class="n">database</span><span class="p">]:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  </span><span class="si">{</span><span class="n">service</span><span class="o">.</span><span class="n">service_name</span><span class="si">}</span><span class="s2">: "</span>
+              <span class="sa">f</span><span class="s2">"requests=</span><span class="si">{</span><span class="n">service</span><span class="o">.</span><span class="n">requests_handled</span><span class="si">}</span><span class="s2">, "</span>
+              <span class="sa">f</span><span class="s2">"spans=</span><span class="si">{</span><span class="n">service</span><span class="o">.</span><span class="n">spans_created</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+    <span class="c1"># Find slow traces</span>
+    <span class="n">slow</span> <span class="o">=</span> <span class="n">collector</span><span class="o">.</span><span class="n">get_slow_traces</span><span class="p">(</span><span class="n">threshold</span><span class="o">=</span><span class="mf">2.0</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">slow</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Slow traces (&gt;</span><span class="si">{</span><span class="mf">2.0</span><span class="si">}</span><span class="s2">s): </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">slow</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">trace</span> <span class="ow">in</span> <span class="n">slow</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  </span><span class="si">{</span><span class="n">trace</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
+    <span class="n">run_distributed_tracing</span><span class="p">()</span>
+</code></pre></div>
+<p>This demonstrates how traces flow through a multi-tier service architecture.</p>
+<h2>Sampling Strategies</h2>
+<p>Not all traces need to be recorded.
+Sampling reduces overhead:</p>
+<div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Sampler</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Sampling strategy for traces."""</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">SamplingStrategy</span><span class="p">,</span> 
+                 <span class="n">sample_rate</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">strategy</span> <span class="o">=</span> <span class="n">strategy</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sample_rate</span> <span class="o">=</span> <span class="n">sample_rate</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">traces_sampled</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">should_sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trace_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Decide if trace should be sampled."""</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">strategy</span> <span class="o">==</span> <span class="n">SamplingStrategy</span><span class="o">.</span><span class="n">ALWAYS</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">strategy</span> <span class="o">==</span> <span class="n">SamplingStrategy</span><span class="o">.</span><span class="n">NEVER</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">strategy</span> <span class="o">==</span> <span class="n">SamplingStrategy</span><span class="o">.</span><span class="n">PROBABILISTIC</span><span class="p">:</span>
+            <span class="c1"># Sample probabilistically</span>
+            <span class="k">if</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_rate</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">traces_sampled</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">return</span> <span class="kc">True</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">strategy</span> <span class="o">==</span> <span class="n">SamplingStrategy</span><span class="o">.</span><span class="n">RATE_LIMITED</span><span class="p">:</span>
+            <span class="c1"># Simple rate limiting (not time-based in simulation)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">traces_sampled</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">traces_sampled</span> <span class="o">%</span> <span class="nb">int</span><span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="bp">self</span><span class="o">.</span><span class="n">sample_rate</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span>
+
+        <span class="k">return</span> <span class="kc">False</span>
+</code></pre></div>
+<p>Sampling is essential for production systems—recording every trace is prohibitively expensive.</p>
+<h2>Key Tracing Concepts</h2>
+<h3>Context Propagation</h3>
+<p>Trace and span IDs must propagate across service boundaries:</p>
+<div class="codehilite"><pre class=""><span></span><code>HTTP Request Headers:
+  X-Trace-Id: abc123
+  X-Span-Id: def456
+  X-Parent-Span-Id: ghi789
+</code></pre></div>
+<h3>Span Relationships</h3>
+<p>Spans form a tree:</p>
+<div class="codehilite"><pre class=""><span></span><code>Root Span (frontend.request)
+  ├─ API Gateway Span
+  │   ├─ Auth Service Span
+  │   └─ Data Service Span
+  │       └─ Database Span
+  └─ Cache Service Span
+</code></pre></div>
+<h3>Tags vs Logs</h3>
+<p><strong>Tags</strong>: Indexed metadata for filtering/searching
+- <code>http.status_code=200</code>
+- <code>db.type=postgres</code>
+- <code>error=true</code></p>
+<p><strong>Logs</strong>: Timestamped events within span
+- "cache miss"
+- "retry attempt 2"
+- "error: connection timeout"</p>
+<h2>Real-World Applications</h2>
+<p><strong>E-commerce Checkout</strong>:
+- Frontend → API Gateway → Cart Service → Inventory Service → Payment Service
+- Trace shows which service is slow
+- Identifies payment gateway latency</p>
+<p><strong>Video Streaming</strong>:
+- Player → CDN → Origin → Transcoding Service
+- Traces reveal buffering causes
+- Monitors encode time</p>
+<p><strong>Banking Transactions</strong>:
+- Mobile App → API → Fraud Detection → Account Service → Ledger
+- Tracks transaction end-to-end
+- Ensures SLA compliance</p>
+<h2>Conclusion</h2>
+<p>Distributed tracing provides observability for microservices.
+The key principles are:</p>
+<ol>
+<li><strong>Trace ID propagation</strong>: Unique ID follows request through system</li>
+<li><strong>Span creation</strong>: Each operation creates a span with timing</li>
+<li><strong>Parent-child relationships</strong>: Spans form a tree representing call graph</li>
+<li><strong>Sampling</strong>: Record fraction of traces to manage overhead</li>
+<li><strong>Aggregation</strong>: Collector assembles spans into complete traces</li>
+</ol>
+<p>While production systems add async instrumentation, sampling strategies, and storage backends,
+the core pattern remains: propagate context, create spans, and aggregate traces.
+This enables understanding and optimizing distributed systems at scale.</p>
+</main>
+<footer>
+<div class="row">
+<div class="col-3 left">
+	  ⇐ <a href="../distlock/">Distributed Locks</a>
+</div>
+<div class="col-6 center">
+<a href="../"></a>
+	  © 2025
+	  <a href="../#acknowledgments">the authors</a>
+</div>
+<div class="col-3 right">
+<a href="../eventual/">Eventually Consistent Key-Value Store</a> ⇒
+	</div>
+</div>
+</footer>
+</body>
+</html>

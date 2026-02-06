@@ -14,6 +14,7 @@ FIXME
 1.  [OAuth](@/oauth/): distributed authentication.
 1.  [A Message Queue](@/msgque/): loosely-coupled communication.
 1.  [Distributed Locks](@/distlock/): coordinating access to shared resources.
+1.  [Distributed Tracing](@/tracing/): keeping track of what's happening.
 1.  [Eventually Consistent Key-Value Store](@/eventual/): when availability matters more than consistency.
 1.  [The Saga Pattern](@/saga/): distributed transactions with compensations.
 1.  [MapReduce](@/mapreduce/): processing large datasets.
