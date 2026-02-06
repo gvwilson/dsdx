@@ -21,6 +21,7 @@ FIXME
 1.  [Work-Stealing Scheduler](@/worksteal/): sharing work more efficiently.
 1.  [Conflict-Free Replicated Data Types](@/crdt/): scalable data structures.
 1.  [BitTorrent](@/torrent/): sharing data at scale.
+1.  [TCP](@/tcp/): reliable communication.
 1.  [Conclusion](@/finale/): looking back and next steps.
 
 </div>

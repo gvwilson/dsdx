@@ -28,9 +28,7 @@ def run_distributed_tracing() -> None:
         env, "APIGateway", collector, downstream_services=[auth_service, data_service]
     )
 
-    FrontendService(
-        env, "Frontend", collector, backend_services=[api_gateway]
-    )
+    FrontendService(env, "Frontend", collector, backend_services=[api_gateway])
 
     # Run simulation
     env.run(until=15)
