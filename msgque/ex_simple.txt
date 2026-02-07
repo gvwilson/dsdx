@@ -1,0 +1,64 @@
+[0.0] OrderService publishing: Message 1 from OrderService
+[0.0] UserService publishing: Message 1 from UserService
+[0.0] Inventory received from 'orders': Message 1 from OrderService (latency: 0.0)
+[0.0] Email received from 'orders': Message 1 from OrderService (latency: 0.0)
+[0.0] Analytics received from 'orders': Message 1 from OrderService (latency: 0.0)
+[1.5] UserService publishing: Message 2 from UserService
+[1.5] Analytics received from 'user-activity': Message 2 from UserService (latency: 0.0)
+[2.0] OrderService publishing: Message 2 from OrderService
+[2.0] Inventory received from 'orders': Message 2 from OrderService (latency: 0.0)
+[3.0] UserService publishing: Message 3 from UserService
+[3.0] Analytics received from 'user-activity': Message 3 from UserService (latency: 0.0)
+[3.0] Email received from 'orders': Message 2 from OrderService (latency: 1.0)
+[4.0] OrderService publishing: Message 3 from OrderService
+[4.0] Inventory received from 'orders': Message 3 from OrderService (latency: 0.0)
+[4.5] UserService publishing: Message 4 from UserService
+[4.5] Analytics received from 'user-activity': Message 4 from UserService (latency: 0.0)
+[6.0] OrderService publishing: Message 4 from OrderService
+[6.0] UserService publishing: Message 5 from UserService
+[6.0] Inventory received from 'orders': Message 4 from OrderService (latency: 0.0)
+[6.0] Analytics received from 'user-activity': Message 5 from UserService (latency: 0.0)
+[6.0] Email received from 'orders': Message 3 from OrderService (latency: 2.0)
+[7.5] UserService publishing: Message 6 from UserService
+[7.5] Analytics received from 'user-activity': Message 6 from UserService (latency: 0.0)
+[8.0] OrderService publishing: Message 5 from OrderService
+[8.0] Inventory received from 'orders': Message 5 from OrderService (latency: 0.0)
+[9.0] UserService publishing: Message 7 from UserService
+[9.0] Analytics received from 'user-activity': Message 7 from UserService (latency: 0.0)
+[9.0] Email received from 'orders': Message 4 from OrderService (latency: 3.0)
+[10.0] OrderService publishing: Message 6 from OrderService
+[10.0] Inventory received from 'orders': Message 6 from OrderService (latency: 0.0)
+[10.5] UserService publishing: Message 8 from UserService
+[10.5] Analytics received from 'user-activity': Message 8 from UserService (latency: 0.0)
+[12.0] OrderService publishing: Message 7 from OrderService
+[12.0] UserService publishing: Message 9 from UserService
+[12.0] Inventory received from 'orders': Message 7 from OrderService (latency: 0.0)
+[12.0] Analytics received from 'user-activity': Message 9 from UserService (latency: 0.0)
+[12.0] Email received from 'orders': Message 5 from OrderService (latency: 4.0)
+[13.5] UserService publishing: Message 10 from UserService
+[13.5] Analytics received from 'user-activity': Message 10 from UserService (latency: 0.0)
+[14.0] OrderService publishing: Message 8 from OrderService
+[14.0] Inventory received from 'orders': Message 8 from OrderService (latency: 0.0)
+[15.0] UserService publishing: Message 11 from UserService
+[15.0] Analytics received from 'user-activity': Message 11 from UserService (latency: 0.0)
+[15.0] Email received from 'orders': Message 6 from OrderService (latency: 5.0)
+[16.0] OrderService publishing: Message 9 from OrderService
+[16.0] Inventory received from 'orders': Message 9 from OrderService (latency: 0.0)
+[16.5] UserService publishing: Message 12 from UserService
+[16.5] Analytics received from 'user-activity': Message 12 from UserService (latency: 0.0)
+[18.0] OrderService publishing: Message 10 from OrderService
+[18.0] UserService publishing: Message 13 from UserService
+[18.0] Inventory received from 'orders': Message 10 from OrderService (latency: 0.0)
+[18.0] Analytics received from 'user-activity': Message 13 from UserService (latency: 0.0)
+[18.0] Email received from 'orders': Message 7 from OrderService (latency: 6.0)
+[19.5] UserService publishing: Message 14 from UserService
+[19.5] Analytics received from 'user-activity': Message 14 from UserService (latency: 0.0)
+[20.0] OrderService publishing: Message 11 from OrderService
+[20.0] Inventory received from 'orders': Message 11 from OrderService (latency: 0.0)
+
+=== Statistics ===
+Messages published: 25
+Messages delivered: 47
+Inventory received: 11
+Email received: 7
+Analytics received: 14

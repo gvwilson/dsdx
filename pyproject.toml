@@ -56,6 +56,9 @@ find . -path './.venv' -prune -o -type d -name '.ruff_cache' -exec rm -rf {} + &
 find . -path './.venv' -prune -o -type f -name '*~' -exec rm {} +
 """}
 docs = {help = "build HTML", cmd = "mccole build --src . --dst docs && touch docs/.nojekyll"}
+examples = {help = "re-run examples in a directory", cmd = """
+sh -c 'cd \"$0\" &&
+for filename in ex_*.py; do python $filename > ${filename%.py}.txt; done'"""}
 fix = {help = "fix code issues", cmd = "ruff check --fix ."}
 format = {help = "format code", cmd = "ruff format ."}
 html = {help = "check HTML", cmd = "mccole check --src . --dst docs"}

@@ -193,7 +193,7 @@ Real implementations use event-driven APIs or threads, but <code>FirstOf</code> 
 <p>The key point is that processing happens asynchronously: the subscriber takes messages from its queues and processes them at its own pace, independently of the publishers and other subscribers.</p>
 <h2>Running a Simulation</h2>
 <p>Let's create a scenario with multiple publishers and subscribers to see the system in action:</p>
-<div data-filter="inc=simulate" data-inc="simulate.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">run_simulation</span><span class="p">():</span>
+<div data-filter="inc=simulate" data-inc="ex_simple.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">run_simulation</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">"""Run a simulation of the message queue system."""</span>
     <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
     <span class="n">broker</span> <span class="o">=</span> <span class="n">MessageBroker</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">buffer_size</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
@@ -219,6 +219,26 @@ Real implementations use event-driven APIs or threads, but <code>FirstOf</code> 
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Inventory received: </span><span class="si">{</span><span class="n">inventory</span><span class="o">.</span><span class="n">messages_received</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Email received: </span><span class="si">{</span><span class="n">email</span><span class="o">.</span><span class="n">messages_received</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Analytics received: </span><span class="si">{</span><span class="n">analytics</span><span class="o">.</span><span class="n">messages_received</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<div data-filter="head=10" data-inc="ex_simple.txt"><div class="codehilite"><pre class=""><span></span><code>[0.0] OrderService publishing: Message 1 from OrderService
+[0.0] UserService publishing: Message 1 from UserService
+[0.0] Inventory received from 'orders': Message 1 from OrderService (latency: 0.0)
+[0.0] Email received from 'orders': Message 1 from OrderService (latency: 0.0)
+[0.0] Analytics received from 'orders': Message 1 from OrderService (latency: 0.0)
+[1.5] UserService publishing: Message 2 from UserService
+[1.5] Analytics received from 'user-activity': Message 2 from UserService (latency: 0.0)
+[2.0] OrderService publishing: Message 2 from OrderService
+[2.0] Inventory received from 'orders': Message 2 from OrderService (latency: 0.0)
+[3.0] UserService publishing: Message 3 from UserService
+</code></pre></div>
+</div>
+<div data-filter="tail=6" data-inc="ex_simple.txt"><div class="codehilite"><pre class=""><span></span><code>=== Statistics ===
+Messages published: 25
+Messages delivered: 47
+Inventory received: 11
+Email received: 7
+Analytics received: 14
 </code></pre></div>
 </div>
 <p>When we run this code, we see messages being published and consumed asynchronously.
@@ -366,7 +386,7 @@ when <code>publish()</code> returns <code>False</code>, it doubles its interval 
 When publishing succeeds, it gradually reduces the interval back to the base rate.
 This creates a negative feedback loop that stabilizes the system under load.</p>
 <p>Let's see backpressure in action:</p>
-<div data-filter="inc=backpressure_simulation" data-inc="simulate_backpressure.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">run_backpressure_simulation</span><span class="p">():</span>
+<div data-filter="inc=backpressure_simulation" data-inc="ex_backpressure.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">run_backpressure_simulation</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">"""Demonstrate backpressure in action."""</span>
     <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
 
@@ -393,6 +413,27 @@ This creates a negative feedback loop that stabilizes the system under load.</p>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Backpressure events: </span><span class="si">{</span><span class="n">fast_publisher</span><span class="o">.</span><span class="n">backpressure_events</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Final interval: </span><span class="si">{</span><span class="n">fast_publisher</span><span class="o">.</span><span class="n">current_interval</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">s"</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Messages received: </span><span class="si">{</span><span class="n">slow_subscriber</span><span class="o">.</span><span class="n">messages_received</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<div data-filter="head=10" data-inc="ex_backpressure.txt"><div class="codehilite"><pre class=""><span></span><code>[0.0] FastPublisher published: Message 1 from FastPublisher (interval: 0.5s)
+[0.0] SlowSubscriber received from 'events': Message 1 from FastPublisher (latency: 0.0)
+[0.5] FastPublisher published: Message 2 from FastPublisher (interval: 0.5s)
+[1.0] FastPublisher published: Message 3 from FastPublisher (interval: 0.5s)
+[1.5] FastPublisher published: Message 4 from FastPublisher (interval: 0.5s)
+[2.0] FastPublisher published: Message 5 from FastPublisher (interval: 0.5s)
+[2.0] SlowSubscriber received from 'events': Message 2 from FastPublisher (latency: 1.5)
+[2.5] FastPublisher published: Message 6 from FastPublisher (interval: 0.5s)
+[3.0] FastPublisher published: Message 7 from FastPublisher (interval: 0.5s)
+[3.5] FastPublisher BACKPRESSURE - slowing to 1.0s interval
+</code></pre></div>
+</div>
+<div data-filter="tail=7" data-inc="ex_backpressure.txt"><div class="codehilite"><pre class=""><span></span><code>=== Backpressure Statistics ===
+Messages published: 29
+Messages delivered: 20
+Messages dropped: 9
+Backpressure events: 9
+Final interval: 1.3s
+Messages received: 16
 </code></pre></div>
 </div>
 <p>When you run this simulation,

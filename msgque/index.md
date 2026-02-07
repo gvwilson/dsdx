@@ -76,7 +76,9 @@ The key point is that processing happens asynchronously: the subscriber takes me
 
 Let's create a scenario with multiple publishers and subscribers to see the system in action:
 
-<div data-inc="simulate.py" data-filter="inc=simulate"></div>
+<div data-inc="ex_simple.py" data-filter="inc=simulate"></div>
+<div data-inc="ex_simple.txt" data-filter="head=10"></div>
+<div data-inc="ex_simple.txt" data-filter="tail=6"></div>
 
 When we run this code, we see messages being published and consumed asynchronously.
 Notice how the fast `Inventory` service keeps up with orders, while the slow `Email` service falls behind.
@@ -135,7 +137,9 @@ This creates a negative feedback loop that stabilizes the system under load.
 
 Let's see backpressure in action:
 
-<div data-inc="simulate_backpressure.py" data-filter="inc=backpressure_simulation"></div>
+<div data-inc="ex_backpressure.py" data-filter="inc=backpressure_simulation"></div>
+<div data-inc="ex_backpressure.txt" data-filter="head=10"></div>
+<div data-inc="ex_backpressure.txt" data-filter="tail=7"></div>
 
 When you run this simulation,
 you'll see the publisher start fast but encounter backpressure as the slow subscriber's queue fills.

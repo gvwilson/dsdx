@@ -1,0 +1,53 @@
+[0.0] FastPublisher published: Message 1 from FastPublisher (interval: 0.5s)
+[0.0] SlowSubscriber received from 'events': Message 1 from FastPublisher (latency: 0.0)
+[0.5] FastPublisher published: Message 2 from FastPublisher (interval: 0.5s)
+[1.0] FastPublisher published: Message 3 from FastPublisher (interval: 0.5s)
+[1.5] FastPublisher published: Message 4 from FastPublisher (interval: 0.5s)
+[2.0] FastPublisher published: Message 5 from FastPublisher (interval: 0.5s)
+[2.0] SlowSubscriber received from 'events': Message 2 from FastPublisher (latency: 1.5)
+[2.5] FastPublisher published: Message 6 from FastPublisher (interval: 0.5s)
+[3.0] FastPublisher published: Message 7 from FastPublisher (interval: 0.5s)
+[3.5] FastPublisher BACKPRESSURE - slowing to 1.0s interval
+[4.0] SlowSubscriber received from 'events': Message 3 from FastPublisher (latency: 3.0)
+[4.5] FastPublisher published: Message 9 from FastPublisher (interval: 1.0s)
+[5.2] FastPublisher BACKPRESSURE - slowing to 1.3s interval
+[6.0] SlowSubscriber received from 'events': Message 4 from FastPublisher (latency: 4.5)
+[6.5] FastPublisher published: Message 11 from FastPublisher (interval: 1.3s)
+[7.4] FastPublisher BACKPRESSURE - slowing to 1.8s interval
+[8.0] SlowSubscriber received from 'events': Message 5 from FastPublisher (latency: 6.0)
+[9.2] FastPublisher published: Message 13 from FastPublisher (interval: 1.8s)
+[10.0] SlowSubscriber received from 'events': Message 6 from FastPublisher (latency: 7.5)
+[10.4] FastPublisher published: Message 14 from FastPublisher (interval: 1.2s)
+[11.1] FastPublisher BACKPRESSURE - slowing to 1.6s interval
+[12.0] SlowSubscriber received from 'events': Message 7 from FastPublisher (latency: 9.0)
+[12.7] FastPublisher published: Message 16 from FastPublisher (interval: 1.6s)
+[13.8] FastPublisher BACKPRESSURE - slowing to 2.1s interval
+[14.0] SlowSubscriber received from 'events': Message 9 from FastPublisher (latency: 9.5)
+[15.9] FastPublisher published: Message 18 from FastPublisher (interval: 2.1s)
+[16.0] SlowSubscriber received from 'events': Message 11 from FastPublisher (latency: 9.5)
+[17.3] FastPublisher published: Message 19 from FastPublisher (interval: 1.4s)
+[18.0] SlowSubscriber received from 'events': Message 13 from FastPublisher (latency: 8.8)
+[18.2] FastPublisher published: Message 20 from FastPublisher (interval: 0.9s)
+[18.8] FastPublisher BACKPRESSURE - slowing to 1.2s interval
+[20.0] SlowSubscriber received from 'events': Message 14 from FastPublisher (latency: 9.6)
+[20.1] FastPublisher published: Message 22 from FastPublisher (interval: 1.2s)
+[20.9] FastPublisher BACKPRESSURE - slowing to 1.7s interval
+[22.0] SlowSubscriber received from 'events': Message 16 from FastPublisher (latency: 9.3)
+[22.6] FastPublisher published: Message 24 from FastPublisher (interval: 1.7s)
+[23.7] FastPublisher BACKPRESSURE - slowing to 2.2s interval
+[24.0] SlowSubscriber received from 'events': Message 18 from FastPublisher (latency: 8.1)
+[25.9] FastPublisher published: Message 26 from FastPublisher (interval: 2.2s)
+[26.0] SlowSubscriber received from 'events': Message 19 from FastPublisher (latency: 8.7)
+[27.4] FastPublisher published: Message 27 from FastPublisher (interval: 1.5s)
+[28.0] SlowSubscriber received from 'events': Message 20 from FastPublisher (latency: 9.8)
+[28.4] FastPublisher published: Message 28 from FastPublisher (interval: 1.0s)
+[29.0] FastPublisher BACKPRESSURE - slowing to 1.3s interval
+[30.0] SlowSubscriber received from 'events': Message 22 from FastPublisher (latency: 9.9)
+
+=== Backpressure Statistics ===
+Messages published: 29
+Messages delivered: 20
+Messages dropped: 9
+Backpressure events: 9
+Final interval: 1.3s
+Messages received: 16
