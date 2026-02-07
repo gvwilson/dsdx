@@ -4,13 +4,16 @@ from message import Message
 from broker import MessageBroker
 
 
+# mccole: ackmessage
 @dataclass
 class AckMessage(Message):
     """Message that requires acknowledgment."""
 
     ack_id: int = 0
+# mccole: /ackmessage
 
 
+# mccole: ackbroker
 class AckBroker(MessageBroker):
     """Broker with acknowledgment support."""
 
@@ -41,7 +44,7 @@ class AckBroker(MessageBroker):
             self.pending_acks[ack_id] = (ack_msg, self.env.now, queue)
             await queue.put(ack_msg)
 
-            # Schedule redelivery if not acked
+            # Schedule re-delivery if not acknowledged.
             self.env.schedule(
                 self.env.now + self.ack_timeout, lambda aid=ack_id: self._check_ack(aid)
             )
@@ -57,3 +60,4 @@ class AckBroker(MessageBroker):
             msg, original_time, queue = self.pending_acks[ack_id]
             print(f"[{self.env.now:.1f}] Redelivering {msg.content} (ack_id {ack_id})")
             await queue.put(msg)
+# mccole: /ackbroker

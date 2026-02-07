@@ -6,6 +6,7 @@ if TYPE_CHECKING:
     from .broker import MessageBroker
 
 
+# mccole: publisher
 class Publisher(Process):
     """Publishes messages to topics."""
 
@@ -19,7 +20,7 @@ class Publisher(Process):
     async def run(self):
         """Generate and publish messages."""
         while True:
-            # Create a message
+            # Create message.
             self.message_counter += 1
             message = Message(
                 topic=self.topic,
@@ -28,9 +29,10 @@ class Publisher(Process):
                 timestamp=self.now,
             )
 
-            # Publish it
+            # Publish message.
             print(f"[{self.now:.1f}] {self.name} publishing: {message.content}")
             await self.broker.publish(message)
 
-            # Wait before next message
+            # Wait.
             await self.timeout(self.interval)
+# mccole: /publisher

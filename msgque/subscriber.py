@@ -5,6 +5,7 @@ if TYPE_CHECKING:
     from .broker import MessageBroker
 
 
+# mccole: subscriber
 class Subscriber(Process):
     """Subscribes to topics and processes messages."""
 
@@ -31,22 +32,20 @@ class Subscriber(Process):
         """Process messages from subscribed topics."""
 
         while True:
-            # Wait for a message from any queue
-            # Build a dict of topic -> get() coroutines
+            # Wait for a message from any queue.
             get_operations = {
                 topic: queue.get() for topic, queue in self.queues.items()
             }
-
-            # Wait for the first one to complete
             topic, message = await FirstOf(self._env, **get_operations)
 
+            # Report.
             self.messages_received += 1
             latency = self.now - message.timestamp
-
             print(
                 f"[{self.now:.1f}] {self.name} received from '{topic}': "
                 f"{message.content} (latency: {latency:.1f})"
             )
 
-            # Simulate processing time
+            # Simulate processing time.
             await self.timeout(self.processing_time)
+# mccole: /subscriber
