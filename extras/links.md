@@ -17,4 +17,5 @@
 [redis]: https://redis.io/
 [redlock]: https://redis.io/docs/latest/develop/clients/patterns/distributed-locks/
 [riak]: https://riak.com/
+[simpy]: https://simpy.readthedocs.io/
 [tokio]: https://tokio.rs/blog/2019-10-scheduler

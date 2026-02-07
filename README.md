@@ -12,6 +12,11 @@ FIXME
 
 1.  [Introduction](@/intro/): what this training does and doesn't cover.
 1.  [A Message Queue](@/msgque/): loosely-coupled communication.
+1.  [Conclusion](@/finale/): looking back and next steps.
+
+</div>
+
+<!--
 1.  [Work-Stealing Scheduler](@/worksteal/): sharing work more efficiently.
 1.  [Distributed Tracing](@/tracing/): keeping track of what's happening.
 1.  [Conflict-Free Replicated Data Types](@/crdt/): scalable data structures.
@@ -24,9 +29,7 @@ FIXME
 1.  [TCP](@/tcp/): reliable communication.
 1.  [DNS](@/dns/): how sites find each other.
 1.  [NTP](@/ntp/): what time is it?
-1.  [Conclusion](@/finale/): looking back and next steps.
-
-</div>
+-->
 
 ## Appendices
 
@@ -37,6 +40,7 @@ FIXME
 1.  [Contributing](@/contributing/)
 1.  [Bibliography](@/bibliography/)
 1.  [Glossary](@/glossary/)
+1.  [Discrete Event Simulation with asimpy](@/asimpy/)
 
 </div>
 

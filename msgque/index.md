@@ -1,5 +1,7 @@
 # A Message Queue with Publish-Subscribe
 
+<p class="subtitle" markdown="1">loosely-coupled communication</p>
+
 Real-world distributed systems need a way for components to communicate without being tightly coupled.
 When a web server processes an order, it might need to notify the inventory system, trigger an email, update analytics, and log the transaction.
 If the web server called each of these services directly, a failure in any one would block the entire operation.

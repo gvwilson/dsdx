@@ -33,7 +33,19 @@ skips = [
     "*~",
     "__pycache__/**",
     "extras/**",
-    "uv.lock"
+    "uv.lock",
+    "worksteal/**",
+    "tracing/**",
+    "crdt/**",
+    "mapreduce/**",
+    "oauth/**",
+    "distlock/**",
+    "torrent/**",
+    "eventual/**",
+    "saga/**",
+    "tcp/**",
+    "dns/**",
+    "ntp/**",
 ]
 
 [tool.taskipy.tasks]
