@@ -84,10 +84,91 @@ The `Analytics` service receives messages from multiple topics,
 demonstrating how subscribers can aggregate different event streams.
 This is common in real systems: a data warehouse might subscribe to dozens of topics to build a complete picture of system activity.
 
+## Backpressure and Flow Control
+
+So far, our broker uses unbounded queues that grow indefinitely.
+This works in simulation but fails in production:
+if publishers produce faster than subscribers consume, queues will eventually exhaust memory and crash the system.
+The solution is *backpressure*—a mechanism where slow consumers signal upstream components to slow down.
+
+Backpressure is fundamental to building robust distributed systems.
+Without it, a single slow consumer can cascade failures throughout the system.
+Consider a real-world scenario: during a traffic spike, your web servers might generate events faster than your analytics database can process them.
+Without backpressure, the message queue fills up, runs out of memory, and crashes—taking down multiple services.
+
+There are several strategies for implementing backpressure:
+
+1.  **Bounded queues with blocking**:
+    Publishers block when queues are full, naturally slowing them down.
+    This provides strong backpressure but can cause publishers to stall.
+
+1.  **Bounded queues with dropping**:
+    When queues are full, new messages are dropped.
+    This keeps the system running but loses data.
+    Often combined with metrics so operators know data is being lost.
+
+1.  **Adaptive rate limiting**:
+    Publishers monitor queue sizes or delivery failures and dynamically adjust their publishing rate.
+    This is more complex but provides smooth behavior under load.
+
+1.  **Priority-based dropping**:
+    When backpressure occurs, drop low-priority messages first, preserving critical data.
+
+Let's implement bounded queues with message dropping and adaptive rate limiting:
+
+<div data-inc="backpressure_broker.py" data-filter="inc=backpressure"></div>
+
+The key change is using `Queue(env, capacity=max_queue_size)` to create bounded queues.
+When a queue is full, we drop the message for that subscriber.
+The broker returns `False` to signal backpressure to the publisher.
+
+Now we need a publisher that responds to backpressure:
+
+<div data-inc="backpressure_publisher.py" data-filter="inc=backpressure_publisher"></div>
+
+This publisher implements exponential backoff:
+when `publish()` returns `False`, it doubles its interval between messages.
+When publishing succeeds, it gradually reduces the interval back to the base rate.
+This creates a negative feedback loop that stabilizes the system under load.
+
+Let's see backpressure in action:
+
+<div data-inc="simulate_backpressure.py" data-filter="inc=backpressure_simulation"></div>
+
+When you run this simulation,
+you'll see the publisher start fast but encounter backpressure as the slow subscriber's queue fills.
+The publisher adapts by slowing down,
+and the system reaches equilibrium where the publishing rate matches the consumption rate.
+
+This is exactly what happens in production systems.
+RabbitMQ supports bounded queues and will reject publishes when queues are full.
+Kafka uses partition limits and producer throttling.
+AWS SQS returns backpressure signals when message rates exceed limits.
+
+## Advanced Backpressure: Priority Queues
+
+In many real systems, not all messages have equal importance.
+During backpressure, you might want to preserve high-priority messages while dropping low-priority ones.
+Here's how to implement priority-based backpressure:
+
+<div data-inc="priority_backpressure.py" data-filter="inc=priority_message"></div>
+
+<div data-inc="priority_backpressure.py" data-filter="inc=priority_broker"></div>
+
+This broker tracks dropped messages by priority level, letting operators see which message types are being lost.
+In a full implementation, you'd maintain a priority queue that allows efficient eviction of low-priority messages.
+The principle remains: when backpressure occurs, preserve what matters most.
+
+Kafka's partition assignment and compaction features provide a form of priority-based retention.
+RabbitMQ supports priority queues natively.
+Custom message brokers in high-frequency trading and real-time analytics
+often implement sophisticated priority schemes.
+
 ## Delivery Guarantees
 
 Our implementation provides unbounded queuing, which means messages are never dropped (assuming infinite memory).
-This is closer to "at-least-once" delivery, though we haven't implemented acknowledgments or redelivery on failure.
+This is closer to "at-least-once" delivery,
+though we haven't implemented acknowledgments or redelivery on failure.
 Let's discuss the spectrum of delivery guarantees:
 
 -   **At-most-once delivery** ensures that messages are delivered zero or one time—never duplicated, but possibly lost.
@@ -129,9 +210,14 @@ Real systems use more sophisticated load balancing—weighted distribution, leas
 
 The publish-subscribe pattern decouples system components, enabling independent scaling and evolution.
 By routing messages through a broker, we gain buffering, fan-out, and fault tolerance.
-The pattern appears throughout modern architectures: microservices use it for inter-service communication, frontend applications use it for real-time updates, and data pipelines use it for stream processing.
+Backpressure ensures the system remains stable under load, preventing cascading failures when consumers can't keep up with producers.
 
-The code we've written captures the essential ideas: topics, subscriptions, asynchronous delivery, and queuing.
-We've seen how asimpy's async/await syntax makes concurrent behavior natural to express, and how `FirstOf` enables waiting on multiple message sources simultaneously.
+The code we've written captures the essential ideas: topics, subscriptions, asynchronous delivery, queuing, and backpressure.
+We've seen how asimpy's async/await syntax makes concurrent behavior natural to express, how bounded queues create backpressure, and how publishers can adapt to flow control signals.
+
 Real systems add persistence (writing messages to disk), replication (for fault tolerance), partitioning (for parallelism), and sophisticated delivery semantics.
-But the core pattern remains the same: publishers and subscribers communicate through topics, with a broker managing the complexity in between.
+But the core pattern remains the same: publishers and subscribers communicate through topics, with a broker managing the complexity in between, and backpressure ensuring the system doesn't overwhelm itself.
+
+[rabbitmq]: https://www.rabbitmq.com/
+[kafka]: https://kafka.apache.org/
+[amazon-sqs]: https://aws.amazon.com/sqs/

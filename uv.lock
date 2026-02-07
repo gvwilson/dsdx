@@ -4,11 +4,11 @@ requires-python = ">=3.13"
 
 [[package]]
 name = "asimpy"
-version = "0.5.1"
+version = "0.6.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/04/1b/446a863a8e073208e608a13bb0aea88c00d888638f0a0d1dd3155d58548e/asimpy-0.5.1.tar.gz", hash = "sha256:a6d75bbfb160786c944050abc5b6e86b200d2e54c07b88a0cf16ce1a655b86ed", size = 713544, upload-time = "2026-02-03T14:12:11.795Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3c/cd/5cd21efb01977ec09b96690e888465735598db022b9492f3abe4f573e6be/asimpy-0.6.1.tar.gz", hash = "sha256:64cda374b93b73396a9c1667192e734c75face3bed8bad7edd9ddb7f4af3af2c", size = 715817, upload-time = "2026-02-07T12:33:20.418Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ec/7d/47c4565dc7d04a997be6447cc4849775e25b43061d0e6e55def2e5e7f1c0/asimpy-0.5.1-py3-none-any.whl", hash = "sha256:c475b601e45f32e98b188e1923089dbdce31f8bcc62aae01f453bdc5dcd3d323", size = 14816, upload-time = "2026-02-03T14:12:10.306Z" },
+    { url = "https://files.pythonhosted.org/packages/f6/90/6dc1f1a0ca44e24af318b4817dd304d9ff08918fdc73434569c16513c900/asimpy-0.6.1-py3-none-any.whl", hash = "sha256:053f228d0fc28f3971e2f6c9d129b07cbba20e7bbb8e7917121c60c194f94bf0", size = 14973, upload-time = "2026-02-07T12:33:18.978Z" },
 ]
 
 [[package]]
@@ -131,8 +131,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "asimpy", specifier = ">=0.5.1" },
-    { name = "mccole", specifier = ">=1.4.3" },
+    { name = "asimpy", specifier = ">=0.6.1" },
+    { name = "mccole", specifier = ">=1.5.1" },
     { name = "ruff", specifier = ">=0.1.0" },
     { name = "taskipy", specifier = ">=1.14.1" },
 ]
@@ -254,7 +254,7 @@ wheels = [
 
 [[package]]
 name = "mccole"
-version = "1.4.3"
+version = "1.5.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "beautifulsoup4" },
@@ -267,9 +267,9 @@ dependencies = [
     { name = "pygments" },
     { name = "tomli" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/36/db/61c327fba80e6a30424be005f96f64e84a42388baea5782135e6225358a0/mccole-1.4.3.tar.gz", hash = "sha256:cfbc383fc4ffaad9b835f945bbc869818e1a13f7f63189122a703e5ce463dd01", size = 754924, upload-time = "2026-01-25T12:41:26.924Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e4/26/4705c87e39d7a38c87249917c45c7c188e74be87d15dbf58de8f0e0109ab/mccole-1.5.1.tar.gz", hash = "sha256:28f33bc0166ae03765ca359cb2f4257d7a746a3fbd250c58d5ed5b438334c061", size = 756131, upload-time = "2026-02-07T01:48:26.21Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/93/5e/a088f5c97e970c729935675fe381b1b71a393515f7ff9ca02e4a037a6b0e/mccole-1.4.3-py3-none-any.whl", hash = "sha256:9e61aa36a3cbc45e118f6f619e74df9fbf2f07933f524311b594eef32b9dedd9", size = 43820, upload-time = "2026-01-25T12:41:25.787Z" },
+    { url = "https://files.pythonhosted.org/packages/89/a4/c8254cf3304dac7bfc57fd6956834c1dbb1c2b3c0784d2e1387840ac0263/mccole-1.5.1-py3-none-any.whl", hash = "sha256:4f0b4990130e5969ac4ab6077212c5341da76cd97e61961ed21247c99972e295", size = 45554, upload-time = "2026-02-07T01:48:24.669Z" },
 ]
 
 [[package]]
