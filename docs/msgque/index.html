@@ -221,7 +221,7 @@ Real implementations use event-driven APIs or threads, but <code>FirstOf</code> 
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Analytics received: </span><span class="si">{</span><span class="n">analytics</span><span class="o">.</span><span class="n">messages_received</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </code></pre></div>
 </div>
-<div data-filter="head=10" data-inc="ex_simple.txt"><div class="codehilite"><pre class=""><span></span><code>[0.0] OrderService publishing: Message 1 from OrderService
+<div data-filter="head=10 + tail=6" data-inc="ex_simple.txt"><div class="codehilite"><pre class=""><span></span><code>[0.0] OrderService publishing: Message 1 from OrderService
 [0.0] UserService publishing: Message 1 from UserService
 [0.0] Inventory received from 'orders': Message 1 from OrderService (latency: 0.0)
 [0.0] Email received from 'orders': Message 1 from OrderService (latency: 0.0)
@@ -231,9 +231,8 @@ Real implementations use event-driven APIs or threads, but <code>FirstOf</code> 
 [2.0] OrderService publishing: Message 2 from OrderService
 [2.0] Inventory received from 'orders': Message 2 from OrderService (latency: 0.0)
 [3.0] UserService publishing: Message 3 from UserService
-</code></pre></div>
-</div>
-<div data-filter="tail=6" data-inc="ex_simple.txt"><div class="codehilite"><pre class=""><span></span><code>=== Statistics ===
+...more...
+=== Statistics ===
 Messages published: 25
 Messages delivered: 47
 Inventory received: 11
@@ -415,7 +414,7 @@ This creates a negative feedback loop that stabilizes the system under load.</p>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Messages received: </span><span class="si">{</span><span class="n">slow_subscriber</span><span class="o">.</span><span class="n">messages_received</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </code></pre></div>
 </div>
-<div data-filter="head=10" data-inc="ex_backpressure.txt"><div class="codehilite"><pre class=""><span></span><code>[0.0] FastPublisher published: Message 1 from FastPublisher (interval: 0.5s)
+<div data-filter="head=10 + tail=7" data-inc="ex_backpressure.txt"><div class="codehilite"><pre class=""><span></span><code>[0.0] FastPublisher published: Message 1 from FastPublisher (interval: 0.5s)
 [0.0] SlowSubscriber received from 'events': Message 1 from FastPublisher (latency: 0.0)
 [0.5] FastPublisher published: Message 2 from FastPublisher (interval: 0.5s)
 [1.0] FastPublisher published: Message 3 from FastPublisher (interval: 0.5s)
@@ -425,9 +424,8 @@ This creates a negative feedback loop that stabilizes the system under load.</p>
 [2.5] FastPublisher published: Message 6 from FastPublisher (interval: 0.5s)
 [3.0] FastPublisher published: Message 7 from FastPublisher (interval: 0.5s)
 [3.5] FastPublisher BACKPRESSURE - slowing to 1.0s interval
-</code></pre></div>
-</div>
-<div data-filter="tail=7" data-inc="ex_backpressure.txt"><div class="codehilite"><pre class=""><span></span><code>=== Backpressure Statistics ===
+...more...
+=== Backpressure Statistics ===
 Messages published: 29
 Messages delivered: 20
 Messages dropped: 9
