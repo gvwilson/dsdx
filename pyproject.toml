@@ -27,14 +27,12 @@ Repository = "https://github.com/gvwilson/dsdx"
 
 [tool.mccole]
 skips = [
-    "*~",
-    "*.egg-info/**",
     "*.py",
     "*.sh",
     "*.txt",
-    "extras/**",
-    "old/**",
+    "*~",
     "__pycache__/**",
+    "extras/**",
     "uv.lock"
 ]
 
