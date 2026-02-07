@@ -28,6 +28,8 @@
 <a href="../eventual/">Eventually Consistent Key-Value Store</a>
 <a href="../saga/">The Saga Pattern</a>
 <a href="../tcp/">TCP</a>
+<a href="../dns/">DNS</a>
+<a href="../ntp/">NTP</a>
 <a href="../finale/">Conclusion</a>
 </span>
 </span>
@@ -287,13 +289,13 @@ Without backpressure, the message queue fills up, runs out of memory, and crashe
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">publish</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="n">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Publish a message, applying backpressure if queues are full.</span>
-<span class="sd">        </span>
+
 <span class="sd">        Returns True if message was delivered to all subscribers,</span>
 <span class="sd">        False if any queue was full and message was dropped.</span>
 <span class="sd">        """</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">messages_published</span> <span class="o">+=</span> <span class="mi">1</span>
         <span class="n">queues</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">topics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">message</span><span class="o">.</span><span class="n">topic</span><span class="p">,</span> <span class="p">[])</span>
-        
+
         <span class="n">all_delivered</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="k">for</span> <span class="n">queue</span> <span class="ow">in</span> <span class="n">queues</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">queue</span><span class="o">.</span><span class="n">is_full</span><span class="p">():</span>
@@ -303,7 +305,7 @@ Without backpressure, the message queue fills up, runs out of memory, and crashe
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">await</span> <span class="n">queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">messages_delivered</span> <span class="o">+=</span> <span class="mi">1</span>
-        
+
         <span class="k">return</span> <span class="n">all_delivered</span>
 </code></pre></div>
 </div>
@@ -377,7 +379,7 @@ This creates a negative feedback loop that stabilizes the system under load.</p>
 <div data-filter="inc=backpressure_simulation" data-inc="simulate_backpressure.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">run_backpressure_simulation</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">"""Demonstrate backpressure in action."""</span>
     <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
-    
+
     <span class="c1"># Small queue size to trigger backpressure quickly.</span>
     <span class="n">broker</span> <span class="o">=</span> <span class="n">BackpressureBroker</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">max_queue_size</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
 
@@ -393,7 +395,7 @@ This creates a negative feedback loop that stabilizes the system under load.</p>
 
     <span class="c1"># Run simulation.</span>
     <span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
-    
+
     <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">=== Backpressure Statistics ==="</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Messages published: </span><span class="si">{</span><span class="n">broker</span><span class="o">.</span><span class="n">messages_published</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Messages delivered: </span><span class="si">{</span><span class="n">broker</span><span class="o">.</span><span class="n">messages_delivered</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
@@ -436,7 +438,7 @@ Here's how to implement priority-based backpressure:</p>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">subscribe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">topic</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Queue</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Create a bounded queue for a subscriber to a topic."""</span>
-        <span class="n">queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span> <span class="n">capacity</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">max_queue_size</span><span class="p">)</span>
+        <span class="n">queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span> <span class="n">max_capacity</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">max_queue_size</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">topics</span><span class="p">[</span><span class="n">topic</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">queue</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">queue</span>
 
@@ -468,7 +470,7 @@ Here's how to implement priority-based backpressure:</p>
         <span class="bp">self</span><span class="p">,</span> <span class="n">queue</span><span class="p">:</span> <span class="n">Queue</span><span class="p">,</span> <span class="n">new_message</span><span class="p">:</span> <span class="n">PriorityMessage</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Try to evict a lower-priority message to make room.</span>
-<span class="sd">        </span>
+
 <span class="sd">        Returns True if eviction succeeded, False otherwise.</span>
 <span class="sd">        """</span>
         <span class="c1"># In a real system, we'd inspect the queue and evict the</span>

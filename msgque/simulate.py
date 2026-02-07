@@ -31,6 +31,8 @@ def run_simulation():
     print(f"Inventory received: {inventory.messages_received}")
     print(f"Email received: {email.messages_received}")
     print(f"Analytics received: {analytics.messages_received}")
+
+
 # mccole: /simulate
 
 

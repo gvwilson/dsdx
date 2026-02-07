@@ -24,13 +24,13 @@ class BackpressureBroker:
 
     async def publish(self, message: Message) -> bool:
         """Publish a message, applying backpressure if queues are full.
-        
+
         Returns True if message was delivered to all subscribers,
         False if any queue was full and message was dropped.
         """
         self.messages_published += 1
         queues = self.topics.get(message.topic, [])
-        
+
         all_delivered = True
         for queue in queues:
             if queue.is_full():
@@ -40,6 +40,8 @@ class BackpressureBroker:
             else:
                 await queue.put(message)
                 self.messages_delivered += 1
-        
+
         return all_delivered
+
+
 # mccole: /backpressure

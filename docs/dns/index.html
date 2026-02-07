@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Domain Name System (DNS)</title>
+<link href="../static/favicon.ico" rel="icon" type="image/x-icon"/>
+<link href="../static/pygments.css" rel="stylesheet" type="text/css"/>
+<link href="../static/page.css" rel="stylesheet" type="text/css"/>
+</head>
+<body>
+<nav>
+<a href="../">Home</a>
+      ·
+      <span class="dropdown">
+<a href="#">Lessons</a>
+<span class="dropdown-content" id="nav-lessons">
+<a href="../intro/">Introduction</a>
+<a href="../msgque/">A Message Queue</a>
+<a href="../worksteal/">Work-Stealing Scheduler</a>
+<a href="../tracing/">Distributed Tracing</a>
+<a href="../crdt/">Conflict-Free Replicated Data Types</a>
+<a href="../mapreduce/">MapReduce</a>
+<a href="../oauth/">OAuth</a>
+<a href="../distlock/">Distributed Locks</a>
+<a href="../torrent/">BitTorrent</a>
+<a href="../eventual/">Eventually Consistent Key-Value Store</a>
+<a href="../saga/">The Saga Pattern</a>
+<a href="../tcp/">TCP</a>
+<a href="../dns/">DNS</a>
+<a href="../ntp/">NTP</a>
+<a href="../finale/">Conclusion</a>
+</span>
+</span>
+      ·
+      <span class="dropdown">
+<a href="#">Appendices</a>
+<span class="dropdown-content" id="nav-appendices">
+<a href="../license/">License</a>
+<a href="../conduct/">Code of Conduct</a>
+<a href="../contributing/">Contributing</a>
+<a href="../bibliography/">Bibliography</a>
+<a href="../glossary/">Glossary</a>
+</span>
+</span>
+</nav>
+<main>
+<h1>Domain Name System (DNS)</h1>
+<p>Every time you visit a website, send an email, or connect to a service, your computer translates human-readable names like "www.example.com" into IP addresses like "192.0.2.1".
+The Domain Name System (DNS) is the distributed database that makes this possible.</p>
+<p>DNS is one of the internet's most critical infrastructure components.
+Without it, you'd need to memorize IP addresses for every website.
+Even more importantly, DNS enables service mobility—a website can change servers (and IP addresses) without users noticing, because the DNS mapping can be updated.</p>
+<p>DNS handles over a trillion queries per day.
+It's used for web browsing, email routing, service discovery, content delivery networks, and even security systems that block malicious domains.
+Understanding DNS helps you debug connectivity issues, optimize performance, and appreciate how distributed systems achieve massive scale.</p>
+<h2>How DNS Works</h2>
+<p>DNS is a hierarchical, distributed database.
+Instead of one central server knowing all domain names (which would be impossible to scale), the work is distributed across millions of servers organized in a tree structure.</p>
+<p>The hierarchy works like this:</p>
+<ol>
+<li><strong>Root servers</strong> (<code>.</code>) - 13 root server systems worldwide (actually many more physical servers using anycast)</li>
+<li><strong>Top-level domain (TLD) servers</strong> (<code>.com</code>, <code>.org</code>, <code>.net</code>, etc.)</li>
+<li><strong>Authoritative name servers</strong> (specific to each domain like <code>example.com</code>)</li>
+<li><strong>Recursive resolvers</strong> (your ISP's DNS server or public DNS like 8.8.8.8)</li>
+</ol>
+<p>When you look up <code>www.example.com</code>, your computer asks a recursive resolver, which may:
+1. Ask a root server "where's <code>.com</code>?"
+2. Ask the <code>.com</code> server "where's <code>example.com</code>?"
+3. Ask the <code>example.com</code> server "what's <code>www.example.com</code>?"
+4. Return the answer to you</p>
+<p>This process is called recursive resolution. The key insight is that no single server needs to know everything—each server knows its piece of the hierarchy and where to find the next level.</p>
+<h2>Caching: The Secret to DNS Performance</h2>
+<p>DNS would be unbearably slow if every lookup required multiple round-trips through the hierarchy.
+The solution is caching: resolvers remember answers for a period (TTL - Time To Live).</p>
+<p>With caching:
+- Popular domains (like google.com) are cached at every level
+- Most queries are answered from cache in milliseconds
+- Only cache misses require full recursive resolution
+- Root servers handle surprisingly few queries despite being at the top of the hierarchy</p>
+<p>Caching is why changing a DNS record doesn't take effect immediately—old values persist in caches until their TTL expires.</p>
+<h2>Record Types</h2>
+<p>DNS stores different types of records:</p>
+<ul>
+<li><strong>A</strong>: Maps domain to IPv4 address</li>
+<li><strong>AAAA</strong>: Maps domain to IPv6 address  </li>
+<li><strong>CNAME</strong>: Alias (canonical name) - points one domain to another</li>
+<li><strong>NS</strong>: Name server - delegates a zone to an authoritative server</li>
+<li><strong>MX</strong>: Mail exchange - specifies mail servers for a domain</li>
+</ul>
+<p>Our implementation will focus on A and CNAME records, which handle most web traffic.</p>
+<h2>Implementation</h2>
+<p>Let's build a DNS system with asimpy. We'll create authoritative servers, recursive resolvers with caching, and clients.</p>
+<p>First, the message structures:</p>
+<div data-filter="inc=recordtype" data-inc="dns_message.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">RecordType</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""DNS record types."""</span>
+
+    <span class="n">A</span> <span class="o">=</span> <span class="s2">"A"</span>  <span class="c1"># IPv4 address</span>
+    <span class="n">AAAA</span> <span class="o">=</span> <span class="s2">"AAAA"</span>  <span class="c1"># IPv6 address</span>
+    <span class="n">CNAME</span> <span class="o">=</span> <span class="s2">"CNAME"</span>  <span class="c1"># Canonical name (alias)</span>
+    <span class="n">NS</span> <span class="o">=</span> <span class="s2">"NS"</span>  <span class="c1"># Name server</span>
+    <span class="n">MX</span> <span class="o">=</span> <span class="s2">"MX"</span>  <span class="c1"># Mail exchange</span>
+</code></pre></div>
+</div>
+<div data-filter="inc=dnsrecord" data-inc="dns_message.py"><div class="codehilite"><pre class=""><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">DNSRecord</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""A DNS resource record."""</span>
+
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># Domain name</span>
+    <span class="n">record_type</span><span class="p">:</span> <span class="n">RecordType</span>
+    <span class="n">value</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># IP address, domain name, etc.</span>
+    <span class="n">ttl</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3600</span>  <span class="c1"># Time to live in seconds</span>
+</code></pre></div>
+</div>
+<div data-filter="inc=dnsquery" data-inc="dns_message.py"><div class="codehilite"><pre class=""><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">DNSQuery</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""A DNS query message."""</span>
+
+    <span class="n">query_id</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">domain</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">record_type</span><span class="p">:</span> <span class="n">RecordType</span>
+</code></pre></div>
+</div>
+<div data-filter="inc=dnsresponse" data-inc="dns_message.py"><div class="codehilite"><pre class=""><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">DNSResponse</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""A DNS response message."""</span>
+
+    <span class="n">query_id</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">domain</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">record_type</span><span class="p">:</span> <span class="n">RecordType</span>
+    <span class="n">records</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">DNSRecord</span><span class="p">]</span>
+    <span class="n">authoritative</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">from_cache</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+</code></pre></div>
+</div>
+<p>These classes represent DNS queries and responses. The <code>DNSRecord</code> includes a TTL (time to live) for caching.</p>
+<p>Now the authoritative DNS server:</p>
+<div data-filter="inc=authserver" data-inc="authoritative_server.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">AuthoritativeDNSServer</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""An authoritative DNS server for a specific zone."""</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">zone</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">request_queue</span><span class="p">:</span> <span class="n">Queue</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">zone</span> <span class="o">=</span> <span class="n">zone</span>  <span class="c1"># e.g., "example.com"</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">request_queue</span> <span class="o">=</span> <span class="n">request_queue</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">records</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">RecordType</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="n">DNSRecord</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">queries_served</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_record</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">record</span><span class="p">:</span> <span class="n">DNSRecord</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Add a DNS record to this server's zone."""</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">record</span><span class="o">.</span><span class="n">record_type</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">records</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">records</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">records</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">record</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Process DNS queries."""</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="c1"># Wait for a query</span>
+            <span class="n">client_queue</span><span class="p">,</span> <span class="n">query</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">request_queue</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+
+            <span class="c1"># Check if this query is for our zone</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">query</span><span class="o">.</span><span class="n">domain</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">zone</span><span class="p">):</span>
+                <span class="c1"># Not authoritative for this domain</span>
+                <span class="n">response</span> <span class="o">=</span> <span class="n">DNSResponse</span><span class="p">(</span>
+                    <span class="n">query_id</span><span class="o">=</span><span class="n">query</span><span class="o">.</span><span class="n">query_id</span><span class="p">,</span>
+                    <span class="n">domain</span><span class="o">=</span><span class="n">query</span><span class="o">.</span><span class="n">domain</span><span class="p">,</span>
+                    <span class="n">record_type</span><span class="o">=</span><span class="n">query</span><span class="o">.</span><span class="n">record_type</span><span class="p">,</span>
+                    <span class="n">records</span><span class="o">=</span><span class="p">[],</span>
+                    <span class="n">authoritative</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Look up the record</span>
+                <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="n">query</span><span class="o">.</span><span class="n">domain</span><span class="p">,</span> <span class="n">query</span><span class="o">.</span><span class="n">record_type</span><span class="p">)</span>
+                <span class="n">records</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">records</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="p">[])</span>
+
+                <span class="c1"># Handle CNAME (alias) records</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">records</span> <span class="ow">and</span> <span class="n">query</span><span class="o">.</span><span class="n">record_type</span> <span class="o">==</span> <span class="n">RecordType</span><span class="o">.</span><span class="n">A</span><span class="p">:</span>
+                    <span class="n">cname_key</span> <span class="o">=</span> <span class="p">(</span><span class="n">query</span><span class="o">.</span><span class="n">domain</span><span class="p">,</span> <span class="n">RecordType</span><span class="o">.</span><span class="n">CNAME</span><span class="p">)</span>
+                    <span class="n">cname_records</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">records</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">cname_key</span><span class="p">,</span> <span class="p">[])</span>
+                    <span class="k">if</span> <span class="n">cname_records</span><span class="p">:</span>
+                        <span class="c1"># Follow the CNAME</span>
+                        <span class="n">canonical_name</span> <span class="o">=</span> <span class="n">cname_records</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+                        <span class="n">a_key</span> <span class="o">=</span> <span class="p">(</span><span class="n">canonical_name</span><span class="p">,</span> <span class="n">RecordType</span><span class="o">.</span><span class="n">A</span><span class="p">)</span>
+                        <span class="n">records</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">records</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">a_key</span><span class="p">,</span> <span class="p">[])</span>
+                        <span class="n">records</span> <span class="o">=</span> <span class="n">cname_records</span> <span class="o">+</span> <span class="n">records</span>
+
+                <span class="n">response</span> <span class="o">=</span> <span class="n">DNSResponse</span><span class="p">(</span>
+                    <span class="n">query_id</span><span class="o">=</span><span class="n">query</span><span class="o">.</span><span class="n">query_id</span><span class="p">,</span>
+                    <span class="n">domain</span><span class="o">=</span><span class="n">query</span><span class="o">.</span><span class="n">domain</span><span class="p">,</span>
+                    <span class="n">record_type</span><span class="o">=</span><span class="n">query</span><span class="o">.</span><span class="n">record_type</span><span class="p">,</span>
+                    <span class="n">records</span><span class="o">=</span><span class="n">records</span><span class="p">,</span>
+                    <span class="n">authoritative</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="p">)</span>
+
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: Query for </span><span class="si">{</span><span class="n">query</span><span class="o">.</span><span class="n">domain</span><span class="si">}</span><span class="s2"> "</span>
+                <span class="sa">f</span><span class="s2">"(</span><span class="si">{</span><span class="n">query</span><span class="o">.</span><span class="n">record_type</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2">) -&gt; </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">records</span><span class="p">)</span><span class="si">}</span><span class="s2"> record(s)"</span>
+            <span class="p">)</span>
+
+            <span class="c1"># Simulate processing delay</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="mf">0.01</span><span class="p">)</span>
+
+            <span class="c1"># Send response</span>
+            <span class="k">await</span> <span class="n">client_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">queries_served</span> <span class="o">+=</span> <span class="mi">1</span>
+</code></pre></div>
+</div>
+<p>An authoritative server is responsible for a specific zone (like <code>example.com</code>).
+It stores the actual DNS records and answers queries authoritatively.
+Notice how it handles CNAME records by following the alias to find the final A record.</p>
+<p>The recursive resolver is more complex because it must cache and coordinate with authoritative servers:</p>
+<div data-filter="inc=cacheentry" data-inc="recursive_resolver.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">CacheEntry</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""A cached DNS record with expiration time."""</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">record</span><span class="p">:</span> <span class="n">DNSRecord</span><span class="p">,</span> <span class="n">expire_time</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">record</span> <span class="o">=</span> <span class="n">record</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">expire_time</span> <span class="o">=</span> <span class="n">expire_time</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">is_expired</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">current_time</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Check if this cache entry has expired."""</span>
+        <span class="k">return</span> <span class="n">current_time</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expire_time</span>
+</code></pre></div>
+</div>
+<div data-filter="inc=recursive" data-inc="recursive_resolver.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">RecursiveDNSResolver</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""A recursive DNS resolver with caching."""</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">init</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">request_queue</span><span class="p">:</span> <span class="n">Queue</span><span class="p">,</span>
+        <span class="n">root_servers</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Queue</span><span class="p">],</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">request_queue</span> <span class="o">=</span> <span class="n">request_queue</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">root_servers</span> <span class="o">=</span> <span class="n">root_servers</span>  <span class="c1"># zone -&gt; server queue</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">RecordType</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="n">CacheEntry</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">response_queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_env</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">queries_received</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache_hits</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache_misses</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Process client DNS queries."""</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="c1"># Wait for a query from a client</span>
+            <span class="n">client_queue</span><span class="p">,</span> <span class="n">query</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">request_queue</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">queries_received</span> <span class="o">+=</span> <span class="mi">1</span>
+
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: Received query for "</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">query</span><span class="o">.</span><span class="n">domain</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">query</span><span class="o">.</span><span class="n">record_type</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2">)"</span>
+            <span class="p">)</span>
+
+            <span class="c1"># Check cache first</span>
+            <span class="n">cached_records</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_cache</span><span class="p">(</span><span class="n">query</span><span class="o">.</span><span class="n">domain</span><span class="p">,</span> <span class="n">query</span><span class="o">.</span><span class="n">record_type</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">cached_records</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cache_hits</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">response</span> <span class="o">=</span> <span class="n">DNSResponse</span><span class="p">(</span>
+                    <span class="n">query_id</span><span class="o">=</span><span class="n">query</span><span class="o">.</span><span class="n">query_id</span><span class="p">,</span>
+                    <span class="n">domain</span><span class="o">=</span><span class="n">query</span><span class="o">.</span><span class="n">domain</span><span class="p">,</span>
+                    <span class="n">record_type</span><span class="o">=</span><span class="n">query</span><span class="o">.</span><span class="n">record_type</span><span class="p">,</span>
+                    <span class="n">records</span><span class="o">=</span><span class="n">cached_records</span><span class="p">,</span>
+                    <span class="n">authoritative</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                    <span class="n">from_cache</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: Cache HIT for </span><span class="si">{</span><span class="n">query</span><span class="o">.</span><span class="n">domain</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cache_misses</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: Cache MISS for </span><span class="si">{</span><span class="n">query</span><span class="o">.</span><span class="n">domain</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+                <span class="c1"># Recursively resolve</span>
+                <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resolve_recursive</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+
+                <span class="c1"># Cache the results</span>
+                <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">records</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_cache_records</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">records</span><span class="p">)</span>
+
+            <span class="c1"># Send response to client</span>
+            <span class="k">await</span> <span class="n">client_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_cache</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">record_type</span><span class="p">:</span> <span class="n">RecordType</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="n">DNSRecord</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">"""Check if we have a cached record."""</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">record_type</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="c1"># Filter out expired entries</span>
+        <span class="n">valid_entries</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">entry</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">entry</span><span class="o">.</span><span class="n">is_expired</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="p">)</span>
+        <span class="p">]</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">valid_entries</span><span class="p">:</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">valid_entries</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">entry</span><span class="o">.</span><span class="n">record</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">valid_entries</span><span class="p">]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_cache_records</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">records</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">DNSRecord</span><span class="p">]):</span>
+<span class="w">        </span><span class="sd">"""Add records to the cache."""</span>
+        <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">records</span><span class="p">:</span>
+            <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">record</span><span class="o">.</span><span class="n">record_type</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+            <span class="n">expire_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">now</span> <span class="o">+</span> <span class="n">record</span><span class="o">.</span><span class="n">ttl</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">CacheEntry</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="n">expire_time</span><span class="p">))</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_resolve_recursive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">:</span> <span class="n">DNSQuery</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DNSResponse</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Recursively resolve a query by querying authoritative servers."""</span>
+        <span class="c1"># Find the appropriate authoritative server</span>
+        <span class="c1"># In real DNS, this involves walking the DNS hierarchy</span>
+        <span class="c1"># For simplicity, we'll match the longest zone suffix</span>
+
+        <span class="n">matching_zone</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">for</span> <span class="n">zone</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">root_servers</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">query</span><span class="o">.</span><span class="n">domain</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="n">zone</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">matching_zone</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">matching_zone</span><span class="p">):</span>
+                    <span class="n">matching_zone</span> <span class="o">=</span> <span class="n">zone</span>
+
+        <span class="k">if</span> <span class="n">matching_zone</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># No authoritative server found</span>
+            <span class="k">return</span> <span class="n">DNSResponse</span><span class="p">(</span>
+                <span class="n">query_id</span><span class="o">=</span><span class="n">query</span><span class="o">.</span><span class="n">query_id</span><span class="p">,</span>
+                <span class="n">domain</span><span class="o">=</span><span class="n">query</span><span class="o">.</span><span class="n">domain</span><span class="p">,</span>
+                <span class="n">record_type</span><span class="o">=</span><span class="n">query</span><span class="o">.</span><span class="n">record_type</span><span class="p">,</span>
+                <span class="n">records</span><span class="o">=</span><span class="p">[],</span>
+                <span class="n">authoritative</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Query the authoritative server</span>
+        <span class="n">server_queue</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">root_servers</span><span class="p">[</span><span class="n">matching_zone</span><span class="p">]</span>
+        <span class="k">await</span> <span class="n">server_queue</span><span class="o">.</span><span class="n">put</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">response_queue</span><span class="p">,</span> <span class="n">query</span><span class="p">))</span>
+
+        <span class="c1"># Wait for response</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">response_queue</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">response</span>
+</code></pre></div>
+</div>
+<p>The resolver checks its cache first (saving network round-trips), and only queries authoritative servers on cache misses.
+Each cached entry has an expiration time based on the record's TTL.</p>
+<p>Our simplified resolver directly contacts authoritative servers. Real DNS resolvers walk the hierarchy starting from root servers, but the principle is the same: cache aggressively, query only when necessary.</p>
+<p>Finally, the DNS client:</p>
+<div data-filter="inc=dnsclient" data-inc="dns_client.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DNSClient</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""A DNS client that performs lookups."""</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">resolver_queue</span><span class="p">:</span> <span class="n">Queue</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">resolver_queue</span> <span class="o">=</span> <span class="n">resolver_queue</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">response_queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_env</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">query_counter</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">queries_sent</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">lookup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">record_type</span><span class="p">:</span> <span class="n">RecordType</span> <span class="o">=</span> <span class="n">RecordType</span><span class="o">.</span><span class="n">A</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Perform a DNS lookup."""</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">query_counter</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">query</span> <span class="o">=</span> <span class="n">DNSQuery</span><span class="p">(</span>
+            <span class="n">query_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">query_counter</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="n">domain</span><span class="p">,</span> <span class="n">record_type</span><span class="o">=</span><span class="n">record_type</span>
+        <span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: Looking up </span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">record_type</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2">)"</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Send query to resolver</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">resolver_queue</span><span class="o">.</span><span class="n">put</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">response_queue</span><span class="p">,</span> <span class="n">query</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">queries_sent</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1"># Wait for response</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">response_queue</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+
+        <span class="c1"># Print results</span>
+        <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">records</span><span class="p">:</span>
+            <span class="n">cache_status</span> <span class="o">=</span> <span class="s2">" (cached)"</span> <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">from_cache</span> <span class="k">else</span> <span class="s2">""</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: Resolved </span><span class="si">{</span><span class="n">domain</span><span class="si">}{</span><span class="n">cache_status</span><span class="si">}</span><span class="s2">:"</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">records</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  </span><span class="si">{</span><span class="n">record</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">record</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2"> (TTL: </span><span class="si">{</span><span class="n">record</span><span class="o">.</span><span class="n">ttl</span><span class="si">}</span><span class="s2">s)"</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: No records found for </span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">response</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Override in subclass to perform lookups."""</span>
+        <span class="k">pass</span>
+</code></pre></div>
+</div>
+<p>Clients send queries to recursive resolvers and wait for responses. In real systems, clients also cache locally and can query multiple resolvers for redundancy.</p>
+<h2>Running a Simulation</h2>
+<p>Let's see DNS resolution in action:</p>
+<div data-filter="inc=testclient" data-inc="simulate.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">TestClient</span><span class="p">(</span><span class="n">DNSClient</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Test client that performs a series of lookups."""</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Perform test lookups."""</span>
+        <span class="c1"># Lookup example.com</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">lookup</span><span class="p">(</span><span class="s2">"www.example.com"</span><span class="p">)</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span>
+
+        <span class="c1"># Lookup again - should be cached</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">lookup</span><span class="p">(</span><span class="s2">"www.example.com"</span><span class="p">)</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span>
+
+        <span class="c1"># Lookup different domain</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">lookup</span><span class="p">(</span><span class="s2">"mail.example.com"</span><span class="p">)</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span>
+
+        <span class="c1"># Lookup from different zone</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">lookup</span><span class="p">(</span><span class="s2">"www.another.org"</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<div data-filter="inc=simulate" data-inc="simulate.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">run_dns_simulation</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">"""Simulate DNS resolution with caching."""</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
+
+    <span class="c1"># Create authoritative servers for different zones</span>
+    <span class="n">example_queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
+    <span class="n">example_server</span> <span class="o">=</span> <span class="n">AuthoritativeDNSServer</span><span class="p">(</span>
+        <span class="n">env</span><span class="p">,</span> <span class="s2">"ns1.example.com"</span><span class="p">,</span> <span class="s2">"example.com"</span><span class="p">,</span> <span class="n">example_queue</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Add records to example.com zone</span>
+    <span class="n">example_server</span><span class="o">.</span><span class="n">add_record</span><span class="p">(</span>
+        <span class="n">DNSRecord</span><span class="p">(</span><span class="s2">"www.example.com"</span><span class="p">,</span> <span class="n">RecordType</span><span class="o">.</span><span class="n">A</span><span class="p">,</span> <span class="s2">"192.0.2.1"</span><span class="p">,</span> <span class="n">ttl</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">example_server</span><span class="o">.</span><span class="n">add_record</span><span class="p">(</span>
+        <span class="n">DNSRecord</span><span class="p">(</span><span class="s2">"mail.example.com"</span><span class="p">,</span> <span class="n">RecordType</span><span class="o">.</span><span class="n">A</span><span class="p">,</span> <span class="s2">"192.0.2.2"</span><span class="p">,</span> <span class="n">ttl</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">example_server</span><span class="o">.</span><span class="n">add_record</span><span class="p">(</span>
+        <span class="n">DNSRecord</span><span class="p">(</span><span class="s2">"ftp.example.com"</span><span class="p">,</span> <span class="n">RecordType</span><span class="o">.</span><span class="n">CNAME</span><span class="p">,</span> <span class="s2">"www.example.com"</span><span class="p">,</span> <span class="n">ttl</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Create authoritative server for another.org</span>
+    <span class="n">another_queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
+    <span class="n">another_server</span> <span class="o">=</span> <span class="n">AuthoritativeDNSServer</span><span class="p">(</span>
+        <span class="n">env</span><span class="p">,</span> <span class="s2">"ns1.another.org"</span><span class="p">,</span> <span class="s2">"another.org"</span><span class="p">,</span> <span class="n">another_queue</span>
+    <span class="p">)</span>
+    <span class="n">another_server</span><span class="o">.</span><span class="n">add_record</span><span class="p">(</span>
+        <span class="n">DNSRecord</span><span class="p">(</span><span class="s2">"www.another.org"</span><span class="p">,</span> <span class="n">RecordType</span><span class="o">.</span><span class="n">A</span><span class="p">,</span> <span class="s2">"198.51.100.1"</span><span class="p">,</span> <span class="n">ttl</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Create recursive resolver</span>
+    <span class="n">resolver_queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
+    <span class="n">resolver</span> <span class="o">=</span> <span class="n">RecursiveDNSResolver</span><span class="p">(</span>
+        <span class="n">env</span><span class="p">,</span>
+        <span class="s2">"resolver.isp.net"</span><span class="p">,</span>
+        <span class="n">resolver_queue</span><span class="p">,</span>
+        <span class="n">root_servers</span><span class="o">=</span><span class="p">{</span><span class="s2">"example.com"</span><span class="p">:</span> <span class="n">example_queue</span><span class="p">,</span> <span class="s2">"another.org"</span><span class="p">:</span> <span class="n">another_queue</span><span class="p">},</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Create test clients</span>
+    <span class="n">TestClient</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s2">"client1.local"</span><span class="p">,</span> <span class="n">resolver_queue</span><span class="p">)</span>
+
+    <span class="c1"># Run simulation</span>
+    <span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+
+    <span class="c1"># Print statistics</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">=== DNS Resolution Statistics ==="</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Example.com server: </span><span class="si">{</span><span class="n">example_server</span><span class="o">.</span><span class="n">queries_served</span><span class="si">}</span><span class="s2"> queries"</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Another.org server: </span><span class="si">{</span><span class="n">another_server</span><span class="o">.</span><span class="n">queries_served</span><span class="si">}</span><span class="s2"> queries"</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Resolver:"</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Total queries: </span><span class="si">{</span><span class="n">resolver</span><span class="o">.</span><span class="n">queries_received</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Cache hits: </span><span class="si">{</span><span class="n">resolver</span><span class="o">.</span><span class="n">cache_hits</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Cache misses: </span><span class="si">{</span><span class="n">resolver</span><span class="o">.</span><span class="n">cache_misses</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">resolver</span><span class="o">.</span><span class="n">queries_received</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">hit_rate</span> <span class="o">=</span> <span class="p">(</span><span class="n">resolver</span><span class="o">.</span><span class="n">cache_hits</span> <span class="o">/</span> <span class="n">resolver</span><span class="o">.</span><span class="n">queries_received</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Cache hit rate: </span><span class="si">{</span><span class="n">hit_rate</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%"</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<p>When you run this simulation, you'll see:
+1. First lookup of <code>www.example.com</code> is a cache miss - queries authoritative server
+2. Second lookup is a cache hit - answered immediately from cache
+3. Different domains are cache misses until they're cached
+4. The cache hit rate improves as the simulation runs</p>
+<p>This demonstrates why DNS caching is so powerful: the first user to look up a domain pays the full resolution cost, but subsequent users (or repeated lookups) get instant responses.</p>
+<h2>DNS Hierarchy and Load Distribution</h2>
+<p>Let's simulate a more realistic DNS hierarchy with multiple clients and resolvers:</p>
+<div data-filter="inc=loadclient" data-inc="dns_hierarchy.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">LoadTestClient</span><span class="p">(</span><span class="n">DNSClient</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Client that generates load to demonstrate caching benefits."""</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">resolver_queue</span><span class="p">:</span> <span class="n">Queue</span><span class="p">,</span> <span class="n">domains</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">resolver_queue</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">domains</span> <span class="o">=</span> <span class="p">[]</span> <span class="k">if</span> <span class="n">domains</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">domains</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Repeatedly lookup domains."""</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
+            <span class="c1"># Lookup each domain</span>
+            <span class="k">for</span> <span class="n">domain</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">domains</span><span class="p">:</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">lookup</span><span class="p">(</span><span class="n">domain</span><span class="p">)</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+
+            <span class="c1"># Wait before next round</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="mf">2.0</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<div data-filter="inc=hierarchy" data-inc="dns_hierarchy.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">run_dns_hierarchy</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">"""Demonstrate DNS hierarchy and caching benefits."""</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
+
+    <span class="c1"># Create root DNS server</span>
+    <span class="n">root_queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
+    <span class="n">root_server</span> <span class="o">=</span> <span class="n">AuthoritativeDNSServer</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s2">"root.dns"</span><span class="p">,</span> <span class="s2">"."</span><span class="p">,</span> <span class="n">root_queue</span><span class="p">)</span>
+
+    <span class="c1"># Add NS records pointing to TLD servers</span>
+    <span class="n">root_server</span><span class="o">.</span><span class="n">add_record</span><span class="p">(</span><span class="n">DNSRecord</span><span class="p">(</span><span class="s2">"com"</span><span class="p">,</span> <span class="n">RecordType</span><span class="o">.</span><span class="n">NS</span><span class="p">,</span> <span class="s2">"tld.com.dns"</span><span class="p">,</span> <span class="n">ttl</span><span class="o">=</span><span class="mi">86400</span><span class="p">))</span>
+    <span class="n">root_server</span><span class="o">.</span><span class="n">add_record</span><span class="p">(</span><span class="n">DNSRecord</span><span class="p">(</span><span class="s2">"org"</span><span class="p">,</span> <span class="n">RecordType</span><span class="o">.</span><span class="n">NS</span><span class="p">,</span> <span class="s2">"tld.org.dns"</span><span class="p">,</span> <span class="n">ttl</span><span class="o">=</span><span class="mi">86400</span><span class="p">))</span>
+
+    <span class="c1"># Create TLD server for .com</span>
+    <span class="n">com_queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
+    <span class="n">com_server</span> <span class="o">=</span> <span class="n">AuthoritativeDNSServer</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s2">"tld.com.dns"</span><span class="p">,</span> <span class="s2">"com"</span><span class="p">,</span> <span class="n">com_queue</span><span class="p">)</span>
+    <span class="n">com_server</span><span class="o">.</span><span class="n">add_record</span><span class="p">(</span>
+        <span class="n">DNSRecord</span><span class="p">(</span><span class="s2">"example.com"</span><span class="p">,</span> <span class="n">RecordType</span><span class="o">.</span><span class="n">NS</span><span class="p">,</span> <span class="s2">"ns1.example.com"</span><span class="p">,</span> <span class="n">ttl</span><span class="o">=</span><span class="mi">86400</span><span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Create authoritative server for example.com</span>
+    <span class="n">example_queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
+    <span class="n">example_server</span> <span class="o">=</span> <span class="n">AuthoritativeDNSServer</span><span class="p">(</span>
+        <span class="n">env</span><span class="p">,</span> <span class="s2">"ns1.example.com"</span><span class="p">,</span> <span class="s2">"example.com"</span><span class="p">,</span> <span class="n">example_queue</span>
+    <span class="p">)</span>
+    <span class="n">example_server</span><span class="o">.</span><span class="n">add_record</span><span class="p">(</span>
+        <span class="n">DNSRecord</span><span class="p">(</span><span class="s2">"www.example.com"</span><span class="p">,</span> <span class="n">RecordType</span><span class="o">.</span><span class="n">A</span><span class="p">,</span> <span class="s2">"192.0.2.1"</span><span class="p">,</span> <span class="n">ttl</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">example_server</span><span class="o">.</span><span class="n">add_record</span><span class="p">(</span>
+        <span class="n">DNSRecord</span><span class="p">(</span><span class="s2">"api.example.com"</span><span class="p">,</span> <span class="n">RecordType</span><span class="o">.</span><span class="n">A</span><span class="p">,</span> <span class="s2">"192.0.2.10"</span><span class="p">,</span> <span class="n">ttl</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">example_server</span><span class="o">.</span><span class="n">add_record</span><span class="p">(</span>
+        <span class="n">DNSRecord</span><span class="p">(</span><span class="s2">"cdn.example.com"</span><span class="p">,</span> <span class="n">RecordType</span><span class="o">.</span><span class="n">A</span><span class="p">,</span> <span class="s2">"192.0.2.20"</span><span class="p">,</span> <span class="n">ttl</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Create TLD server for .org</span>
+    <span class="n">org_queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
+    <span class="n">org_server</span> <span class="o">=</span> <span class="n">AuthoritativeDNSServer</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s2">"tld.org.dns"</span><span class="p">,</span> <span class="s2">"org"</span><span class="p">,</span> <span class="n">org_queue</span><span class="p">)</span>
+    <span class="n">org_server</span><span class="o">.</span><span class="n">add_record</span><span class="p">(</span>
+        <span class="n">DNSRecord</span><span class="p">(</span><span class="s2">"another.org"</span><span class="p">,</span> <span class="n">RecordType</span><span class="o">.</span><span class="n">NS</span><span class="p">,</span> <span class="s2">"ns1.another.org"</span><span class="p">,</span> <span class="n">ttl</span><span class="o">=</span><span class="mi">86400</span><span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Create authoritative server for another.org</span>
+    <span class="n">another_queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
+    <span class="n">another_server</span> <span class="o">=</span> <span class="n">AuthoritativeDNSServer</span><span class="p">(</span>
+        <span class="n">env</span><span class="p">,</span> <span class="s2">"ns1.another.org"</span><span class="p">,</span> <span class="s2">"another.org"</span><span class="p">,</span> <span class="n">another_queue</span>
+    <span class="p">)</span>
+    <span class="n">another_server</span><span class="o">.</span><span class="n">add_record</span><span class="p">(</span>
+        <span class="n">DNSRecord</span><span class="p">(</span><span class="s2">"www.another.org"</span><span class="p">,</span> <span class="n">RecordType</span><span class="o">.</span><span class="n">A</span><span class="p">,</span> <span class="s2">"198.51.100.1"</span><span class="p">,</span> <span class="n">ttl</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Create multiple recursive resolvers (like ISP DNS servers)</span>
+    <span class="n">resolver1_queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
+    <span class="n">resolver1</span> <span class="o">=</span> <span class="n">RecursiveDNSResolver</span><span class="p">(</span>
+        <span class="n">env</span><span class="p">,</span>
+        <span class="s2">"resolver1.isp.net"</span><span class="p">,</span>
+        <span class="n">resolver1_queue</span><span class="p">,</span>
+        <span class="n">root_servers</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">"example.com"</span><span class="p">:</span> <span class="n">example_queue</span><span class="p">,</span>
+            <span class="s2">"another.org"</span><span class="p">:</span> <span class="n">another_queue</span><span class="p">,</span>
+        <span class="p">},</span>
+    <span class="p">)</span>
+
+    <span class="n">resolver2_queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
+    <span class="n">resolver2</span> <span class="o">=</span> <span class="n">RecursiveDNSResolver</span><span class="p">(</span>
+        <span class="n">env</span><span class="p">,</span>
+        <span class="s2">"resolver2.isp.net"</span><span class="p">,</span>
+        <span class="n">resolver2_queue</span><span class="p">,</span>
+        <span class="n">root_servers</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">"example.com"</span><span class="p">:</span> <span class="n">example_queue</span><span class="p">,</span>
+            <span class="s2">"another.org"</span><span class="p">:</span> <span class="n">another_queue</span><span class="p">,</span>
+        <span class="p">},</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Create clients using different resolvers</span>
+    <span class="n">LoadTestClient</span><span class="p">(</span>
+        <span class="n">env</span><span class="p">,</span>
+        <span class="s2">"client1"</span><span class="p">,</span>
+        <span class="n">resolver1_queue</span><span class="p">,</span>
+        <span class="n">domains</span><span class="o">=</span><span class="p">[</span><span class="s2">"www.example.com"</span><span class="p">,</span> <span class="s2">"api.example.com"</span><span class="p">],</span>
+    <span class="p">)</span>
+
+    <span class="n">LoadTestClient</span><span class="p">(</span>
+        <span class="n">env</span><span class="p">,</span>
+        <span class="s2">"client2"</span><span class="p">,</span>
+        <span class="n">resolver1_queue</span><span class="p">,</span>
+        <span class="n">domains</span><span class="o">=</span><span class="p">[</span><span class="s2">"www.example.com"</span><span class="p">,</span> <span class="s2">"cdn.example.com"</span><span class="p">],</span>
+    <span class="p">)</span>
+
+    <span class="n">LoadTestClient</span><span class="p">(</span>
+        <span class="n">env</span><span class="p">,</span> <span class="s2">"client3"</span><span class="p">,</span> <span class="n">resolver2_queue</span><span class="p">,</span> <span class="n">domains</span><span class="o">=</span><span class="p">[</span><span class="s2">"www.another.org"</span><span class="p">]</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Run simulation</span>
+    <span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+
+    <span class="c1"># Print statistics</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">=== DNS Hierarchy Statistics ==="</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Authoritative Servers:"</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  example.com: </span><span class="si">{</span><span class="n">example_server</span><span class="o">.</span><span class="n">queries_served</span><span class="si">}</span><span class="s2"> queries"</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  another.org: </span><span class="si">{</span><span class="n">another_server</span><span class="o">.</span><span class="n">queries_served</span><span class="si">}</span><span class="s2"> queries"</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Resolver 1:"</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Total queries: </span><span class="si">{</span><span class="n">resolver1</span><span class="o">.</span><span class="n">queries_received</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Cache hits: </span><span class="si">{</span><span class="n">resolver1</span><span class="o">.</span><span class="n">cache_hits</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Cache misses: </span><span class="si">{</span><span class="n">resolver1</span><span class="o">.</span><span class="n">cache_misses</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">resolver1</span><span class="o">.</span><span class="n">queries_received</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"  Cache hit rate: </span><span class="si">{</span><span class="p">(</span><span class="n">resolver1</span><span class="o">.</span><span class="n">cache_hits</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">resolver1</span><span class="o">.</span><span class="n">queries_received</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">100</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%"</span>
+        <span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Resolver 2:"</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Total queries: </span><span class="si">{</span><span class="n">resolver2</span><span class="o">.</span><span class="n">queries_received</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Cache hits: </span><span class="si">{</span><span class="n">resolver2</span><span class="o">.</span><span class="n">cache_hits</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Cache misses: </span><span class="si">{</span><span class="n">resolver2</span><span class="o">.</span><span class="n">cache_misses</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">resolver2</span><span class="o">.</span><span class="n">queries_received</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"  Cache hit rate: </span><span class="si">{</span><span class="p">(</span><span class="n">resolver2</span><span class="o">.</span><span class="n">cache_hits</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">resolver2</span><span class="o">.</span><span class="n">queries_received</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">100</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%"</span>
+        <span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Total authoritative queries: </span><span class="si">{</span><span class="n">example_server</span><span class="o">.</span><span class="n">queries_served</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">another_server</span><span class="o">.</span><span class="n">queries_served</span><span class="si">}</span><span class="s2">"</span>
+    <span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">"Total client queries: </span><span class="si">{</span><span class="n">resolver1</span><span class="o">.</span><span class="n">queries_received</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">resolver2</span><span class="o">.</span><span class="n">queries_received</span><span class="si">}</span><span class="s2">"</span>
+    <span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">"Query reduction from caching: </span><span class="si">{</span><span class="p">(</span><span class="mi">1</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="p">(</span><span class="n">example_server</span><span class="o">.</span><span class="n">queries_served</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">another_server</span><span class="o">.</span><span class="n">queries_served</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="p">(</span><span class="n">resolver1</span><span class="o">.</span><span class="n">queries_received</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">resolver2</span><span class="o">.</span><span class="n">queries_received</span><span class="p">))</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">100</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%"</span>
+    <span class="p">)</span>
+</code></pre></div>
+</div>
+<p>This simulation demonstrates several key DNS properties:</p>
+<ol>
+<li><strong>Multiple resolvers</strong>: Different ISPs run different resolvers, each with its own cache</li>
+<li><strong>Load distribution</strong>: Popular domains are cached at many resolvers, reducing load on authoritative servers</li>
+<li><strong>Cache effectiveness</strong>: Even with multiple clients making many queries, authoritative servers handle only a fraction because of caching</li>
+</ol>
+<p>In the output, notice how the cache hit rate increases over time as more domains get cached. This is exactly what happens on the real internet—popular domains are almost always cached.</p>
+<h2>Real-World Considerations</h2>
+<p>Our implementation simplifies several DNS complexities:</p>
+<ol>
+<li>
+<p><strong>Hierarchy walking</strong>: Real resolvers start at root servers and work down the hierarchy. We skip directly to authoritative servers for clarity.</p>
+</li>
+<li>
+<p><strong>Multiple answers</strong>: DNS records can have multiple values (like multiple A records for load balancing). Real clients choose among them.</p>
+</li>
+<li>
+<p><strong>Negative caching</strong>: DNS caches "this domain doesn't exist" responses to avoid repeatedly querying for non-existent domains.</p>
+</li>
+<li>
+<p><strong>Security</strong>: DNS was designed without security. DNSSEC adds cryptographic signatures to prevent spoofing and cache poisoning.</p>
+</li>
+<li>
+<p><strong>Anycast</strong>: Root servers use anycast (many servers share one IP address) to distribute load and improve availability.</p>
+</li>
+<li>
+<p><strong>TTL selection</strong>: Choosing TTLs involves tradeoffs. Low TTLs mean changes propagate quickly but increase query load. High TTLs reduce load but slow down changes.</p>
+</li>
+</ol>
+<h2>Why DNS Matters</h2>
+<p>DNS enables many critical internet functions:</p>
+<p><strong>Load balancing</strong>: A domain can have multiple A records, distributing traffic across servers. DNS round-robin is a simple load balancing technique.</p>
+<p><strong>Failover</strong>: By updating DNS records, traffic can be redirected from failed servers to healthy ones.</p>
+<p><strong>Content delivery</strong>: CDNs use DNS to direct users to nearby servers. When you look up <code>cdn.example.com</code>, the authoritative server returns different IP addresses based on your location.</p>
+<p><strong>Service discovery</strong>: Modern microservice architectures use DNS for services to find each other. Kubernetes, for example, creates DNS records for every service.</p>
+<p><strong>Security</strong>: DNS-based blocklists prevent connections to known malicious domains. Your DNS resolver might block malware domains automatically.</p>
+<h2>Common DNS Problems</h2>
+<p>Understanding DNS helps debug common issues:</p>
+<p><strong>Propagation delays</strong>: When you change DNS records, old values persist in caches until TTLs expire. This is why DNS changes "take 24-48 hours to propagate"—it's caches expiring.</p>
+<p><strong>Split-horizon DNS</strong>: Internal and external clients may see different answers for the same domain. Your office's internal DNS might return private IPs for corporate services.</p>
+<p><strong>DNS hijacking</strong>: Attackers sometimes compromise DNS to redirect traffic. This is why DNSSEC and DNS-over-HTTPS exist.</p>
+<p><strong>Performance</strong>: DNS lookups add latency to every connection. This is why browsers cache DNS results and why HTTP/2 connection reuse is valuable.</p>
+<h2>Conclusion</h2>
+<p>DNS demonstrates how to build a scalable distributed system through hierarchy and caching.
+No single server knows everything, yet any client can look up any domain by traversing the hierarchy.
+Caching ensures that common queries are fast while reducing load on authoritative servers.</p>
+<p>The four-level hierarchy (root, TLD, authoritative, resolver) with aggressive caching handles trillions of queries daily with remarkable efficiency.
+Understanding DNS helps you reason about distributed databases, caching strategies, and hierarchical systems.</p>
+<p>Our asimpy implementation captures DNS's essence: authoritative servers hold records, recursive resolvers cache and coordinate, and clients make queries.
+Real DNS adds sophistication (security, redundancy, geographical distribution), but the core pattern remains: distribute data hierarchically, cache aggressively, and provide a simple query interface.</p>
+<p>DNS is often invisible until it breaks, but it's fundamental to how the internet works. Every network request depends on it.</p>
+</main>
+<footer>
+<div class="row">
+<div class="col-3 left">
+	  ⇐ <a href="../tcp/">TCP</a>
+</div>
+<div class="col-6 center">
+<a href="../"></a>
+	  © 2025
+	  <a href="../#acknowledgments">the authors</a>
+</div>
+<div class="col-3 right">
+<a href="../ntp/">NTP</a> ⇒
+	</div>
+</div>
+</footer>
+</body>
+</html>

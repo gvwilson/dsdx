@@ -28,4 +28,6 @@ class MessageBroker:
         for queue in queues:
             await queue.put(message)
             self.messages_delivered += 1
+
+
 # mccole: /broker

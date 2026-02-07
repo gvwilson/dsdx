@@ -22,6 +22,8 @@ FIXME
 1.  [Eventually Consistent Key-Value Store](@/eventual/): when availability matters more than consistency.
 1.  [The Saga Pattern](@/saga/): distributed transactions with compensations.
 1.  [TCP](@/tcp/): reliable communication.
+1.  [DNS](@/dns/): how sites find each other.
+1.  [NTP](@/ntp/): what time is it?
 1.  [Conclusion](@/finale/): looking back and next steps.
 
 </div>

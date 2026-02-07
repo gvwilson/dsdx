@@ -11,6 +11,8 @@ class PriorityMessage(Message):
     """Message with priority level."""
 
     priority: int = 0  # Higher number = higher priority
+
+
 # mccole: /priority_message
 
 
@@ -29,7 +31,7 @@ class PriorityBackpressureBroker:
 
     def subscribe(self, topic: str) -> Queue:
         """Create a bounded queue for a subscriber to a topic."""
-        queue = Queue(self.env, capacity=self.max_queue_size)
+        queue = Queue(self.env, max_capacity=self.max_queue_size)
         self.topics[topic].append(queue)
         return queue
 
@@ -61,7 +63,7 @@ class PriorityBackpressureBroker:
         self, queue: Queue, new_message: PriorityMessage
     ) -> bool:
         """Try to evict a lower-priority message to make room.
-        
+
         Returns True if eviction succeeded, False otherwise.
         """
         # In a real system, we'd inspect the queue and evict the
@@ -73,4 +75,6 @@ class PriorityBackpressureBroker:
             self.messages_dropped += 1
             return True
         return False
+
+
 # mccole: /priority_broker

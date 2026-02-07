@@ -10,6 +10,8 @@ class AckMessage(Message):
     """Message that requires acknowledgment."""
 
     ack_id: int = 0
+
+
 # mccole: /ackmessage
 
 
@@ -60,4 +62,6 @@ class AckBroker(MessageBroker):
             msg, original_time, queue = self.pending_acks[ack_id]
             print(f"[{self.env.now:.1f}] Redelivering {msg.content} (ack_id {ack_id})")
             await queue.put(msg)
+
+
 # mccole: /ackbroker

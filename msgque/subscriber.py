@@ -48,4 +48,6 @@ class Subscriber(Process):
 
             # Simulate processing time.
             await self.timeout(self.processing_time)
+
+
 # mccole: /subscriber

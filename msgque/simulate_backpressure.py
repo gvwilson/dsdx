@@ -8,7 +8,7 @@ from subscriber import Subscriber
 def run_backpressure_simulation():
     """Demonstrate backpressure in action."""
     env = Environment()
-    
+
     # Small queue size to trigger backpressure quickly.
     broker = BackpressureBroker(env, max_queue_size=5)
 
@@ -24,7 +24,7 @@ def run_backpressure_simulation():
 
     # Run simulation.
     env.run(until=30)
-    
+
     print("\n=== Backpressure Statistics ===")
     print(f"Messages published: {broker.messages_published}")
     print(f"Messages delivered: {broker.messages_delivered}")
@@ -32,6 +32,8 @@ def run_backpressure_simulation():
     print(f"Backpressure events: {fast_publisher.backpressure_events}")
     print(f"Final interval: {fast_publisher.current_interval:.1f}s")
     print(f"Messages received: {slow_subscriber.messages_received}")
+
+
 # mccole: /backpressure_simulation
 
 

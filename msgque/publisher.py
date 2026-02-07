@@ -35,4 +35,6 @@ class Publisher(Process):
 
             # Wait.
             await self.timeout(self.interval)
+
+
 # mccole: /publisher

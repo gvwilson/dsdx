@@ -10,4 +10,6 @@ class Message:
     content: str
     id: int
     timestamp: float
+
+
 # mccole: /message
