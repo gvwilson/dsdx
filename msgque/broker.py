@@ -29,6 +29,6 @@ class MessageBroker:
         self.num_published += 1
         queues = self.topics.get(message.topic, [])
         for queue in queues:
-            await queue.put(message)
+            queue.put(message)
             self.num_delivered += 1
 # mccole: /publish

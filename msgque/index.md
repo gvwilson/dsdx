@@ -216,9 +216,8 @@ we either evict a lower-priority message or discard the one that just arrived:
 
 <div data-inc="priority_backpressure.py" data-filter="inc=publish"></div>
 
-A full implementation would maintain a [priority queue](g:priority-queue)
-to allow efficient eviction of low-priority messages.
-We will explore this in the exercises.
+This implementation uses [asimpy][asimpy]'s [priority queue](g:priority-queue) class
+to manage efficient eviction of low-priority messages.
 
 ## Delivery Guarantees {: #msgque-delivery}
 
@@ -244,7 +243,7 @@ We can extend our broker to support at-least-once delivery with acknowledgments.
 First,
 we add an acknowledgment ID field to each message:
 
-<div data-inc="ack_broker.py" data-filter="inc=ackmessage"></div>
+<div data-inc="ack_broker.py" data-filter="inc=message"></div>
 
 Next,
 we have the broker keep track of how long to wait for acknowledgments
@@ -252,14 +251,16 @@ and of outstanding acknowledgments:
 
 <div data-inc="ack_broker.py" data-filter="inc=broker"></div>
 
-When it publishes a message,
-it adds a note to wait for an acknowledgment:
+When a message is published, the broker schedules a callback to check if it was acknowledged.
+The lambda captures the acknowledgment ID and calls `_check_ack()` after the timeout:
 
 <div data-inc="ack_broker.py" data-filter="inc=publish"></div>
 
 A subscriber using this broker calls `broker.acknowledge(message.ack_id)`
 after successfully processing a message.
 Messages not acknowledged within the timeout are redelivered.
+
+<div data-inc="ack_broker.py" data-filter="inc=acknowledge"></div>
 
 ## Consumer Groups and Load Balancing {: #msgque-balance}
 
@@ -271,7 +272,7 @@ Here's a simple implementation:
 
 <div data-inc="consumer_group.py" data-filter="inc=consumer"></div>
 
-It relies on an internal `_Distributor` process to do the work:
+It relies on helper process `_Distributor` to do the work:
 
 <div data-inc="consumer_group.py" data-filter="inc=distributor"></div>
 

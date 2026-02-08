@@ -7,6 +7,8 @@ from broker import MessageBroker
 # mccole: message
 @dataclass
 class AckMessage(Message):
+    """Message that requires acknowledgment."""
+
     ack_id: int = 0
 # mccole: /message
 
@@ -18,20 +20,13 @@ class AckBroker(MessageBroker):
     def __init__(self, env: Environment, ack_timeout: float = 10.0):
         super().__init__(env)
         self.ack_timeout = ack_timeout
-        self.pending_acks = {}
+        self.pending_acks = {}  # ack_id -> (message, timestamp, queue)
         self.next_ack_id = 0
 # mccole: /broker
 
-    # mccole: acknowledge
-    def acknowledge(self, ack_id: int):
-        """Acknowledge receipt of a message."""
-        if ack_id in self.pending_acks:
-            del self.pending_acks[ack_id]
-    # mccole: /acknowledge
-
-    # mccole: publish
+# mccole: publish
     async def publish(self, message: Message):
-        """Publish with ack tracking."""
+        """Publish with acknowledgment."""
         queues = self.topics.get(message.topic, [])
 
         for queue in queues:
@@ -47,17 +42,24 @@ class AckBroker(MessageBroker):
             )
 
             self.pending_acks[ack_id] = (ack_msg, self.env.now, queue)
-            await queue.put(ack_msg)
+            queue.put(ack_msg)
 
-            # Schedule re-delivery if not acknowledged.
+            # Schedule re-delivery
             self.env.schedule(
-                self.env.now + self.ack_timeout, lambda aid=ack_id: self._check_ack(aid)
+                self.env.now + self.ack_timeout,
+                lambda aid=ack_id: self._check_ack(aid)
             )
 
-    async def _check_ack(self, ack_id: int):
-        """Redeliver if not acknowledged."""
+    def _check_ack(self, ack_id: int):
+        """Check if message needs redelivery (called by scheduler)."""
         if ack_id in self.pending_acks:
-            msg, original_time, queue = self.pending_acks[ack_id]
-            print(f"[{self.env.now:.1f}] Redelivering {msg.content} (ack_id {ack_id})")
-            await queue.put(msg)
-    # mccole: /publish
+            msg, _, queue = self.pending_acks[ack_id]
+            queue.put(msg)
+# mccole: /publish
+
+# mccole: acknowledge
+    def acknowledge(self, ack_id: int):
+        """Acknowledge receipt of a message."""
+        if ack_id in self.pending_acks:
+            del self.pending_acks[ack_id]
+# mccole: /acknowledge

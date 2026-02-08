@@ -41,7 +41,7 @@ class BackpressureBroker:
                 self.num_dropped += 1
                 all_delivered = False
             else:
-                await queue.put(message)
+                queue.put(message)
                 self.num_delivered += 1
 
         return all_delivered

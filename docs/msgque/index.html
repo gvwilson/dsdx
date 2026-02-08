@@ -120,7 +120,7 @@ the broker looks up the topic and places the message in each subscriber's queue:
         <span class="bp">self</span><span class="o">.</span><span class="n">num_published</span> <span class="o">+=</span> <span class="mi">1</span>
         <span class="n">queues</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">topics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">message</span><span class="o">.</span><span class="n">topic</span><span class="p">,</span> <span class="p">[])</span>
         <span class="k">for</span> <span class="n">queue</span> <span class="ow">in</span> <span class="n">queues</span><span class="p">:</span>
-            <span class="k">await</span> <span class="n">queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+            <span class="n">queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">num_delivered</span> <span class="o">+=</span> <span class="mi">1</span>
 </code></pre></div>
 </div>
@@ -330,7 +330,7 @@ and returns <code>False</code> to signal backpressure to the publisher:</p>
                 <span class="bp">self</span><span class="o">.</span><span class="n">num_dropped</span> <span class="o">+=</span> <span class="mi">1</span>
                 <span class="n">all_delivered</span> <span class="o">=</span> <span class="kc">False</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="k">await</span> <span class="n">queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+                <span class="n">queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">num_delivered</span> <span class="o">+=</span> <span class="mi">1</span>
 
         <span class="k">return</span> <span class="n">all_delivered</span>
@@ -435,7 +435,13 @@ To implement this,
 we start by adding a <code>priority</code> field to our messages:</p>
 <div data-filter="inc=message" data-inc="priority_backpressure.py"><div class="codehilite"><pre class=""><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">PriorityMessage</span><span class="p">(</span><span class="n">Message</span><span class="p">):</span>
-    <span class="n">priority</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># Higher number = higher priority</span>
+<span class="w">    </span><span class="sd">"""Message with priority level."""</span>
+
+    <span class="n">priority</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># Lower number = higher priority</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__lt__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Compare by priority for heap operations."""</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">priority</span> <span class="o">&lt;</span> <span class="n">other</span><span class="o">.</span><span class="n">priority</span>
 </code></pre></div>
 </div>
 <p>When we publish a message,
@@ -443,33 +449,24 @@ we check queue-by-queue to see if there's room.
 If not,
 we either evict a lower-priority message or discard the one that just arrived:</p>
 <div data-filter="inc=publish" data-inc="priority_backpressure.py"><div class="codehilite"><pre class=""><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">publish</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="n">PriorityMessage</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">"""Publish with priority-based backpressure handling."""</span>
+<span class="w">        </span><span class="sd">"""Publish message to priority queues.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            True if message was accepted by all queues.</span>
+<span class="sd">        """</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">num_published</span> <span class="o">+=</span> <span class="mi">1</span>
         <span class="n">queues</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">topics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">message</span><span class="o">.</span><span class="n">topic</span><span class="p">,</span> <span class="p">[])</span>
 
         <span class="n">all_delivered</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="k">for</span> <span class="n">queue</span> <span class="ow">in</span> <span class="n">queues</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">queue</span><span class="o">.</span><span class="n">is_full</span><span class="p">():</span>
-                <span class="c1"># Queue full - check if we should drop this message</span>
-                <span class="c1"># or evict a lower-priority one</span>
-                <span class="k">if</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_try_evict_lower_priority</span><span class="p">(</span><span class="n">queue</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
-                    <span class="k">await</span> <span class="n">queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">num_delivered</span> <span class="o">+=</span> <span class="mi">1</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="c1"># Drop this message</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">num_dropped</span> <span class="o">+=</span> <span class="mi">1</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">dropped_by_priority</span><span class="p">[</span><span class="n">message</span><span class="o">.</span><span class="n">priority</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
-                    <span class="n">all_delivered</span> <span class="o">=</span> <span class="kc">False</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="k">await</span> <span class="n">queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">num_delivered</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">all_delivered</span> <span class="o">=</span> <span class="n">all_delivered</span> <span class="ow">and</span> <span class="n">queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">num_delivered</span> <span class="o">+=</span> <span class="mi">1</span>
 
         <span class="k">return</span> <span class="n">all_delivered</span>
 </code></pre></div>
 </div>
-<p>A full implementation would maintain a <a href="../glossary/#priority-queue">priority queue</a>
-to allow efficient eviction of low-priority messages.
-We will explore this in the exercises.</p>
+<p>This implementation uses <a href="https://asimpy.readthedocs.io/">asimpy</a>'s <a href="../glossary/#priority-queue">priority queue</a> class
+to manage efficient eviction of low-priority messages.</p>
 <h2 id="msgque-delivery">Delivery Guarantees</h2>
 <p>Different message delivery systems provide different kinds of delivery guarantees:</p>
 <dl>
@@ -490,7 +487,11 @@ It is surprisingly difficult to achieve in distributed systems due to failures a
 <p>We can extend our broker to support at-least-once delivery with acknowledgments.
 First,
 we add an acknowledgment ID field to each message:</p>
-<div data-filter="inc=ackmessage" data-inc="ack_broker.py"><div class="codehilite"><pre class=""><span></span><code>
+<div data-filter="inc=message" data-inc="ack_broker.py"><div class="codehilite"><pre class=""><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">AckMessage</span><span class="p">(</span><span class="n">Message</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Message that requires acknowledgment."""</span>
+
+    <span class="n">ack_id</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
 </code></pre></div>
 </div>
 <p>Next,
@@ -502,14 +503,14 @@ and of outstanding acknowledgments:</p>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">:</span> <span class="n">Environment</span><span class="p">,</span> <span class="n">ack_timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">10.0</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">ack_timeout</span> <span class="o">=</span> <span class="n">ack_timeout</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">pending_acks</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pending_acks</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># ack_id -&gt; (message, timestamp, queue)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">next_ack_id</span> <span class="o">=</span> <span class="mi">0</span>
 </code></pre></div>
 </div>
-<p>When it publishes a message,
-it adds a note to wait for an acknowledgment:</p>
+<p>When a message is published, the broker schedules a callback to check if it was acknowledged.
+The lambda captures the acknowledgment ID and calls <code>_check_ack()</code> after the timeout:</p>
 <div data-filter="inc=publish" data-inc="ack_broker.py"><div class="codehilite"><pre class=""><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">publish</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="n">Message</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">"""Publish with ack tracking."""</span>
+<span class="w">        </span><span class="sd">"""Publish with acknowledgment."""</span>
         <span class="n">queues</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">topics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">message</span><span class="o">.</span><span class="n">topic</span><span class="p">,</span> <span class="p">[])</span>
 
         <span class="k">for</span> <span class="n">queue</span> <span class="ow">in</span> <span class="n">queues</span><span class="p">:</span>
@@ -525,24 +526,30 @@ it adds a note to wait for an acknowledgment:</p>
             <span class="p">)</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">pending_acks</span><span class="p">[</span><span class="n">ack_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">ack_msg</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="p">,</span> <span class="n">queue</span><span class="p">)</span>
-            <span class="k">await</span> <span class="n">queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">ack_msg</span><span class="p">)</span>
+            <span class="n">queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">ack_msg</span><span class="p">)</span>
 
-            <span class="c1"># Schedule re-delivery if not acknowledged.</span>
+            <span class="c1"># Schedule re-delivery</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">schedule</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">ack_timeout</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">aid</span><span class="o">=</span><span class="n">ack_id</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_ack</span><span class="p">(</span><span class="n">aid</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">ack_timeout</span><span class="p">,</span>
+                <span class="k">lambda</span> <span class="n">aid</span><span class="o">=</span><span class="n">ack_id</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_ack</span><span class="p">(</span><span class="n">aid</span><span class="p">)</span>
             <span class="p">)</span>
 
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_check_ack</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ack_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">"""Redeliver if not acknowledged."""</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_ack</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ack_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Check if message needs redelivery (called by scheduler)."""</span>
         <span class="k">if</span> <span class="n">ack_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">pending_acks</span><span class="p">:</span>
-            <span class="n">msg</span><span class="p">,</span> <span class="n">original_time</span><span class="p">,</span> <span class="n">queue</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pending_acks</span><span class="p">[</span><span class="n">ack_id</span><span class="p">]</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Redelivering </span><span class="si">{</span><span class="n">msg</span><span class="o">.</span><span class="n">content</span><span class="si">}</span><span class="s2"> (ack_id </span><span class="si">{</span><span class="n">ack_id</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
-            <span class="k">await</span> <span class="n">queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="n">msg</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">queue</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pending_acks</span><span class="p">[</span><span class="n">ack_id</span><span class="p">]</span>
+            <span class="n">queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
 </code></pre></div>
 </div>
 <p>A subscriber using this broker calls <code>broker.acknowledge(message.ack_id)</code>
 after successfully processing a message.
 Messages not acknowledged within the timeout are redelivered.</p>
+<div data-filter="inc=acknowledge" data-inc="ack_broker.py"><div class="codehilite"><pre class=""><span></span><code>    <span class="k">def</span><span class="w"> </span><span class="nf">acknowledge</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ack_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Acknowledge receipt of a message."""</span>
+        <span class="k">if</span> <span class="n">ack_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">pending_acks</span><span class="p">:</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">pending_acks</span><span class="p">[</span><span class="n">ack_id</span><span class="p">]</span>
+</code></pre></div>
+</div>
 <h2 id="msgque-balance">Consumer Groups and Load Balancing</h2>
 <p>In production systems,
 multiple instances of the same subscriber type often share the workload.
@@ -572,7 +579,7 @@ Here's a simple implementation:</p>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">consumers</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
 </code></pre></div>
 </div>
-<p>It relies on an internal <code>_Distributor</code> process to do the work:</p>
+<p>It relies on helper process <code>_Distributor</code> to do the work:</p>
 <div data-filter="inc=distributor" data-inc="consumer_group.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">_Distributor</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""Distribute messages round-robin to consumers."""</span>
 
@@ -586,7 +593,7 @@ Here's a simple implementation:</p>
         <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
             <span class="n">message</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
             <span class="n">dest</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">destinations</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">next_dest</span><span class="p">]</span>
-            <span class="k">await</span> <span class="n">dest</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+            <span class="n">dest</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">next_dest</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">next_dest</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">destinations</span><span class="p">)</span>
 </code></pre></div>
 </div>

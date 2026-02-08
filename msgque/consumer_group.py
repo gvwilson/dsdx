@@ -41,6 +41,6 @@ class _Distributor(Process):
         while True:
             message = await self.source.get()
             dest = self.destinations[self.next_dest]
-            await dest.put(message)
+            dest.put(message)
             self.next_dest = (self.next_dest + 1) % len(self.destinations)
 # mccole: /distributor
