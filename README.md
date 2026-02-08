@@ -11,7 +11,7 @@ FIXME
 <div id="lessons" markdown="1">
 
 1.  [Introduction](@/intro/): what this training does and doesn't cover.
-1.  [A Message Queue](@/msgque/): loosely-coupled communication.
+1.  [A Publish-Subscribe Message Queue](@/msgque/): loosely-coupled communication.
 1.  [Conclusion](@/finale/): looking back and next steps.
 
 </div>

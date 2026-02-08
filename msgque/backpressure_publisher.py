@@ -1,18 +1,15 @@
-from typing import TYPE_CHECKING
 from asimpy import Process
 from message import Message
-
-if TYPE_CHECKING:
-    from .backpressure_broker import BackpressureBroker
+from backpressure_broker import BackpressureBroker
 
 
-# mccole: backpressure_publisher
+# mccole: init
 class BackpressurePublisher(Process):
     """Publisher that adapts to backpressure signals."""
 
     def init(
         self,
-        broker: "BackpressureBroker",
+        broker: BackpressureBroker,
         name: str,
         topic: str,
         base_interval: float,
@@ -26,7 +23,9 @@ class BackpressurePublisher(Process):
         self.message_counter = 0
         self.current_interval = base_interval
         self.backpressure_events = 0
+# mccole: /init
 
+# mccole: run
     async def run(self):
         """Generate and publish messages, slowing down on backpressure."""
         while True:
@@ -63,6 +62,4 @@ class BackpressurePublisher(Process):
 
             # Wait before next message.
             await self.timeout(self.current_interval)
-
-
-# mccole: /backpressure_publisher
+# mccole: /run

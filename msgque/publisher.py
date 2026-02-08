@@ -1,16 +1,13 @@
-from typing import TYPE_CHECKING
 from asimpy import Process
 from message import Message
-
-if TYPE_CHECKING:
-    from .broker import MessageBroker
+from broker import MessageBroker
 
 
 # mccole: publisher
 class Publisher(Process):
     """Publishes messages to topics."""
 
-    def init(self, broker: "MessageBroker", name: str, topic: str, interval: float):
+    def init(self, broker: MessageBroker, name: str, topic: str, interval: float):
         self.broker = broker
         self.name = name
         self.topic = topic
@@ -18,9 +15,7 @@ class Publisher(Process):
         self.message_counter = 0
 
     async def run(self):
-        """Generate and publish messages."""
         while True:
-            # Create message.
             self.message_counter += 1
             message = Message(
                 topic=self.topic,
@@ -29,12 +24,8 @@ class Publisher(Process):
                 timestamp=self.now,
             )
 
-            # Publish message.
             print(f"[{self.now:.1f}] {self.name} publishing: {message.content}")
             await self.broker.publish(message)
 
-            # Wait.
             await self.timeout(self.interval)
-
-
 # mccole: /publisher

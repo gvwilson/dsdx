@@ -4,7 +4,7 @@ from backpressure_publisher import BackpressurePublisher
 from subscriber import Subscriber
 
 
-# mccole: backpressure_simulation
+# mccole: sim
 def run_backpressure_simulation():
     """Demonstrate backpressure in action."""
     env = Environment()
@@ -26,15 +26,13 @@ def run_backpressure_simulation():
     env.run(until=30)
 
     print("\n=== Backpressure Statistics ===")
-    print(f"Messages published: {broker.messages_published}")
-    print(f"Messages delivered: {broker.messages_delivered}")
-    print(f"Messages dropped: {broker.messages_dropped}")
+    print(f"Messages published: {broker.num_published}")
+    print(f"Messages delivered: {broker.num_delivered}")
+    print(f"Messages dropped: {broker.num_dropped}")
     print(f"Backpressure events: {fast_publisher.backpressure_events}")
     print(f"Final interval: {fast_publisher.current_interval:.1f}s")
-    print(f"Messages received: {slow_subscriber.messages_received}")
-
-
-# mccole: /backpressure_simulation
+    print(f"Messages received: {slow_subscriber.num_received}")
+# mccole: /sim
 
 
 if __name__ == "__main__":

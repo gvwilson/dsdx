@@ -8,7 +8,7 @@ from subscriber import Subscriber
 def run_simulation():
     """Run a simulation of the message queue system."""
     env = Environment()
-    broker = MessageBroker(env, buffer_size=10)
+    broker = MessageBroker(env)
 
     # Publishers.
     Publisher(env, broker, "OrderService", "orders", interval=2.0)
@@ -26,13 +26,11 @@ def run_simulation():
     # Run simulation and report.
     env.run(until=20)
     print("\n=== Statistics ===")
-    print(f"Messages published: {broker.messages_published}")
-    print(f"Messages delivered: {broker.messages_delivered}")
-    print(f"Inventory received: {inventory.messages_received}")
-    print(f"Email received: {email.messages_received}")
-    print(f"Analytics received: {analytics.messages_received}")
-
-
+    print(f"Messages published: {broker.num_published}")
+    print(f"Messages delivered: {broker.num_delivered}")
+    print(f"Inventory received: {inventory.num_received}")
+    print(f"Email received: {email.num_received}")
+    print(f"Analytics received: {analytics.num_received}")
 # mccole: /simulate
 
 

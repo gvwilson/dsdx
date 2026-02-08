@@ -1,8 +1,5 @@
-from typing import TYPE_CHECKING
 from asimpy import FirstOf, Process
-
-if TYPE_CHECKING:
-    from .broker import MessageBroker
+from broker import MessageBroker
 
 
 # mccole: subscriber
@@ -11,7 +8,7 @@ class Subscriber(Process):
 
     def init(
         self,
-        broker: "MessageBroker",
+        broker: MessageBroker,
         name: str,
         topics: list[str],
         processing_time: float,
@@ -20,17 +17,14 @@ class Subscriber(Process):
         self.name = name
         self.topics = topics
         self.processing_time = processing_time
-        self.messages_received = 0
+        self.num_received = 0
 
-        # Subscribe to all topics and get a queue for each
         self.queues = {}
         for topic in topics:
             queue = broker.subscribe(topic)
             self.queues[topic] = queue
 
     async def run(self):
-        """Process messages from subscribed topics."""
-
         while True:
             # Wait for a message from any queue.
             get_operations = {
@@ -39,7 +33,7 @@ class Subscriber(Process):
             topic, message = await FirstOf(self._env, **get_operations)
 
             # Report.
-            self.messages_received += 1
+            self.num_received += 1
             latency = self.now - message.timestamp
             print(
                 f"[{self.now:.1f}] {self.name} received from '{topic}': "
@@ -48,6 +42,4 @@ class Subscriber(Process):
 
             # Simulate processing time.
             await self.timeout(self.processing_time)
-
-
 # mccole: /subscriber

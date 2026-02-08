@@ -17,7 +17,7 @@
 <a href="#">Lessons</a>
 <span class="dropdown-content" id="nav-lessons">
 <a href="../intro/">Introduction</a>
-<a href="../msgque/">A Message Queue</a>
+<a href="../msgque/">A Publish-Subscribe Message Queue</a>
 <a href="../finale/">Conclusion</a>
 </span>
 </span>
@@ -51,10 +51,16 @@
 <dd>Message delivery guarantee ensuring messages are delivered zero or one time, never duplicated but possibly lost. Simplest to implement but provides the weakest guarantee.</dd>
 <dt>authorization code</dt>
 <dd>In OAuth 2.0, a short-lived token issued to the client after user authentication and consent, which the client exchanges for an access token.</dd>
-<dt>backpressure</dt>
-<dd>Mechanism to prevent overwhelming a system by signaling upstream components to slow down when downstream components cannot keep up with the rate of messages or requests.</dd>
+<dt><span id="backoff-multiplier">backoff multiplier</span></dt>
+<dd>FIXME</dd>
+<dt><span id="backpressure">backpressure</span></dt>
+<dd>Mechanism to prevent overwhelming a system
+by signaling upstream components to slow down
+when downstream components cannot keep up.</dd>
 <dt>bitfield</dt>
 <dd>Compact data structure using individual bits to represent boolean states. In BitTorrent, indicates which pieces a peer possesses.</dd>
+<dt><span id="buffer">buffer</span></dt>
+<dd>FIXME</dd>
 <dt>CAP theorem</dt>
 <dd>States that a distributed system can provide at most two of three guarantees: Consistency (all nodes see same data), Availability (system responds to requests), and Partition tolerance (works despite network failures).</dd>
 <dt>causal delivery</dt>
@@ -77,8 +83,9 @@
 <dd>Process by which distributed nodes agree on a single value or decision despite failures. Algorithms like Paxos and Raft provide consensus guarantees.</dd>
 <dt>consistent hashing</dt>
 <dd>Technique for distributing data across nodes where adding or removing nodes causes minimal data movement. Used in distributed hash tables and key-value stores.</dd>
-<dt>consumer group</dt>
-<dd>Set of message queue subscribers that share the workload, with messages distributed among group members rather than duplicated to each. Enables parallel processing.</dd>
+<dt><span id="consumer-group">consumer group/span&gt;</span></dt>
+<dd>A set of message queue subscribers that share the workload.
+Messages are distributed among group members rather than duplicated to each.</dd>
 <dt>context propagation</dt>
 <dd>Passing trace IDs, span IDs, and other metadata between services so operations can be correlated across service boundaries in distributed tracing.</dd>
 <dt>CmRDT (operation-based CRDT)</dt>
@@ -87,8 +94,12 @@
 <dd>CRDT variant where replicas send their entire state and merge states using operations that are commutative, associative, and idempotent.</dd>
 <dt>cumulative acknowledgment</dt>
 <dd>ACK indicating "I've received everything up to sequence number X" rather than acknowledging individual packets. Simplifies TCP acknowledgment logic.</dd>
+<dt><span id="dataclass">dataclass</span></dt>
+<dd>FIXME</dd>
 <dt>dead letter queue</dt>
 <dd>Queue for messages that cannot be processed successfully after multiple retry attempts, enabling later analysis and manual intervention.</dd>
+<dt><span id="decoupling">decoupling</span></dt>
+<dd>FIXME</dd>
 <dt>dirty read</dt>
 <dd>Reading data that has been modified but not yet committed by another transaction. In eventually consistent systems, transactions may see intermediate states from in-progress Sagas.</dd>
 <dt>distributed hash table (DHT)</dt>
@@ -103,11 +114,13 @@
 <dd>BitTorrent optimization where peers nearing completion aggressively request remaining pieces from multiple peers and cancel duplicates when received, preventing slow final pieces.</dd>
 <dt>ephemeral node</dt>
 <dd>ZooKeeper node that automatically deletes when the client session that created it ends, useful for implementing locks and leader election.</dd>
+<dt><span id="exponential-backoff">exponential backoff</span></dt>
+<dd>FIXME</dd>
 <dt>eventual consistency</dt>
 <dd>Guarantee that if no new updates are made, all replicas will eventually converge to the same state. Trades immediate consistency for availability and partition tolerance.</dd>
 <dt>exactly-once delivery</dt>
 <dd>Message delivery guarantee ensuring each message is processed exactly once. Difficult to achieve; requires idempotent operations and deduplication tracking.</dd>
-<dt>fan-out</dt>
+<dt><span id="fan-out">fan-out</span></dt>
 <dd>Pattern where one message or request triggers multiple downstream operations, such as publishing to multiple subscribers or calling multiple services in parallel.</dd>
 <dt>fast retransmit</dt>
 <dd>TCP optimization that retransmits a packet after receiving three duplicate ACKs, without waiting for retransmission timeout.</dd>
@@ -133,6 +146,8 @@
 <dd>Data structure mapping words to documents containing them, fundamental for search engines. Can be built efficiently using MapReduce.</dd>
 <dt>isolation</dt>
 <dd>Database property ensuring concurrent transactions don't interfere with each other. Eventual consistent systems sacrifice isolation for availability.</dd>
+<dt><span id="JSON">JSON</span></dt>
+<dd>FIXME</dd>
 <dt>last-write-wins (LWW)</dt>
 <dd>Conflict resolution strategy using timestamps where the write with the highest timestamp (or deterministic tiebreaker) wins. Simple but may lose concurrent updates.</dd>
 <dt>lease</dt>
@@ -151,10 +166,14 @@
 <dd>Largest packet size that can be transmitted on a network. Typically 1500 bytes for Ethernet. TCP segments data to fit within MTU.</dd>
 <dt>Merkle tree</dt>
 <dd>Tree of cryptographic hashes where each non-leaf node is the hash of its children. Efficiently identifies differences between replicas for anti-entropy.</dd>
+<dt><span id="message-broker">message broker</span></dt>
+<dd>FIXME</dd>
 <dt>mutual exclusion</dt>
 <dd>Property ensuring only one process can access a critical section or resource at a time, fundamental requirement for distributed locks.</dd>
 <dt>Nagle's Algorithm</dt>
 <dd>TCP optimization that batches small writes into larger packets to reduce protocol overhead, trading slight latency for efficiency.</dd>
+<dt><span id="negative-feedback-loop">negative feedback loop</span></dt>
+<dd>FIXME</dd>
 <dt>OAuth</dt>
 <dd>Authorization framework enabling applications to obtain limited access to user accounts without exposing passwords, using tokens with specific scopes and lifetimes.</dd>
 <dt>observed-remove set (OR-Set)</dt>
@@ -183,9 +202,11 @@
 <dd>Last transaction in a Saga that cannot be compensated (e.g., sending email, shipping goods). Sagas should be designed with risky operations early and irreversible operations last.</dd>
 <dt>Positive-Negative Counter (PN-Counter)</dt>
 <dd>CRDT supporting both increment and decrement using two G-Counters: one for increments, one for decrements. Value is increments minus decrements.</dd>
+<dt><span id="priority-queue">priority queue</span></dt>
+<dd>FIXME</dd>
 <dt>probabilistic sampling</dt>
 <dd>Tracing strategy where each trace has a random probability of being recorded (e.g., 10%), reducing overhead while maintaining statistical representativeness.</dd>
-<dt>publish-subscribe</dt>
+<dt><span id="publish-subscribe">publish-subscribe</span></dt>
 <dd>Messaging pattern where publishers send messages to topics and subscribers receive all messages from topics they're interested in. Decouples senders from receivers.</dd>
 <dt>quorum</dt>
 <dd>Minimum number of nodes that must participate in an operation for it to succeed. Common pattern: for N replicas, read from R nodes and write to W nodes where R + W &gt; N ensures consistency.</dd>
@@ -211,6 +232,8 @@
 <dd>Resending data when acknowledgment doesn't arrive within timeout period, recovering from packet loss.</dd>
 <dt>retransmission timeout (RTO)</dt>
 <dd>Time sender waits for acknowledgment before retransmitting. Adaptive in real TCP based on measured round-trip time.</dd>
+<dt><span id="round-robin-polling">round-robin polling</span></dt>
+<dd>FIXME</dd>
 <dt>round-trip time (RTT)</dt>
 <dd>Time for a packet to travel to destination and acknowledgment to return. Used to calculate appropriate retransmission timeout.</dd>
 <dt>saga</dt>

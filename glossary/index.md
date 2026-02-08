@@ -21,11 +21,19 @@ at-most-once delivery
 authorization code
 :   In OAuth 2.0, a short-lived token issued to the client after user authentication and consent, which the client exchanges for an access token.
 
-backpressure
-:   Mechanism to prevent overwhelming a system by signaling upstream components to slow down when downstream components cannot keep up with the rate of messages or requests.
+<span id="backoff-multiplier">backoff multiplier</span>
+:   FIXME
+
+<span id="backpressure">backpressure</span>
+:   Mechanism to prevent overwhelming a system
+    by signaling upstream components to slow down
+    when downstream components cannot keep up.
 
 bitfield
 :   Compact data structure using individual bits to represent boolean states. In BitTorrent, indicates which pieces a peer possesses.
+
+<span id="buffer">buffer</span>
+:   FIXME
 
 CAP theorem
 :   States that a distributed system can provide at most two of three guarantees: Consistency (all nodes see same data), Availability (system responds to requests), and Partition tolerance (works despite network failures).
@@ -60,8 +68,9 @@ consensus
 consistent hashing
 :   Technique for distributing data across nodes where adding or removing nodes causes minimal data movement. Used in distributed hash tables and key-value stores.
 
-consumer group
-:   Set of message queue subscribers that share the workload, with messages distributed among group members rather than duplicated to each. Enables parallel processing.
+<span id="consumer-group">consumer group/span>
+:   A set of message queue subscribers that share the workload.
+    Messages are distributed among group members rather than duplicated to each.
 
 context propagation
 :   Passing trace IDs, span IDs, and other metadata between services so operations can be correlated across service boundaries in distributed tracing.
@@ -75,8 +84,14 @@ CvRDT (state-based CRDT)
 cumulative acknowledgment
 :   ACK indicating "I've received everything up to sequence number X" rather than acknowledging individual packets. Simplifies TCP acknowledgment logic.
 
+<span id="dataclass">dataclass</span>
+:   FIXME
+
 dead letter queue
 :   Queue for messages that cannot be processed successfully after multiple retry attempts, enabling later analysis and manual intervention.
+
+<span id="decoupling">decoupling</span>
+:   FIXME
 
 dirty read
 :   Reading data that has been modified but not yet committed by another transaction. In eventually consistent systems, transactions may see intermediate states from in-progress Sagas.
@@ -99,13 +114,16 @@ end game mode
 ephemeral node
 :   ZooKeeper node that automatically deletes when the client session that created it ends, useful for implementing locks and leader election.
 
+<span id="exponential-backoff">exponential backoff</span>
+:   FIXME
+
 eventual consistency
 :   Guarantee that if no new updates are made, all replicas will eventually converge to the same state. Trades immediate consistency for availability and partition tolerance.
 
 exactly-once delivery
 :   Message delivery guarantee ensuring each message is processed exactly once. Difficult to achieve; requires idempotent operations and deduplication tracking.
 
-fan-out
+<span id="fan-out">fan-out</span>
 :   Pattern where one message or request triggers multiple downstream operations, such as publishing to multiple subscribers or calling multiple services in parallel.
 
 fast retransmit
@@ -144,6 +162,9 @@ inverted index
 isolation
 :   Database property ensuring concurrent transactions don't interfere with each other. Eventual consistent systems sacrifice isolation for availability.
 
+<span id="JSON">JSON</span>
+:   FIXME
+
 last-write-wins (LWW)
 :   Conflict resolution strategy using timestamps where the write with the highest timestamp (or deterministic tiebreaker) wins. Simple but may lose concurrent updates.
 
@@ -171,11 +192,17 @@ maximum transmission unit (MTU)
 Merkle tree
 :   Tree of cryptographic hashes where each non-leaf node is the hash of its children. Efficiently identifies differences between replicas for anti-entropy.
 
+<span id="message-broker">message broker</span>
+:   FIXME
+
 mutual exclusion
 :   Property ensuring only one process can access a critical section or resource at a time, fundamental requirement for distributed locks.
 
 Nagle's Algorithm
 :   TCP optimization that batches small writes into larger packets to reduce protocol overhead, trading slight latency for efficiency.
+
+<span id="negative-feedback-loop">negative feedback loop</span>
+:   FIXME
 
 OAuth
 :   Authorization framework enabling applications to obtain limited access to user accounts without exposing passwords, using tokens with specific scopes and lifetimes.
@@ -219,10 +246,13 @@ pivot transaction
 Positive-Negative Counter (PN-Counter)
 :   CRDT supporting both increment and decrement using two G-Counters: one for increments, one for decrements. Value is increments minus decrements.
 
+<span id="priority-queue">priority queue</span>
+:   FIXME
+
 probabilistic sampling
 :   Tracing strategy where each trace has a random probability of being recorded (e.g., 10%), reducing overhead while maintaining statistical representativeness.
 
-publish-subscribe
+<span id="publish-subscribe">publish-subscribe</span>
 :   Messaging pattern where publishers send messages to topics and subscribers receive all messages from topics they're interested in. Decouples senders from receivers.
 
 quorum
@@ -260,6 +290,9 @@ retransmission
 
 retransmission timeout (RTO)
 :   Time sender waits for acknowledgment before retransmitting. Adaptive in real TCP based on measured round-trip time.
+
+<span id="round-robin-polling">round-robin polling</span>
+:   FIXME
 
 round-trip time (RTT)
 :   Time for a packet to travel to destination and acknowledgment to return. Used to calculate appropriate retransmission timeout.
