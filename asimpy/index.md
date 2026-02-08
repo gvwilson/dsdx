@@ -86,15 +86,26 @@ if there are processes waiting then there aren't any items to take,
 while if there are items waiting to be taken there aren't any waiting processes.
 
 `Queue.put(item)` either adds an item to the queue
-or passing it to a waiting process.
+or passes it to a waiting process.
+This a non-blocking operation,
+i.e.,
+it cannot be `await`ed.
 Conversely,
 `Queue.get()` either gets an item immediately
 or adds the calling process to the list of waiters.
 
-`PriorityQueue` uses `heapq` operations to maintain ordering,
+`PriorityQueue` keeps queue items in priority order,
 which means items must be comparable (i.e., must implement `__lt__`).
-`get()` pops the minimum element;
-`put()` pushes onto the heap and potentially satisfies a waiting getter.
+Note that lower values are higher priorities,
+i.e., `A<B` means that `A` has a higher priority than `B`.
+
+When a queue is created,
+the creator can specify a maximum capacity.
+If someone tries to `put()` an item in a `Queue` that is full,
+the item is not added.
+If someone tries to add an item to a full `PriorityQueue`,
+it *is* added,
+and then the lowest-priority item is removed from the queue.
 
 ## `Resource`: Capacity-Limited Sharing
 

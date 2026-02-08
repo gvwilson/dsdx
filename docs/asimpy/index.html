@@ -105,14 +105,24 @@ i.e.,
 if there are processes waiting then there aren't any items to take,
 while if there are items waiting to be taken there aren't any waiting processes.</p>
 <p><code>Queue.put(item)</code> either adds an item to the queue
-or passing it to a waiting process.
+or passes it to a waiting process.
+This a non-blocking operation,
+i.e.,
+it cannot be <code>await</code>ed.
 Conversely,
 <code>Queue.get()</code> either gets an item immediately
 or adds the calling process to the list of waiters.</p>
-<p><code>PriorityQueue</code> uses <code>heapq</code> operations to maintain ordering,
+<p><code>PriorityQueue</code> keeps queue items in priority order,
 which means items must be comparable (i.e., must implement <code>__lt__</code>).
-<code>get()</code> pops the minimum element;
-<code>put()</code> pushes onto the heap and potentially satisfies a waiting getter.</p>
+Note that lower values are higher priorities,
+i.e., <code>A&lt;B</code> means that <code>A</code> has a higher priority than <code>B</code>.</p>
+<p>When a queue is created,
+the creator can specify a maximum capacity.
+If someone tries to <code>put()</code> an item in a <code>Queue</code> that is full,
+the item is not added.
+If someone tries to add an item to a full <code>PriorityQueue</code>,
+it <em>is</em> added,
+and then the lowest-priority item is removed from the queue.</p>
 <h2><code>Resource</code>: Capacity-Limited Sharing</h2>
 <p>The <code>Resource</code> class simulates a shared resource with limited capacity.
 That capacity is the maximum number of concurrent users.
