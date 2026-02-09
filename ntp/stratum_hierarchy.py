@@ -40,6 +40,8 @@ class StratumServerProcess(Process):
             # Send response
             await self.timeout(self.network_delay)
             await client_queue.put(message)
+
+
 # mccole: /stratumserver
 
 
@@ -90,6 +92,8 @@ class StratumClientProcess(Process):
                 f"[{self.now:.3f}] {self.name} (stratum {self.stratum}): "
                 f"Synced with upstream, offset={offset:.3f}"
             )
+
+
 # mccole: /stratumclient
 
 
@@ -107,8 +111,12 @@ def run_stratum_hierarchy():
     s2a_queue = Queue(env)
     s2a_clock = {"offset": 0.0}  # Shared clock state
     StratumClientProcess(
-        env, "stratum2a.org", s1_queue, stratum=2, 
-        clock_state=s2a_clock, sync_interval=10.0
+        env,
+        "stratum2a.org",
+        s1_queue,
+        stratum=2,
+        clock_state=s2a_clock,
+        sync_interval=10.0,
     )
     StratumServerProcess(
         env, "stratum2a.org", s2a_queue, stratum=2, clock_state=s2a_clock
@@ -117,8 +125,12 @@ def run_stratum_hierarchy():
     s2b_queue = Queue(env)
     s2b_clock = {"offset": 0.0}  # Shared clock state
     StratumClientProcess(
-        env, "stratum2b.org", s1_queue, stratum=2,
-        clock_state=s2b_clock, sync_interval=10.0
+        env,
+        "stratum2b.org",
+        s1_queue,
+        stratum=2,
+        clock_state=s2b_clock,
+        sync_interval=10.0,
     )
     StratumServerProcess(
         env, "stratum2b.org", s2b_queue, stratum=2, clock_state=s2b_clock
@@ -142,6 +154,8 @@ def run_stratum_hierarchy():
     print(f"Stratum 2b clock offset: {s2b_clock['offset']:.6f}s")
     print(f"\nClient A final offset: {client_a.clock_offset:.6f}s")
     print(f"Client B final offset: {client_b.clock_offset:.6f}s")
+
+
 # mccole: /hierarchy
 
 

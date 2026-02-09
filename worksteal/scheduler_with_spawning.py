@@ -9,13 +9,12 @@ from worker_with_spawning import WorkerWithSpawning
 class SchedulerWithSpawning(WorkStealingScheduler):
     """Scheduler using workers that can spawn tasks."""
 
-    def __init__(self, env: Environment, num_workers: int):
-        self.env = env
-        self.num_workers = num_workers
-        self.workers: list[WorkerWithSpawning] = []
-        self.task_counter = 0
-
-        for i in range(num_workers):
-            worker = WorkerWithSpawning(env, i, self)
-            self.workers.append(worker)
+    def __init__(
+        self,
+        env: Environment,
+        num_workers: int,
+        verbose: bool = True,
+        worker_cls: type = WorkerWithSpawning,
+    ):
+        super().__init__(env, num_workers, verbose, worker_cls)
 # mccole: /scheduler

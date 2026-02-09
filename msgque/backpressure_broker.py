@@ -17,15 +17,15 @@ class BackpressureBroker:
         self.num_dropped = 0
 # mccole: /backpressure
 
-# mccole: subscribe
+    # mccole: subscribe
     def subscribe(self, topic: str) -> Queue:
         """Create a bounded queue for a subscriber to a topic."""
         queue = Queue(self.env, max_capacity=self.max_queue_size)
         self.topics[topic].append(queue)
         return queue
-# mccole: /subscribe
+    # mccole: /subscribe
 
-# mccole: publish
+    # mccole: publish
     async def publish(self, message: Message) -> bool:
         """
         Publish a message, applying backpressure if queues are full.
@@ -45,4 +45,4 @@ class BackpressureBroker:
                 self.num_delivered += 1
 
         return all_delivered
-# mccole: /publish
+    # mccole: /publish

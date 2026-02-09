@@ -48,9 +48,7 @@ class AckSubscriber(Process):
             if random.random() > self.failure_rate:
                 self.broker.acknowledge(message.ack_id)
                 self.num_acked += 1
-                print(
-                    f"[{self.now:.1f}] {self.name}: Acknowledged {message.content}"
-                )
+                print(f"[{self.now:.1f}] {self.name}: Acknowledged {message.content}")
             else:
                 print(
                     f"[{self.now:.1f}] {self.name}: FAILED to process "

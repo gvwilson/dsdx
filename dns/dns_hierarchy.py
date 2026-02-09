@@ -117,9 +117,7 @@ def run_dns_hierarchy():
         domains=["www.example.com", "cdn.example.com"],
     )
 
-    LoadTestClient(
-        env, "client3", resolver2_queue, domains=["www.another.org"]
-    )
+    LoadTestClient(env, "client3", resolver2_queue, domains=["www.another.org"])
 
     # Run simulation
     env.run(until=50)

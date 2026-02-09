@@ -65,12 +65,20 @@
 <span id="future">future</span>
 :   FIXME
 
+## G
+
+<span id="granularity">granulaty</span>
+:   FIXME
+
 ## J
 
 <span id="json">JSON</span>
 :   FIXME
 
 ## L
+
+<span id="livelock">livelock</span>
+:   FIXME
 
 <span id="load-balancing">load balancing</span>
 :   FIXME

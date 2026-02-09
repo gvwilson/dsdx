@@ -1,19 +1,23 @@
 """Worker with adaptive target selection strategy."""
 
-from typing import Optional
+from typing import TYPE_CHECKING
 from worker import Worker
 from task import Task
 
+if TYPE_CHECKING:
+    from scheduler import WorkStealingScheduler
 
+
+# mccole: worker
 class AdaptiveWorker(Worker):
     """Worker with adaptive target selection."""
 
-    def init(self, worker_id: int, scheduler):
+    def init(self, worker_id: int, scheduler: "WorkStealingScheduler", verbose: bool = True):
         super().init(worker_id, scheduler)
         self.steal_attempts = 0
         self.failed_steals = 0
 
-    async def try_steal(self) -> Optional[Task]:
+    async def try_steal(self) -> Task | None:
         """Try to steal with adaptive target selection."""
         self.steal_attempts += 1
 
@@ -35,3 +39,4 @@ class AdaptiveWorker(Worker):
 
         self.failed_steals += 1
         return None
+# mccole: /worker

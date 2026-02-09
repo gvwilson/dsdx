@@ -14,14 +14,17 @@ if TYPE_CHECKING:
 class Worker(Process):
     """Worker that executes tasks with work-stealing."""
 
-    def init(self, worker_id: int, scheduler: "WorkStealingScheduler"):
+    def init(
+        self, worker_id: int, scheduler: "WorkStealingScheduler", verbose: bool = True
+    ):
         self.worker_id = worker_id
         self.scheduler = scheduler
+        self.verbose = verbose
         self.deque = WorkerDeque()
         self.current_task: Task | None = None
         self.tasks_executed = 0
         self.tasks_stolen = 0
-# mccole: /worker
+    # mccole: /worker
 
     # mccole: run
     async def run(self):
@@ -48,14 +51,16 @@ class Worker(Process):
         """Execute a task."""
         self.current_task = task
         self.tasks_executed += 1
-        print(
-            f"[{self.now:.1f}] Worker {self.worker_id}: "
-            f"Executing {task.task_id} (queue size: {self.deque.size()})"
-        )
+        if self.verbose:
+            print(
+                f"[{self.now:.1f}] Worker {self.worker_id}: "
+                f"Executing {task.task_id} (queue size: {self.deque.size()})"
+            )
 
         await self.timeout(task.duration)
 
-        print(f"[{self.now:.1f}] Worker {self.worker_id}: Completed {task.task_id}")
+        if self.verbose:
+            print(f"[{self.now:.1f}] Worker {self.worker_id}: Completed {task.task_id}")
         self.current_task = None
     # mccole: /execute
 
@@ -72,10 +77,11 @@ class Worker(Process):
             task = target.deque.steal_top()
             if task:
                 self.tasks_stolen += 1
-                print(
-                    f"[{self.now:.1f}] Worker {self.worker_id}: "
-                    f"Stole {task.task_id} from Worker {target.worker_id}"
-                )
+                if self.verbose:
+                    print(
+                        f"[{self.now:.1f}] Worker {self.worker_id}: "
+                        f"Stole {task.task_id} from Worker {target.worker_id}"
+                    )
                 return task
 
         return None

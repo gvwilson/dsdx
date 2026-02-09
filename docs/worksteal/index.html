@@ -46,8 +46,8 @@ since every worker must compete for access to that queue.</p>
 Each worker maintains a local <a href="../glossary/#deque">deque</a> of tasks.
 Workers execute tasks from one end of their own deque,
 but if a worker runs out of tasks it can take some from the other end of another worker's deque.
-This design minimizes <a href="../glossary/#contention">contention</a> while providing some <a href="../glossary/#load-balancing">load balancing</a>.</p>
-<p>This pattern appears throughout high-performance computing:
+This design minimizes <a href="../glossary/#contention">contention</a> while providing some <a href="../glossary/#load-balancing">load balancing</a>,
+and appears throughout high-performance computing.
 <a href="https://golang.org/s/go11sched">Go's runtime scheduler</a> uses is to distribute goroutines across threads,
 Java's <a href="https://docs.oracle.com/javase/tutorial/essential/concurrency/forkjoin.html">fork/join framework</a> enables parallel divide-and-conquer algorithms,
 and <a href="https://tokio.rs/blog/2019-10-scheduler">Tokio</a> (Rust's async runtime) uses it to schedule <a href="../glossary/#future">futures</a> across worker threads.</p>
@@ -150,14 +150,16 @@ it waits briefly before trying again.</p>
 <span class="w">        </span><span class="sd">"""Execute a task."""</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_task</span> <span class="o">=</span> <span class="n">task</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">tasks_executed</span> <span class="o">+=</span> <span class="mi">1</span>
-        <span class="nb">print</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Worker </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">worker_id</span><span class="si">}</span><span class="s2">: "</span>
-            <span class="sa">f</span><span class="s2">"Executing </span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">task_id</span><span class="si">}</span><span class="s2"> (queue size: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">deque</span><span class="o">.</span><span class="n">size</span><span class="p">()</span><span class="si">}</span><span class="s2">)"</span>
-        <span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Worker </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">worker_id</span><span class="si">}</span><span class="s2">: "</span>
+                <span class="sa">f</span><span class="s2">"Executing </span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">task_id</span><span class="si">}</span><span class="s2"> (queue size: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">deque</span><span class="o">.</span><span class="n">size</span><span class="p">()</span><span class="si">}</span><span class="s2">)"</span>
+            <span class="p">)</span>
 
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">duration</span><span class="p">)</span>
 
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Worker </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">worker_id</span><span class="si">}</span><span class="s2">: Completed </span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">task_id</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Worker </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">worker_id</span><span class="si">}</span><span class="s2">: Completed </span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">task_id</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_task</span> <span class="o">=</span> <span class="kc">None</span>
 </code></pre></div>
 </div>
@@ -176,10 +178,11 @@ in order to spread the load as evenly as possible:</p>
             <span class="n">task</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">deque</span><span class="o">.</span><span class="n">steal_top</span><span class="p">()</span>
             <span class="k">if</span> <span class="n">task</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">tasks_stolen</span> <span class="o">+=</span> <span class="mi">1</span>
-                <span class="nb">print</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Worker </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">worker_id</span><span class="si">}</span><span class="s2">: "</span>
-                    <span class="sa">f</span><span class="s2">"Stole </span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">task_id</span><span class="si">}</span><span class="s2"> from Worker </span><span class="si">{</span><span class="n">target</span><span class="o">.</span><span class="n">worker_id</span><span class="si">}</span><span class="s2">"</span>
-                <span class="p">)</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Worker </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">worker_id</span><span class="si">}</span><span class="s2">: "</span>
+                        <span class="sa">f</span><span class="s2">"Stole </span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">task_id</span><span class="si">}</span><span class="s2"> from Worker </span><span class="si">{</span><span class="n">target</span><span class="o">.</span><span class="n">worker_id</span><span class="si">}</span><span class="s2">"</span>
+                    <span class="p">)</span>
                 <span class="k">return</span> <span class="n">task</span>
 
         <span class="k">return</span> <span class="kc">None</span>
@@ -190,20 +193,25 @@ in order to spread the load as evenly as possible:</p>
 <div data-filter="inc=scheduler" data-inc="scheduler.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">WorkStealingScheduler</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Scheduler that coordinates work-stealing workers."""</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">:</span> <span class="n">Environment</span><span class="p">,</span> <span class="n">num_workers</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">env</span><span class="p">:</span> <span class="n">Environment</span><span class="p">,</span>
+        <span class="n">num_workers</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">worker_cls</span><span class="p">:</span> <span class="nb">type</span> <span class="o">=</span> <span class="n">Worker</span><span class="p">,</span>
+    <span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="n">env</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">num_workers</span> <span class="o">=</span> <span class="n">num_workers</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">workers</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Worker</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">=</span> <span class="n">verbose</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">workers</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">task_counter</span> <span class="o">=</span> <span class="mi">0</span>
 
         <span class="c1"># Create workers</span>
         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_workers</span><span class="p">):</span>
-            <span class="n">worker</span> <span class="o">=</span> <span class="n">Worker</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+            <span class="n">worker</span> <span class="o">=</span> <span class="n">worker_cls</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span> <span class="n">verbose</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">workers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">worker</span><span class="p">)</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">submit_task</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">duration</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">parent_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Task</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">submit_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">duration</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">parent_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Task</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Submit a task to a random worker."""</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">task_counter</span> <span class="o">+=</span> <span class="mi">1</span>
         <span class="n">task</span> <span class="o">=</span> <span class="n">Task</span><span class="p">(</span>
@@ -215,30 +223,13 @@ in order to spread the load as evenly as possible:</p>
         <span class="n">worker</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">workers</span><span class="p">)</span>
         <span class="n">worker</span><span class="o">.</span><span class="n">deque</span><span class="o">.</span><span class="n">push_bottom</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
 
-        <span class="nb">print</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Submitted </span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">task_id</span><span class="si">}</span><span class="s2"> "</span>
-            <span class="sa">f</span><span class="s2">"to Worker </span><span class="si">{</span><span class="n">worker</span><span class="o">.</span><span class="n">worker_id</span><span class="si">}</span><span class="s2">"</span>
-        <span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Submitted </span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">task_id</span><span class="si">}</span><span class="s2"> "</span>
+                <span class="sa">f</span><span class="s2">"to Worker </span><span class="si">{</span><span class="n">worker</span><span class="o">.</span><span class="n">worker_id</span><span class="si">}</span><span class="s2">"</span>
+            <span class="p">)</span>
 
         <span class="k">return</span> <span class="n">task</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">get_statistics</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">"""Get scheduler statistics."""</span>
-        <span class="n">total_executed</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">w</span><span class="o">.</span><span class="n">tasks_executed</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">workers</span><span class="p">)</span>
-        <span class="n">total_stolen</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">w</span><span class="o">.</span><span class="n">tasks_stolen</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">workers</span><span class="p">)</span>
-
-        <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">=== Statistics ==="</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Total tasks executed: </span><span class="si">{</span><span class="n">total_executed</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Total tasks stolen: </span><span class="si">{</span><span class="n">total_stolen</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Steal rate: </span><span class="si">{</span><span class="mi">100</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">total_stolen</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="nb">max</span><span class="p">(</span><span class="n">total_executed</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%"</span><span class="p">)</span>
-
-        <span class="k">for</span> <span class="n">worker</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">workers</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">"Worker </span><span class="si">{</span><span class="n">worker</span><span class="o">.</span><span class="n">worker_id</span><span class="si">}</span><span class="s2">: "</span>
-                <span class="sa">f</span><span class="s2">"executed=</span><span class="si">{</span><span class="n">worker</span><span class="o">.</span><span class="n">tasks_executed</span><span class="si">}</span><span class="s2">, "</span>
-                <span class="sa">f</span><span class="s2">"stolen=</span><span class="si">{</span><span class="n">worker</span><span class="o">.</span><span class="n">tasks_stolen</span><span class="si">}</span><span class="s2">, "</span>
-                <span class="sa">f</span><span class="s2">"queue=</span><span class="si">{</span><span class="n">worker</span><span class="o">.</span><span class="n">deque</span><span class="o">.</span><span class="n">size</span><span class="p">()</span><span class="si">}</span><span class="s2">"</span>
-            <span class="p">)</span>
 </code></pre></div>
 </div>
 <p>We can create a simple simulation with load imbalance to see it in action:</p>
@@ -246,39 +237,35 @@ in order to spread the load as evenly as possible:</p>
 <span class="w">    </span><span class="sd">"""Basic work-stealing simulation."""</span>
     <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
 
-    <span class="c1"># Create scheduler with 3 workers</span>
     <span class="n">scheduler</span> <span class="o">=</span> <span class="n">WorkStealingScheduler</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
 
-    <span class="c1"># Submit tasks with varying durations</span>
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
         <span class="n">scheduler</span><span class="o">.</span><span class="n">submit_task</span><span class="p">(</span><span class="n">duration</span><span class="o">=</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">))</span>
 
-    <span class="c1"># Run simulation</span>
     <span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
 
-    <span class="c1"># Print statistics</span>
     <span class="n">scheduler</span><span class="o">.</span><span class="n">get_statistics</span><span class="p">()</span>
 </code></pre></div>
 </div>
 <p>The output shows workers executing tasks and stealing from each other when they run out of local work.
 The steal rate shows how much load balancing occurred:</p>
-<div data-filter="head=10 + tail=7" data-inc="ex_basic_ws.txt"><div class="codehilite"><pre class=""><span></span><code>[0.0] Submitted T1 to Worker 0
+<div data-filter="head=10 + tail=7" data-inc="ex_basic_ws.txt"><div class="codehilite"><pre class=""><span></span><code>[0.0] Submitted T1 to Worker 2
 [0.0] Submitted T2 to Worker 2
-[0.0] Submitted T3 to Worker 1
-[0.0] Submitted T4 to Worker 2
+[0.0] Submitted T3 to Worker 0
+[0.0] Submitted T4 to Worker 1
 [0.0] Submitted T5 to Worker 0
-[0.0] Submitted T6 to Worker 2
-[0.0] Submitted T7 to Worker 2
-[0.0] Submitted T8 to Worker 1
-[0.0] Submitted T9 to Worker 0
-[0.0] Submitted T10 to Worker 0
+[0.0] Submitted T6 to Worker 1
+[0.0] Submitted T7 to Worker 0
+[0.0] Submitted T8 to Worker 0
+[0.0] Submitted T9 to Worker 2
+[0.0] Submitted T10 to Worker 1
 ...more...
 === Statistics ===
 Total tasks executed: 10
-Total tasks stolen: 1
-Steal rate: 10.0%
+Total tasks stolen: 0
+Steal rate: 0.0%
 Worker 0: executed=4, stolen=0, queue=0
-Worker 1: executed=3, stolen=1, queue=0
+Worker 1: executed=3, stolen=0, queue=0
 Worker 2: executed=3, stolen=0, queue=0
 </code></pre></div>
 </div>
@@ -365,199 +352,171 @@ we can create a task generator:</p>
 </div>
 <p>Its output shows that spawning helps balance the load
 even with irregular task creation:</p>
-<div data-filter="head=20 + tail=8" data-inc="ex_spawning.txt"><div class="codehilite"><pre class=""><span></span><code>[0.0] Submitted T1 to Worker 3
-[0.1] Worker 0: Stole T1 from Worker 3
+<div data-filter="head=20 + tail=8" data-inc="ex_spawning.txt"><div class="codehilite"><pre class=""><span></span><code>[0.0] Submitted T1 to Worker 1
+[0.1] Worker 0: Stole T1 from Worker 1
 [0.1] Worker 0: Executing T1
-[0.5] Submitted T2 to Worker 2
-[0.5] Worker 1: Stole T2 from Worker 2
+[0.5] Submitted T2 to Worker 1
 [0.5] Worker 1: Executing T2
-[1.0] Submitted T3 to Worker 0
-[1.1] Worker 2: Stole T3 from Worker 0
+[1.0] Submitted T3 to Worker 1
+[1.1] Worker 2: Stole T3 from Worker 1
 [1.1] Worker 2: Executing T3
-[1.2] Worker 0: Spawned T1.0
-[1.2] Worker 0: Spawned T1.1
-[1.2] Worker 0: Spawned T1.2
-[1.3] Worker 3: Stole T1.0 from Worker 0
-[1.3] Worker 3: Executing T1.0
-[1.5] Submitted T4 to Worker 0
-[1.5] Worker 3: Spawned T1.0.0
-[1.5] Worker 3: Spawned T1.0.1
-[1.7] Worker 3: Completed T1.0
-[1.7] Worker 3: Executing T1.0.1
-[1.8] Worker 1: Spawned T2.0
+[1.5] Submitted T4 to Worker 3
+[1.5] Worker 3: Executing T4
+[2.0] Worker 0: Completed T1
+[2.0] Submitted T5 to Worker 1
+[2.1] Worker 0: Stole T5 from Worker 1
+[2.1] Worker 0: Executing T5
+[2.4] Worker 2: Completed T3
+[3.3] Worker 0: Completed T5
+[3.4] Worker 1: Completed T2
+[4.5] Worker 3: Completed T4
+
+=== Statistics ===
 ...more...
 === Statistics ===
-Total tasks executed: 45
-Total tasks stolen: 9
-Steal rate: 20.0%
-Worker 0: executed=12, stolen=6, queue=0
-Worker 1: executed=12, stolen=1, queue=0
-Worker 2: executed=10, stolen=1, queue=0
-Worker 3: executed=11, stolen=1, queue=0
+Total tasks executed: 5
+Total tasks stolen: 3
+Steal rate: 60.0%
+Worker 0: executed=2, stolen=2, queue=0
+Worker 1: executed=1, stolen=0, queue=0
+Worker 2: executed=1, stolen=1, queue=0
+Worker 3: executed=1, stolen=0, queue=0
 </code></pre></div>
 </div>
 <h2 id="worksteal-balance">Load Balancing Strategies</h2>
-<p>Different victim selection strategies affect performance:</p>
-<div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">AdaptiveWorker</span><span class="p">(</span><span class="n">Worker</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""Worker with adaptive victim selection."""</span>
+<p>What effect does target selection strategy have on performance?
+To find out,
+we can create a worker that uses adaptive target selection,
+i.e.,
+that steals tasks from the largest of its peers' queues:</p>
+<div data-filter="inc=worker" data-inc="adaptive_worker.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">AdaptiveWorker</span><span class="p">(</span><span class="n">Worker</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Worker with adaptive target selection."""</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">worker_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">scheduler</span><span class="p">:</span> <span class="s1">'WorkStealingScheduler'</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">worker_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">scheduler</span><span class="p">:</span> <span class="s2">"WorkStealingScheduler"</span><span class="p">,</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="n">worker_id</span><span class="p">,</span> <span class="n">scheduler</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">steal_attempts</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">failed_steals</span> <span class="o">=</span> <span class="mi">0</span>
 
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">try_steal</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Task</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">"""Try to steal with adaptive victim selection."""</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">try_steal</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Task</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Try to steal with adaptive target selection."""</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">steal_attempts</span> <span class="o">+=</span> <span class="mi">1</span>
 
         <span class="c1"># Try workers with largest queues first</span>
-        <span class="n">victims</span> <span class="o">=</span> <span class="p">[</span><span class="n">w</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">scheduler</span><span class="o">.</span><span class="n">workers</span> <span class="k">if</span> <span class="n">w</span> <span class="o">!=</span> <span class="bp">self</span><span class="p">]</span>
-        <span class="n">victims</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">w</span><span class="p">:</span> <span class="n">w</span><span class="o">.</span><span class="n">deque</span><span class="o">.</span><span class="n">size</span><span class="p">(),</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">targets</span> <span class="o">=</span> <span class="p">[</span><span class="n">w</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">scheduler</span><span class="o">.</span><span class="n">workers</span> <span class="k">if</span> <span class="n">w</span> <span class="o">!=</span> <span class="bp">self</span><span class="p">]</span>
+        <span class="n">targets</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">w</span><span class="p">:</span> <span class="n">w</span><span class="o">.</span><span class="n">deque</span><span class="o">.</span><span class="n">size</span><span class="p">(),</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
-        <span class="k">for</span> <span class="n">victim</span> <span class="ow">in</span> <span class="n">victims</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">victim</span><span class="o">.</span><span class="n">deque</span><span class="o">.</span><span class="n">size</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="n">task</span> <span class="o">=</span> <span class="n">victim</span><span class="o">.</span><span class="n">deque</span><span class="o">.</span><span class="n">steal_top</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">target</span> <span class="ow">in</span> <span class="n">targets</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">target</span><span class="o">.</span><span class="n">deque</span><span class="o">.</span><span class="n">size</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">task</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">deque</span><span class="o">.</span><span class="n">steal_top</span><span class="p">()</span>
                 <span class="k">if</span> <span class="n">task</span><span class="p">:</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">tasks_stolen</span> <span class="o">+=</span> <span class="mi">1</span>
-                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Worker </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">worker_id</span><span class="si">}</span><span class="s2">: "</span>
-                          <span class="sa">f</span><span class="s2">"Stole </span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">task_id</span><span class="si">}</span><span class="s2"> from Worker </span><span class="si">{</span><span class="n">victim</span><span class="o">.</span><span class="n">worker_id</span><span class="si">}</span><span class="s2"> "</span>
-                          <span class="sa">f</span><span class="s2">"(victim queue: </span><span class="si">{</span><span class="n">victim</span><span class="o">.</span><span class="n">deque</span><span class="o">.</span><span class="n">size</span><span class="p">()</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
+                    <span class="nb">print</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Worker </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">worker_id</span><span class="si">}</span><span class="s2">: "</span>
+                        <span class="sa">f</span><span class="s2">"Stole </span><span class="si">{</span><span class="n">task</span><span class="o">.</span><span class="n">task_id</span><span class="si">}</span><span class="s2"> from Worker </span><span class="si">{</span><span class="n">target</span><span class="o">.</span><span class="n">worker_id</span><span class="si">}</span><span class="s2"> "</span>
+                        <span class="sa">f</span><span class="s2">"(target queue: </span><span class="si">{</span><span class="n">target</span><span class="o">.</span><span class="n">deque</span><span class="o">.</span><span class="n">size</span><span class="p">()</span><span class="si">}</span><span class="s2">)"</span>
+                    <span class="p">)</span>
                     <span class="k">return</span> <span class="n">task</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">failed_steals</span> <span class="o">+=</span> <span class="mi">1</span>
         <span class="k">return</span> <span class="kc">None</span>
-
-
-<span class="k">class</span><span class="w"> </span><span class="nc">AdaptiveScheduler</span><span class="p">(</span><span class="n">WorkStealingScheduler</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""Scheduler with adaptive workers."""</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">env</span><span class="p">:</span> <span class="n">Environment</span><span class="p">,</span> <span class="n">num_workers</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="n">env</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">num_workers</span> <span class="o">=</span> <span class="n">num_workers</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">workers</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">AdaptiveWorker</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">task_counter</span> <span class="o">=</span> <span class="mi">0</span>
-
-        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_workers</span><span class="p">):</span>
-            <span class="n">worker</span> <span class="o">=</span> <span class="n">AdaptiveWorker</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">workers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">worker</span><span class="p">)</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">run_adaptive_simulation</span><span class="p">():</span>
-<span class="w">    </span><span class="sd">"""Demonstrate adaptive stealing strategy."""</span>
-    <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
-
-    <span class="n">scheduler</span> <span class="o">=</span> <span class="n">AdaptiveScheduler</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
-
-    <span class="c1"># Create imbalanced initial load</span>
-    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">15</span><span class="p">):</span>
-        <span class="c1"># Give most tasks to worker 0</span>
-        <span class="n">worker_idx</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">12</span> <span class="k">else</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
-        <span class="n">scheduler</span><span class="o">.</span><span class="n">workers</span><span class="p">[</span><span class="n">worker_idx</span><span class="p">]</span><span class="o">.</span><span class="n">deque</span><span class="o">.</span><span class="n">push_bottom</span><span class="p">(</span>
-            <span class="n">Task</span><span class="p">(</span><span class="sa">f</span><span class="s2">"T</span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">))</span>
-        <span class="p">)</span>
-
-    <span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">25</span><span class="p">)</span>
-    <span class="n">scheduler</span><span class="o">.</span><span class="n">get_statistics</span><span class="p">()</span>
 </code></pre></div>
-<p>The adaptive strategy targets victims with the most work, leading to faster load balancing.</p>
-<h2 id="worksteal-perf">Task Granularity and Performance</h2>
-<p>Task granularity—how much work each task does—significantly affects performance.
-Too fine-grained, and scheduling overhead dominates; too coarse-grained, and load imbalance reduces parallelism:</p>
-<div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">PerformanceAnalyzer</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""Analyzes scheduler performance with different granularities."""</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scheduler</span><span class="p">:</span> <span class="n">WorkStealingScheduler</span><span class="p">,</span> 
-             <span class="n">total_work</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">task_granularity</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">scheduler</span> <span class="o">=</span> <span class="n">scheduler</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">total_work</span> <span class="o">=</span> <span class="n">total_work</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">task_granularity</span> <span class="o">=</span> <span class="n">task_granularity</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">end_time</span> <span class="o">=</span> <span class="kc">None</span>
-
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">"""Submit tasks and measure completion time."""</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">now</span>
-
-        <span class="n">num_tasks</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">total_work</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_granularity</span><span class="p">)</span>
-
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Starting: </span><span class="si">{</span><span class="n">num_tasks</span><span class="si">}</span><span class="s2"> tasks "</span>
-              <span class="sa">f</span><span class="s2">"of </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">task_granularity</span><span class="si">}</span><span class="s2">s each"</span><span class="p">)</span>
-
-        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_tasks</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">scheduler</span><span class="o">.</span><span class="n">submit_task</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task_granularity</span><span class="p">)</span>
-
-        <span class="c1"># Wait for all workers to become idle</span>
-        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
-            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span>
-
-            <span class="n">all_idle</span> <span class="o">=</span> <span class="nb">all</span><span class="p">(</span>
-                <span class="n">w</span><span class="o">.</span><span class="n">deque</span><span class="o">.</span><span class="n">is_empty</span><span class="p">()</span> <span class="ow">and</span> <span class="n">w</span><span class="o">.</span><span class="n">current_task</span> <span class="ow">is</span> <span class="kc">None</span>
-                <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">scheduler</span><span class="o">.</span><span class="n">workers</span>
-            <span class="p">)</span>
-
-            <span class="k">if</span> <span class="n">all_idle</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">end_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">now</span>
-                <span class="k">break</span>
-
-        <span class="n">elapsed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">end_time</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span>
-        <span class="n">speedup</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_work</span> <span class="o">/</span> <span class="n">elapsed</span>
-        <span class="n">efficiency</span> <span class="o">=</span> <span class="n">speedup</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">scheduler</span><span class="o">.</span><span class="n">num_workers</span>
-
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">=== Performance Analysis ==="</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Granularity: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">task_granularity</span><span class="si">}</span><span class="s2">s"</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Total work: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">total_work</span><span class="si">}</span><span class="s2">s"</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Wall time: </span><span class="si">{</span><span class="n">elapsed</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">s"</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Speedup: </span><span class="si">{</span><span class="n">speedup</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">x"</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Efficiency: </span><span class="si">{</span><span class="n">efficiency</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">run_granularity_experiment</span><span class="p">():</span>
-<span class="w">    </span><span class="sd">"""Experiment with different task granularities."""</span>
-    <span class="k">for</span> <span class="n">granularity</span> <span class="ow">in</span> <span class="p">[</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">]:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="si">{</span><span class="s1">'='</span><span class="o">*</span><span class="mi">60</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Testing granularity: </span><span class="si">{</span><span class="n">granularity</span><span class="si">}</span><span class="s2">s"</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s1">'='</span><span class="o">*</span><span class="mi">60</span><span class="p">)</span>
-
-        <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
-        <span class="n">scheduler</span> <span class="o">=</span> <span class="n">WorkStealingScheduler</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">num_workers</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
-
-        <span class="n">analyzer</span> <span class="o">=</span> <span class="n">PerformanceAnalyzer</span><span class="p">(</span>
-            <span class="n">env</span><span class="p">,</span> <span class="n">scheduler</span><span class="p">,</span> 
-            <span class="n">total_work</span><span class="o">=</span><span class="mf">20.0</span><span class="p">,</span> 
-            <span class="n">task_granularity</span><span class="o">=</span><span class="n">granularity</span>
-        <span class="p">)</span>
-
-        <span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
-        <span class="n">scheduler</span><span class="o">.</span><span class="n">get_statistics</span><span class="p">()</span>
+</div>
+<p>Unsurprisingly,
+this leads to better load balancing:</p>
+<div data-filter="head=20 + tail=8" data-inc="ex_adaptive.txt"><div class="codehilite"><pre class=""><span></span><code>Initial load distribution:
+  Worker 0: 12 tasks
+  Worker 1: 1 tasks
+  Worker 2: 2 tasks
+  Worker 3: 0 tasks
+[0.0] Worker 0: Executing T12 (queue size: 11)
+[0.0] Worker 1: Executing T13 (queue size: 0)
+[0.0] Worker 2: Executing T15 (queue size: 1)
+[0.0] Worker 3: Stole T1 from Worker 0 (target queue: 10)
+[0.0] Worker 3: Executing T1 (queue size: 0)
+[1.1] Worker 0: Completed T12
+[1.1] Worker 0: Executing T11 (queue size: 9)
+[1.4] Worker 3: Completed T1
+[1.4] Worker 3: Stole T2 from Worker 0 (target queue: 8)
+[1.4] Worker 3: Executing T2 (queue size: 0)
+[1.5] Worker 2: Completed T15
+[1.5] Worker 2: Executing T14 (queue size: 0)
+[1.9] Worker 1: Completed T13
+[1.9] Worker 1: Stole T3 from Worker 0 (target queue: 7)
+[1.9] Worker 1: Executing T3 (queue size: 0)
+...more...
+=== Statistics ===
+Total tasks executed: 15
+Total tasks stolen: 8
+Steal rate: 53.3%
+Worker 0: executed=4, stolen=0, queue=0
+Worker 1: executed=3, stolen=2, queue=0
+Worker 2: executed=4, stolen=2, queue=0
+Worker 3: executed=4, stolen=4, queue=0
 </code></pre></div>
-<p>This experiment shows how granularity affects speedup and efficiency.
-Fine-grained tasks enable better load balancing but increase overhead.</p>
-<h2 id="worksteal-real">Real-World Considerations</h2>
-<p>Our implementation demonstrates core concepts, but production work-stealing schedulers need:</p>
-<ul>
-<li>
-<p><strong>Lock-free deques</strong>: Use atomic compare-and-swap operations instead of locks.
-The <a href="https://www.dre.vanderbilt.edu/~schmidt/PDF/work-stealing-dequeue.pdf">Chase-Lev deque</a> is a popular choice.</p>
-</li>
-<li>
-<p><strong>Bounded stealing attempts</strong>: Prevent livelock by limiting how long a worker searches for victims.</p>
-</li>
-<li>
-<p><strong>NUMA awareness</strong>: On multi-socket systems, prefer stealing from nearby workers to maintain cache locality.</p>
-</li>
-<li>
-<p><strong>Priority queues</strong>: Some tasks are more important than others and should execute first.</p>
-</li>
-<li>
-<p><strong>Backoff strategies</strong>: Idle workers should back off exponentially rather than spinning continuously.</p>
-</li>
-<li>
-<p><strong>Work affinity</strong>: Tasks that share data should execute on the same worker when possible.</p>
-</li>
-<li>
-<p><strong>Termination detection</strong>: Determining when all work is complete in a distributed system is non-trivial.</p>
-</li>
-</ul>
+</div>
+<h2 id="worksteal-granularity">Task Granularity</h2>
+<p>The <a href="../glossary/#granularity">granularity</a> of tasks—i.e.,
+how much work is in each one—has a big impact on performance.
+Many small tasks create lots of scheduling overhead,
+while a few large tasks cause load imbalance.
+Using the code we have written so far,
+we can easily experiment with the effect of changing task size:</p>
+<div data-inc="ex_granularity.txt"><div class="codehilite"><pre class=""><span></span><code>=== Performance Analysis ===
+Granularity: 0.1s
+Total work: 50.0s
+Wall time: 13.00s
+Speedup: 3.85x
+Efficiency: 96.2%
+
+=== Statistics ===
+Total tasks executed: 500
+Total tasks stolen: 14
+Steal rate: 2.8%
+Worker 0: executed=125, stolen=0, queue=0
+Worker 1: executed=125, stolen=7, queue=0
+Worker 2: executed=125, stolen=2, queue=0
+Worker 3: executed=125, stolen=5, queue=0
+
+=== Performance Analysis ===
+Granularity: 0.5s
+Total work: 50.0s
+Wall time: 13.00s
+Speedup: 3.85x
+Efficiency: 96.2%
+
+=== Statistics ===
+Total tasks executed: 100
+Total tasks stolen: 13
+Steal rate: 13.0%
+Worker 0: executed=25, stolen=2, queue=0
+Worker 1: executed=25, stolen=8, queue=0
+Worker 2: executed=25, stolen=3, queue=0
+Worker 3: executed=25, stolen=0, queue=0
+
+=== Performance Analysis ===
+Granularity: 2.0s
+Total work: 50.0s
+Wall time: 15.00s
+Speedup: 3.33x
+Efficiency: 83.3%
+
+=== Statistics ===
+Total tasks executed: 25
+Total tasks stolen: 1
+Steal rate: 4.0%
+Worker 0: executed=7, stolen=1, queue=0
+Worker 1: executed=6, stolen=0, queue=0
+Worker 2: executed=6, stolen=0, queue=0
+Worker 3: executed=6, stolen=0, queue=0
+</code></pre></div>
+</div>
+<p>Our implementations demonstrate the core concepts of work stealing,
+but production systems go further.
+In particular,
+they try to prevent <a href="../glossary/#livelock">livelock</a> by limiting how long a worker searches for victims,
+and use exponential backoff rather than spinning continuously when trying to steal work.</p>
+<h2 id="worksteal-exercises">Exercises</h2>
+<p>FIXME: add exercises.</p>
 </main>
 <footer>
 <div class="row">

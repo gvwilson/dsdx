@@ -37,7 +37,7 @@ class PriorityBackpressureBroker:
     # mccole: publish
     async def publish(self, message: PriorityMessage) -> bool:
         """Publish message to priority queues.
-        
+
         Returns:
             True if message was accepted by all queues.
         """
@@ -50,4 +50,4 @@ class PriorityBackpressureBroker:
             self.num_delivered += 1
 
         return all_delivered
-        # mccole: /publish
+    # mccole: /publish

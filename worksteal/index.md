@@ -10,9 +10,8 @@ A [work-stealing](g:work-stealing) scheduler solves this problem through decentr
 Each worker maintains a local [deque](g:deque) of tasks.
 Workers execute tasks from one end of their own deque,
 but if a worker runs out of tasks it can take some from the other end of another worker's deque.
-This design minimizes [contention](g:contention) while providing some [load balancing](g:load-balancing).
-
-This pattern appears throughout high-performance computing:
+This design minimizes [contention](g:contention) while providing some [load balancing](g:load-balancing),
+and appears throughout high-performance computing.
 [Go's runtime scheduler][go-scheduler] uses is to distribute goroutines across threads,
 Java's [fork/join framework][java-fork-join] enables parallel divide-and-conquer algorithms,
 and [Tokio][tokio] (Rust's async runtime) uses it to schedule [futures](g:future) across worker threads.
@@ -122,165 +121,36 @@ even with irregular task creation:
 
 ## Load Balancing Strategies {: #worksteal-balance}
 
-Different victim selection strategies affect performance:
+What effect does target selection strategy have on performance?
+To find out,
+we can create a worker that uses adaptive target selection,
+i.e.,
+that steals tasks from the largest of its peers' queues:
 
-```python
-class AdaptiveWorker(Worker):
-    """Worker with adaptive victim selection."""
-    
-    def init(self, worker_id: int, scheduler: 'WorkStealingScheduler'):
-        super().init(worker_id, scheduler)
-        self.steal_attempts = 0
-        self.failed_steals = 0
-    
-    async def try_steal(self) -> Optional[Task]:
-        """Try to steal with adaptive victim selection."""
-        self.steal_attempts += 1
-        
-        # Try workers with largest queues first
-        victims = [w for w in self.scheduler.workers if w != self]
-        victims.sort(key=lambda w: w.deque.size(), reverse=True)
-        
-        for victim in victims:
-            if victim.deque.size() > 0:
-                task = victim.deque.steal_top()
-                if task:
-                    self.tasks_stolen += 1
-                    print(f"[{self.now:.1f}] Worker {self.worker_id}: "
-                          f"Stole {task.task_id} from Worker {victim.worker_id} "
-                          f"(victim queue: {victim.deque.size()})")
-                    return task
-        
-        self.failed_steals += 1
-        return None
+<div data-inc="adaptive_worker.py" data-filter="inc=worker"></div>
 
+Unsurprisingly,
+this leads to better load balancing:
 
-class AdaptiveScheduler(WorkStealingScheduler):
-    """Scheduler with adaptive workers."""
-    
-    def __init__(self, env: Environment, num_workers: int):
-        self.env = env
-        self.num_workers = num_workers
-        self.workers: List[AdaptiveWorker] = []
-        self.task_counter = 0
-        
-        for i in range(num_workers):
-            worker = AdaptiveWorker(env, i, self)
-            self.workers.append(worker)
+<div data-inc="ex_adaptive.txt" data-filter="head=20 + tail=8"></div>
 
+## Task Granularity {: #worksteal-granularity}
 
-def run_adaptive_simulation():
-    """Demonstrate adaptive stealing strategy."""
-    env = Environment()
-    
-    scheduler = AdaptiveScheduler(env, num_workers=4)
-    
-    # Create imbalanced initial load
-    for i in range(15):
-        # Give most tasks to worker 0
-        worker_idx = 0 if i < 12 else random.randint(0, 3)
-        scheduler.workers[worker_idx].deque.push_bottom(
-            Task(f"T{i+1}", random.uniform(1.0, 2.0))
-        )
-    
-    env.run(until=25)
-    scheduler.get_statistics()
-```
+The [granularity](g:granularity) of tasks—i.e.,
+how much work is in each one—has a big impact on performance.
+Many small tasks create lots of scheduling overhead,
+while a few large tasks cause load imbalance.
+Using the code we have written so far,
+we can easily experiment with the effect of changing task size:
 
-The adaptive strategy targets victims with the most work, leading to faster load balancing.
+<div data-inc="ex_granularity.txt"></div>
 
-## Task Granularity and Performance {: #worksteal-perf}
+Our implementations demonstrate the core concepts of work stealing,
+but production systems go further.
+In particular,
+they try to prevent [livelock](g:livelock) by limiting how long a worker searches for victims,
+and use exponential backoff rather than spinning continuously when trying to steal work.
 
-Task granularity—how much work each task does—significantly affects performance.
-Too fine-grained, and scheduling overhead dominates; too coarse-grained, and load imbalance reduces parallelism:
+## Exercises {: #worksteal-exercises}
 
-```python
-class PerformanceAnalyzer(Process):
-    """Analyzes scheduler performance with different granularities."""
-    
-    def init(self, scheduler: WorkStealingScheduler, 
-             total_work: float, task_granularity: float):
-        self.scheduler = scheduler
-        self.total_work = total_work
-        self.task_granularity = task_granularity
-        self.start_time = None
-        self.end_time = None
-    
-    async def run(self):
-        """Submit tasks and measure completion time."""
-        self.start_time = self.now
-        
-        num_tasks = int(self.total_work / self.task_granularity)
-        
-        print(f"\n[{self.now:.1f}] Starting: {num_tasks} tasks "
-              f"of {self.task_granularity}s each")
-        
-        for i in range(num_tasks):
-            self.scheduler.submit_task(self.task_granularity)
-        
-        # Wait for all workers to become idle
-        while True:
-            await self.timeout(1.0)
-            
-            all_idle = all(
-                w.deque.is_empty() and w.current_task is None
-                for w in self.scheduler.workers
-            )
-            
-            if all_idle:
-                self.end_time = self.now
-                break
-        
-        elapsed = self.end_time - self.start_time
-        speedup = self.total_work / elapsed
-        efficiency = speedup / self.scheduler.num_workers
-        
-        print(f"\n=== Performance Analysis ===")
-        print(f"Granularity: {self.task_granularity}s")
-        print(f"Total work: {self.total_work}s")
-        print(f"Wall time: {elapsed:.2f}s")
-        print(f"Speedup: {speedup:.2f}x")
-        print(f"Efficiency: {efficiency:.1%}")
-
-
-def run_granularity_experiment():
-    """Experiment with different task granularities."""
-    for granularity in [0.1, 0.5, 2.0]:
-        print(f"\n{'='*60}")
-        print(f"Testing granularity: {granularity}s")
-        print('='*60)
-        
-        env = Environment()
-        scheduler = WorkStealingScheduler(env, num_workers=4)
-        
-        analyzer = PerformanceAnalyzer(
-            env, scheduler, 
-            total_work=20.0, 
-            task_granularity=granularity
-        )
-        
-        env.run(until=50)
-        scheduler.get_statistics()
-```
-
-This experiment shows how granularity affects speedup and efficiency.
-Fine-grained tasks enable better load balancing but increase overhead.
-
-## Real-World Considerations {: #worksteal-real}
-
-Our implementation demonstrates core concepts, but production work-stealing schedulers need:
-
--   **Lock-free deques**: Use atomic compare-and-swap operations instead of locks.
-The [Chase-Lev deque][chase-lev-deque] is a popular choice.
-
--   **Bounded stealing attempts**: Prevent livelock by limiting how long a worker searches for victims.
-
--   **NUMA awareness**: On multi-socket systems, prefer stealing from nearby workers to maintain cache locality.
-
--   **Priority queues**: Some tasks are more important than others and should execute first.
-
--   **Backoff strategies**: Idle workers should back off exponentially rather than spinning continuously.
-
--   **Work affinity**: Tasks that share data should execute on the same worker when possible.
-
--   **Termination detection**: Determining when all work is complete in a distributed system is non-trivial.
+FIXME: add exercises.

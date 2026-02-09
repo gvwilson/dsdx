@@ -3,7 +3,6 @@
 [apache-zookeeper]: https://zookeeper.apache.org/
 [asimpy]: https://asimpy.readthedocs.io/
 [cap-theorem]: https://en.wikipedia.org/wiki/CAP_theorem
-[chase-lev-deque]: https://www.dre.vanderbilt.edu/~schmidt/PDF/work-stealing-dequeue.pdf
 [chubby]: https://research.google/pubs/pub27897/
 [cockroachdb]: https://www.cockroachlabs.com/
 [dynamodb]: https://en.wikipedia.org/wiki/Amazon_DynamoDB
@@ -12,8 +11,8 @@
 [java-fork-join]: https://docs.oracle.com/javase/tutorial/essential/concurrency/forkjoin.html
 [kafka]: https://kafka.apache.org/
 [paxos]: https://en.wikipedia.org/wiki/Paxos_(computer_science)
-[raft]: https://en.wikipedia.org/wiki/Raft_(algorithm)
 [rabbitmq]: https://www.rabbitmq.com/
+[raft]: https://en.wikipedia.org/wiki/Raft_(algorithm)
 [redis]: https://redis.io/
 [redlock]: https://redis.io/docs/latest/develop/clients/patterns/distributed-locks/
 [riak]: https://riak.com/

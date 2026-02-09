@@ -25,7 +25,7 @@ class BackpressurePublisher(Process):
         self.backpressure_events = 0
 # mccole: /init
 
-# mccole: run
+    # mccole: run
     async def run(self):
         """Generate and publish messages, slowing down on backpressure."""
         while True:
@@ -62,4 +62,4 @@ class BackpressurePublisher(Process):
 
             # Wait before next message.
             await self.timeout(self.current_interval)
-# mccole: /run
+    # mccole: /run

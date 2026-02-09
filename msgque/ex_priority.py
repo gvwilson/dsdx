@@ -29,7 +29,7 @@ class PriorityPublisher(Process):
 
         while True:
             self.message_counter += 1
-            
+
             # Assign priorities: 70% low (5-9), 30% high (0-4)
             if random.random() < 0.3:
                 priority = random.randint(0, 4)  # High priority
@@ -78,7 +78,7 @@ class PrioritySubscriber(Process):
         while True:
             # PriorityQueue returns items in priority order
             message = await self.queue.get()
-            
+
             self.num_received += 1
             priority = message.priority
             self.priority_counts[priority] = self.priority_counts.get(priority, 0) + 1
@@ -113,7 +113,7 @@ def run_priority_simulation():
     print(f"Messages published: {broker.num_published}")
     print(f"Messages delivered: {broker.num_delivered}")
     print(f"Messages received: {subscriber.num_received}")
-    
+
     print("\nReceived by priority:")
     for priority in sorted(subscriber.priority_counts.keys()):
         print(f"  Priority {priority}: {subscriber.priority_counts[priority]}")

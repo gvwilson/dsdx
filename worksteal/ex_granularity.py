@@ -10,19 +10,14 @@ from performance_analyzer import PerformanceAnalyzer
 def run_granularity_experiment():
     """Experiment with different task granularities."""
     for granularity in [0.1, 0.5, 2.0]:
-        print(f"\n{'=' * 60}")
-        print(f"Testing granularity: {granularity}s")
-        print("=" * 60)
-
         env = Environment()
-        scheduler = WorkStealingScheduler(env, num_workers=4)
-
+        scheduler = WorkStealingScheduler(env, num_workers=4, verbose=False)
         PerformanceAnalyzer(
-            env, scheduler, total_work=20.0, task_granularity=granularity
+            env, scheduler, total_work=50.0, task_granularity=granularity
         )
-
-        env.run(until=50)
+        env.run(until=100)
         scheduler.get_statistics()
+        print()
 
 
 if __name__ == "__main__":

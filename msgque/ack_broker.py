@@ -24,7 +24,7 @@ class AckBroker(MessageBroker):
         self.next_ack_id = 0
 # mccole: /broker
 
-# mccole: publish
+    # mccole: publish
     async def publish(self, message: Message):
         """Publish with acknowledgment."""
         queues = self.topics.get(message.topic, [])
@@ -46,8 +46,7 @@ class AckBroker(MessageBroker):
 
             # Schedule re-delivery
             self.env.schedule(
-                self.env.now + self.ack_timeout,
-                lambda aid=ack_id: self._check_ack(aid)
+                self.env.now + self.ack_timeout, lambda aid=ack_id: self._check_ack(aid)
             )
 
     def _check_ack(self, ack_id: int):
@@ -55,11 +54,12 @@ class AckBroker(MessageBroker):
         if ack_id in self.pending_acks:
             msg, _, queue = self.pending_acks[ack_id]
             queue.put(msg)
-# mccole: /publish
 
-# mccole: acknowledge
+    # mccole: /publish
+
+    # mccole: acknowledge
     def acknowledge(self, ack_id: int):
         """Acknowledge receipt of a message."""
         if ack_id in self.pending_acks:
             del self.pending_acks[ack_id]
-# mccole: /acknowledge
+    # mccole: /acknowledge

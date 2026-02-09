@@ -287,7 +287,3 @@ or partition-based assignment.
 ## Exercises {: #msgque-exercises}
 
 FIXME: add exercises.
-
-[rabbitmq]: https://www.rabbitmq.com/
-[kafka]: https://kafka.apache.org/
-[amazon-sqs]: https://aws.amazon.com/sqs/

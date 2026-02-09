@@ -10,20 +10,25 @@ from worker import Worker
 class WorkStealingScheduler:
     """Scheduler that coordinates work-stealing workers."""
 
-    def __init__(self, env: Environment, num_workers: int):
+    def __init__(
+        self,
+        env: Environment,
+        num_workers: int,
+        verbose: bool = True,
+        worker_cls: type = Worker,
+    ):
         self.env = env
         self.num_workers = num_workers
-        self.workers: list[Worker] = []
+        self.verbose = verbose
+        self.workers: list = []
         self.task_counter = 0
 
         # Create workers
         for i in range(num_workers):
-            worker = Worker(env, i, self)
+            worker = worker_cls(env, i, self, verbose)
             self.workers.append(worker)
 
-    def submit_task(
-        self, duration: float, parent_id: str | None = None
-    ) -> Task:
+    def submit_task(self, duration: float, parent_id: str | None = None) -> Task:
         """Submit a task to a random worker."""
         self.task_counter += 1
         task = Task(
@@ -35,13 +40,14 @@ class WorkStealingScheduler:
         worker = random.choice(self.workers)
         worker.deque.push_bottom(task)
 
-        print(
-            f"[{self.env.now:.1f}] Submitted {task.task_id} "
-            f"to Worker {worker.worker_id}"
-        )
+        if self.verbose:
+            print(
+                f"[{self.env.now:.1f}] Submitted {task.task_id} "
+                f"to Worker {worker.worker_id}"
+            )
 
         return task
-# mccole: scheduler
+# mccole: /scheduler
 
     def get_statistics(self):
         """Get scheduler statistics."""

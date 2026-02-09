@@ -451,7 +451,7 @@ If not,
 we either evict a lower-priority message or discard the one that just arrived:</p>
 <div data-filter="inc=publish" data-inc="priority_backpressure.py"><div class="codehilite"><pre class=""><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">publish</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="n">PriorityMessage</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Publish message to priority queues.</span>
-<span class="sd">        </span>
+
 <span class="sd">        Returns:</span>
 <span class="sd">            True if message was accepted by all queues.</span>
 <span class="sd">        """</span>
@@ -531,8 +531,7 @@ The lambda captures the acknowledgment ID and calls <code>_check_ack()</code> af
 
             <span class="c1"># Schedule re-delivery</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">schedule</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">ack_timeout</span><span class="p">,</span>
-                <span class="k">lambda</span> <span class="n">aid</span><span class="o">=</span><span class="n">ack_id</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_ack</span><span class="p">(</span><span class="n">aid</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">ack_timeout</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">aid</span><span class="o">=</span><span class="n">ack_id</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_ack</span><span class="p">(</span><span class="n">aid</span><span class="p">)</span>
             <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_check_ack</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ack_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
