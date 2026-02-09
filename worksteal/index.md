@@ -38,130 +38,44 @@ Let's start with the task representation:
 
 <div data-inc="task.py" data-filter="inc=task"></div>
 
-Each task has an ID, a duration (simulating CPU-bound work), and optionally a parent task ID for tracking task dependencies.
-
-## Worker Deques {: #worksteal-deque}
+Each task has an ID,
+a duration to simulate CPU-bound work,
+and an optional parent task ID for tracking task dependencies.
 
 Each worker maintains a deque.
 In our simulation, we'll use a simple list-based deque:
 
-```python
-class WorkerDeque:
-    """Double-ended queue for tasks with stealing support."""
-    
-    def __init__(self):
-        self.tasks: List[Task] = []
-    
-    def push_bottom(self, task: Task):
-        """Owner pushes task to bottom (private end)."""
-        self.tasks.append(task)
-    
-    def pop_bottom(self) -> Optional[Task]:
-        """Owner pops task from bottom."""
-        if not self.tasks:
-            return None
-        return self.tasks.pop()
-    
-    def steal_top(self) -> Optional[Task]:
-        """Thief steals task from top (public end)."""
-        if not self.tasks:
-            return None
-        return self.tasks.pop(0)
-    
-    def is_empty(self) -> bool:
-        """Check if deque is empty."""
-        return len(self.tasks) == 0
-    
-    def size(self) -> int:
-        """Return number of tasks."""
-        return len(self.tasks)
-```
+<div data-inc="worker_deque.py" data-filter="inc=deque"></div>
 
-In production systems, this would use atomic operations and careful memory ordering to avoid locks.
-Our simulation focuses on the algorithmic pattern rather than low-level synchronization.
+A production system would use something more sophisticated than a simple Python list
+to manage the deque,
+but our simulation focuses on the algorithmic pattern rather than low-level synchronization.
 
-## Worker Implementation {: #worksteal-worker}
+A worker executes tasks from its local deque and steals when idle.
+We start by setting up its members:
 
-A worker executes tasks from its local deque and steals when idle:
+<div data-inc="worker.py" data-filter="inc=deque"></div>
 
-```python
-class Worker(Process):
-    """Worker that executes tasks with work-stealing."""
-    
-    def init(self, worker_id: int, scheduler: 'WorkStealingScheduler'):
-        self.worker_id = worker_id
-        self.scheduler = scheduler
-        self.deque = WorkerDeque()
-        self.tasks_executed = 0
-        self.tasks_stolen = 0
-        self.current_task: Optional[Task] = None
-        
-    async def run(self):
-        """Main worker loop: execute local tasks or steal."""
-        while True:
-            # Try to get a task from local deque
-            task = self.deque.pop_bottom()
-            
-            if task:
-                # Execute local task
-                await self.execute_task(task)
-            else:
-                # No local work, try stealing
-                stolen = await self.try_steal()
-                
-                if stolen:
-                    await self.execute_task(stolen)
-                else:
-                    # No work available anywhere, wait a bit
-                    await self.timeout(0.1)
-    
-    async def execute_task(self, task: Task):
-        """Execute a task."""
-        self.current_task = task
-        self.tasks_executed += 1
-        
-        print(f"[{self.now:.1f}] Worker {self.worker_id}: "
-              f"Executing {task.task_id} (queue size: {self.deque.size()})")
-        
-        # Simulate work
-        await self.timeout(task.work_duration)
-        
-        print(f"[{self.now:.1f}] Worker {self.worker_id}: "
-              f"Completed {task.task_id}")
-        
-        self.current_task = None
-    
-    async def try_steal(self) -> Optional[Task]:
-        """Try to steal a task from another worker."""
-        # Random victim selection
-        victims = [w for w in self.scheduler.workers if w != self]
-        
-        if not victims:
-            return None
-        
-        # Shuffle to avoid patterns
-        random.shuffle(victims)
-        
-        for victim in victims:
-            task = victim.deque.steal_top()
-            if task:
-                self.tasks_stolen += 1
-                print(f"[{self.now:.1f}] Worker {self.worker_id}: "
-                      f"Stole {task.task_id} from Worker {victim.worker_id}")
-                return task
-        
-        return None
-    
-    def spawn_task(self, task: Task):
-        """Spawn a new task (called by executing task)."""
-        self.deque.push_bottom(task)
-        print(f"[{self.now:.1f}] Worker {self.worker_id}: "
-              f"Spawned {task.task_id}")
-```
+and then define its behavior:
 
-The worker continuously tries to execute tasks.
-If its local deque is empty, it attempts to steal from other workers.
-If stealing fails, it waits briefly before trying again.
+<div data-inc="worker.py" data-filter="inc=run"></div>
+
+As the code above shows,
+the worker continuously tries to execute tasks.
+If its local deque is empty,
+it attempts to steal from other workers.
+If stealing fails,
+it waits briefly before trying again.
+
+Executing a task is relatively straightforward:
+
+<div data-inc="worker.py" data-filter="inc=execute"></div>
+
+Stealing a task from another worker is somewhat more interesting.
+The most important part is that we randomize the order in which we check the workers
+in order to spread the load as evenly as possible:
+
+<div data-inc="worker.py" data-filter="inc=steal"></div>
 
 ## Scheduler {: #worksteal-scheduler}
 

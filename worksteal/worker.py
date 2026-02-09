@@ -1,8 +1,8 @@
 """Worker process for work-stealing scheduler."""
 
-from asimpy import Process
-from typing import Optional, TYPE_CHECKING
 import random
+from typing import TYPE_CHECKING
+from asimpy import Process
 from task import Task
 from worker_deque import WorkerDeque
 
@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from scheduler import WorkStealingScheduler
 
 
+# mccole: worker
 class Worker(Process):
     """Worker that executes tasks with work-stealing."""
 
@@ -17,10 +18,12 @@ class Worker(Process):
         self.worker_id = worker_id
         self.scheduler = scheduler
         self.deque = WorkerDeque()
+        self.current_task: Task | None = None
         self.tasks_executed = 0
         self.tasks_stolen = 0
-        self.current_task: Optional[Task] = None
+# mccole: /worker
 
+    # mccole: run
     async def run(self):
         """Main worker loop: execute local tasks or steal."""
         while True:
@@ -33,54 +36,47 @@ class Worker(Process):
             else:
                 # No local work, try stealing
                 stolen = await self.try_steal()
-
                 if stolen:
                     await self.execute_task(stolen)
                 else:
                     # No work available anywhere, wait a bit
                     await self.timeout(0.1)
+    # mccole: /run
 
+    # mccole: execute
     async def execute_task(self, task: Task):
         """Execute a task."""
         self.current_task = task
         self.tasks_executed += 1
-
         print(
             f"[{self.now:.1f}] Worker {self.worker_id}: "
             f"Executing {task.task_id} (queue size: {self.deque.size()})"
         )
 
-        # Simulate work
         await self.timeout(task.duration)
 
         print(f"[{self.now:.1f}] Worker {self.worker_id}: Completed {task.task_id}")
-
         self.current_task = None
+    # mccole: /execute
 
-    async def try_steal(self) -> Optional[Task]:
+    # mccole: steal
+    async def try_steal(self) -> Task | None:
         """Try to steal a task from another worker."""
-        # Random victim selection
-        victims = [w for w in self.scheduler.workers if w != self]
-
-        if not victims:
+        targets = [w for w in self.scheduler.workers if w != self]
+        if not targets:
             return None
 
-        # Shuffle to avoid patterns
-        random.shuffle(victims)
+        random.shuffle(targets)
 
-        for victim in victims:
-            task = victim.deque.steal_top()
+        for target in targets:
+            task = target.deque.steal_top()
             if task:
                 self.tasks_stolen += 1
                 print(
                     f"[{self.now:.1f}] Worker {self.worker_id}: "
-                    f"Stole {task.task_id} from Worker {victim.worker_id}"
+                    f"Stole {task.task_id} from Worker {target.worker_id}"
                 )
                 return task
 
         return None
-
-    def spawn_task(self, task: Task):
-        """Spawn a new task (called by executing task)."""
-        self.deque.push_bottom(task)
-        print(f"[{self.now:.1f}] Worker {self.worker_id}: Spawned {task.task_id}")
+    # mccole: /steal

@@ -35,3 +35,8 @@ class WorkerWithSpawning(Worker):
         print(f"[{self.now:.1f}] Worker {self.worker_id}: Completed {task.task_id}")
 
         self.current_task = None
+
+    def spawn_task(self, task: Task):
+        """Spawn a new task (called by executing task)."""
+        self.deque.push_bottom(task)
+        print(f"[{self.now:.1f}] Worker {self.worker_id}: Spawned {task.task_id}")

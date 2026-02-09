@@ -1,4 +1,4 @@
-"""Worker with adaptive victim selection strategy."""
+"""Worker with adaptive target selection strategy."""
 
 from typing import Optional
 from worker import Worker
@@ -6,7 +6,7 @@ from task import Task
 
 
 class AdaptiveWorker(Worker):
-    """Worker with adaptive victim selection."""
+    """Worker with adaptive target selection."""
 
     def init(self, worker_id: int, scheduler):
         super().init(worker_id, scheduler)
@@ -14,22 +14,22 @@ class AdaptiveWorker(Worker):
         self.failed_steals = 0
 
     async def try_steal(self) -> Optional[Task]:
-        """Try to steal with adaptive victim selection."""
+        """Try to steal with adaptive target selection."""
         self.steal_attempts += 1
 
         # Try workers with largest queues first
-        victims = [w for w in self.scheduler.workers if w != self]
-        victims.sort(key=lambda w: w.deque.size(), reverse=True)
+        targets = [w for w in self.scheduler.workers if w != self]
+        targets.sort(key=lambda w: w.deque.size(), reverse=True)
 
-        for victim in victims:
-            if victim.deque.size() > 0:
-                task = victim.deque.steal_top()
+        for target in targets:
+            if target.deque.size() > 0:
+                task = target.deque.steal_top()
                 if task:
                     self.tasks_stolen += 1
                     print(
                         f"[{self.now:.1f}] Worker {self.worker_id}: "
-                        f"Stole {task.task_id} from Worker {victim.worker_id} "
-                        f"(victim queue: {victim.deque.size()})"
+                        f"Stole {task.task_id} from Worker {target.worker_id} "
+                        f"(target queue: {target.deque.size()})"
                     )
                     return task
 
