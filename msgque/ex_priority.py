@@ -97,7 +97,7 @@ def run_priority_simulation():
     broker = PriorityBackpressureBroker(env, max_queue_size=5)
 
     # Fast publisher, slow subscriber creates backpressure
-    publisher = PriorityPublisher(env, broker, "EventGen", "events", interval=0.3)
+    PriorityPublisher(env, broker, "EventGen", "events", interval=0.3)
     subscriber = PrioritySubscriber(
         env, broker, "Processor", "events", processing_time=1.5
     )

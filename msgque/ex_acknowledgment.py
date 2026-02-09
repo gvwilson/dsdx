@@ -1,5 +1,5 @@
 from asimpy import Environment, Process
-from ack_broker import AckBroker, AckMessage
+from ack_broker import AckBroker
 from message import Message
 
 
@@ -93,7 +93,7 @@ def run_ack_simulation():
     broker = AckBroker(env, ack_timeout=5.0)
 
     # Publisher
-    publisher = AckPublisher(env, broker, "OrderService", "orders", interval=3.0)
+    AckPublisher(env, broker, "OrderService", "orders", interval=3.0)
 
     # Subscriber that sometimes fails to acknowledge (30% failure rate)
     subscriber = AckSubscriber(
