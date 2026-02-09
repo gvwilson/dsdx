@@ -1,35 +1,39 @@
 [0.0] OrderService: Publishing Message 1 from OrderService
 [0.0] Processor: Received Message 1 from OrderService (ack_id 0)
-[1.0] Processor: FAILED to process Message 1 from OrderService (will be redelivered)
+[1.0] Processor: Acknowledged Message 1 from OrderService
 [3.0] OrderService: Publishing Message 2 from OrderService
 [3.0] Processor: Received Message 2 from OrderService (ack_id 1)
 [4.0] Processor: Acknowledged Message 2 from OrderService
-[5.0] Processor: Received Message 1 from OrderService (ack_id 0)
 [6.0] OrderService: Publishing Message 3 from OrderService
-[6.0] Processor: FAILED to process Message 1 from OrderService (will be redelivered)
 [6.0] Processor: Received Message 3 from OrderService (ack_id 2)
 [7.0] Processor: Acknowledged Message 3 from OrderService
 [9.0] OrderService: Publishing Message 4 from OrderService
 [9.0] Processor: Received Message 4 from OrderService (ack_id 3)
-[10.0] Processor: Acknowledged Message 4 from OrderService
+[10.0] Processor: FAILED to process Message 4 from OrderService (will be redelivered)
 [12.0] OrderService: Publishing Message 5 from OrderService
 [12.0] Processor: Received Message 5 from OrderService (ack_id 4)
-[13.0] Processor: Acknowledged Message 5 from OrderService
+[13.0] Processor: FAILED to process Message 5 from OrderService (will be redelivered)
+[14.0] Processor: Received Message 4 from OrderService (ack_id 3)
 [15.0] OrderService: Publishing Message 6 from OrderService
+[15.0] Processor: Acknowledged Message 4 from OrderService
 [15.0] Processor: Received Message 6 from OrderService (ack_id 5)
 [16.0] Processor: Acknowledged Message 6 from OrderService
+[17.0] Processor: Received Message 5 from OrderService (ack_id 4)
 [18.0] OrderService: Publishing Message 7 from OrderService
+[18.0] Processor: FAILED to process Message 5 from OrderService (will be redelivered)
 [18.0] Processor: Received Message 7 from OrderService (ack_id 6)
-[19.0] Processor: Acknowledged Message 7 from OrderService
+[19.0] Processor: FAILED to process Message 7 from OrderService (will be redelivered)
 [21.0] OrderService: Publishing Message 8 from OrderService
 [21.0] Processor: Received Message 8 from OrderService (ack_id 7)
-[22.0] Processor: FAILED to process Message 8 from OrderService (will be redelivered)
+[22.0] Processor: Acknowledged Message 8 from OrderService
+[23.0] Processor: Received Message 7 from OrderService (ack_id 6)
 [24.0] OrderService: Publishing Message 9 from OrderService
+[24.0] Processor: FAILED to process Message 7 from OrderService (will be redelivered)
 [24.0] Processor: Received Message 9 from OrderService (ack_id 8)
-[25.0] Processor: Acknowledged Message 9 from OrderService
+[25.0] Processor: FAILED to process Message 9 from OrderService (will be redelivered)
 
 === Acknowledgment Statistics ===
 Messages published: 0
-Messages received: 10
-Messages acknowledged: 7
-Pending acks: 2
+Messages received: 12
+Messages acknowledged: 6
+Pending acks: 3

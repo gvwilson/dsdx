@@ -1,84 +1,84 @@
-[0.0] EventGen: Published priority 5 Msg1
-[0.0] Processor: Processing priority 5 Msg1
-[0.3] EventGen: Published priority 5 Msg2
-[0.6] EventGen: Published priority 6 Msg3
-[0.9] EventGen: Published priority 0 Msg4
-[1.2] EventGen: Published priority 3 Msg5
-[1.5] EventGen: Published priority 5 Msg6
-[1.5] Processor: Processing priority 0 Msg4
-[1.8] EventGen: Published priority 6 Msg7
-[2.1] EventGen: Published priority 5 Msg8
-[2.4] EventGen: Published priority 0 Msg9
-[2.7] EventGen: Published priority 4 Msg10
-[3.0] EventGen: Published priority 2 Msg11
-[3.0] Processor: Processing priority 0 Msg9
-[3.3] EventGen: Published priority 7 Msg12
-[3.6] EventGen: Published priority 6 Msg13
-[3.9] EventGen: Published priority 7 Msg14
+[0.0] EventGen: Published priority 9 Msg1
+[0.0] Processor: Processing priority 9 Msg1
+[0.3] EventGen: Published priority 9 Msg2
+[0.6] EventGen: Published priority 0 Msg3
+[0.9] EventGen: Published priority 8 Msg4
+[1.2] EventGen: Published priority 6 Msg5
+[1.5] EventGen: Published priority 7 Msg6
+[1.5] Processor: Processing priority 0 Msg3
+[1.8] EventGen: Published priority 5 Msg7
+[2.1] EventGen: Published priority 1 Msg8
+[2.4] EventGen: Published priority 4 Msg9
+[2.7] EventGen: Published priority 7 Msg10
+[3.0] EventGen: Published priority 7 Msg11
+[3.0] Processor: Processing priority 1 Msg8
+[3.3] EventGen: Published priority 8 Msg12
+[3.6] EventGen: Published priority 2 Msg13
+[3.9] EventGen: Published priority 5 Msg14
 [4.2] EventGen: Published priority 8 Msg15
 [4.5] EventGen: Published priority 6 Msg16
-[4.5] Processor: Processing priority 2 Msg11
-[4.8] EventGen: Published priority 7 Msg17
-[5.1] EventGen: Published priority 7 Msg18
-[5.4] EventGen: Published priority 3 Msg19
-[5.7] EventGen: Published priority 9 Msg20
-[6.0] EventGen: Published priority 1 Msg21
-[6.0] Processor: Processing priority 1 Msg21
+[4.5] Processor: Processing priority 2 Msg13
+[4.8] EventGen: Published priority 5 Msg17
+[5.1] EventGen: Published priority 9 Msg18
+[5.4] EventGen: Published priority 4 Msg19
+[5.7] EventGen: Published priority 4 Msg20
+[6.0] EventGen: Published priority 8 Msg21
+[6.0] Processor: Processing priority 4 Msg9
 [6.3] EventGen: Published priority 8 Msg22
-[6.6] EventGen: Published priority 1 Msg23
-[6.9] EventGen: Published priority 5 Msg24
-[7.2] EventGen: Published priority 7 Msg25
-[7.5] EventGen: Published priority 4 Msg26
-[7.5] Processor: Processing priority 1 Msg23
-[7.8] EventGen: Published priority 3 Msg27
-[8.1] EventGen: Published priority 8 Msg28
-[8.4] EventGen: Published priority 1 Msg29
-[8.7] EventGen: Published priority 4 Msg30
-[9.0] EventGen: Published priority 9 Msg31
-[9.0] Processor: Processing priority 1 Msg29
-[9.3] EventGen: Published priority 0 Msg32
-[9.6] EventGen: Published priority 6 Msg33
-[9.9] EventGen: Published priority 2 Msg34
+[6.6] EventGen: Published priority 8 Msg23
+[6.9] EventGen: Published priority 0 Msg24
+[7.2] EventGen: Published priority 5 Msg25
+[7.5] EventGen: Published priority 7 Msg26
+[7.5] Processor: Processing priority 0 Msg24
+[7.8] EventGen: Published priority 7 Msg27
+[8.1] EventGen: Published priority 3 Msg28
+[8.4] EventGen: Published priority 7 Msg29
+[8.7] EventGen: Published priority 1 Msg30
+[9.0] EventGen: Published priority 6 Msg31
+[9.0] Processor: Processing priority 1 Msg30
+[9.3] EventGen: Published priority 6 Msg32
+[9.6] EventGen: Published priority 9 Msg33
+[9.9] EventGen: Published priority 7 Msg34
 [10.2] EventGen: Published priority 8 Msg35
-[10.5] Processor: Processing priority 0 Msg32
-[10.5] EventGen: Published priority 0 Msg36
-[10.8] EventGen: Published priority 3 Msg37
-[11.1] EventGen: Published priority 5 Msg38
-[11.4] EventGen: Published priority 5 Msg39
-[11.7] EventGen: Published priority 0 Msg40
-[12.0] Processor: Processing priority 0 Msg36
-[12.0] EventGen: Published priority 5 Msg41
-[12.3] EventGen: Published priority 2 Msg42
+[10.5] Processor: Processing priority 3 Msg28
+[10.5] EventGen: Published priority 9 Msg36
+[10.8] EventGen: Published priority 1 Msg37
+[11.1] EventGen: Published priority 8 Msg38
+[11.4] EventGen: Published priority 8 Msg39
+[11.7] EventGen: Published priority 5 Msg40
+[12.0] Processor: Processing priority 1 Msg37
+[12.0] EventGen: Published priority 8 Msg41
+[12.3] EventGen: Published priority 7 Msg42
 [12.6] EventGen: Published priority 6 Msg43
-[12.9] EventGen: Published priority 8 Msg44
-[13.2] EventGen: Published priority 1 Msg45
-[13.5] Processor: Processing priority 0 Msg40
-[13.5] EventGen: Published priority 4 Msg46
-[13.8] EventGen: Published priority 6 Msg47
-[14.1] EventGen: Published priority 7 Msg48
-[14.4] EventGen: Published priority 5 Msg49
-[14.7] EventGen: Published priority 7 Msg50
-[15.0] Processor: Processing priority 1 Msg45
+[12.9] EventGen: Published priority 9 Msg44
+[13.2] EventGen: Published priority 6 Msg45
+[13.5] Processor: Processing priority 4 Msg19
+[13.5] EventGen: Published priority 2 Msg46
+[13.8] EventGen: Published priority 9 Msg47
+[14.1] EventGen: Published priority 8 Msg48
+[14.4] EventGen: Published priority 6 Msg49
+[14.7] EventGen: Published priority 8 Msg50
+[15.0] Processor: Processing priority 2 Msg46
 [15.0] EventGen: Published priority 8 Msg51
-[15.3] EventGen: Published priority 4 Msg52
-[15.6] EventGen: Published priority 8 Msg53
-[15.9] EventGen: Published priority 5 Msg54
-[16.2] EventGen: Published priority 5 Msg55
-[16.5] Processor: Processing priority 2 Msg34
-[16.5] EventGen: Published priority 3 Msg56
-[16.8] EventGen: Published priority 9 Msg57
-[17.1] EventGen: Published priority 2 Msg58
-[17.4] EventGen: Published priority 1 Msg59
-[17.7] EventGen: Published priority 5 Msg60
-[18.0] Processor: Processing priority 1 Msg59
-[18.0] EventGen: Published priority 2 Msg61
+[15.3] EventGen: Published priority 9 Msg52
+[15.6] EventGen: Published priority 7 Msg53
+[15.9] EventGen: Published priority 0 Msg54
+[16.2] EventGen: Published priority 8 Msg55
+[16.5] Processor: Processing priority 0 Msg54
+[16.5] EventGen: Published priority 7 Msg56
+[16.8] EventGen: Published priority 5 Msg57
+[17.1] EventGen: Published priority 7 Msg58
+[17.4] EventGen: Published priority 7 Msg59
+[17.7] EventGen: Published priority 7 Msg60
+[18.0] Processor: Processing priority 4 Msg20
+[18.0] EventGen: Published priority 7 Msg61
 [18.3] EventGen: Published priority 5 Msg62
 [18.6] EventGen: Published priority 9 Msg63
-[18.9] EventGen: Published priority 1 Msg64
-[19.2] EventGen: Published priority 4 Msg65
-[19.5] Processor: Processing priority 1 Msg64
-[19.5] EventGen: Published priority 2 Msg66
-[19.8] EventGen: Published priority 4 Msg67
+[18.9] EventGen: Published priority 3 Msg64
+[19.2] EventGen: Published priority 7 Msg65
+[19.5] Processor: Processing priority 3 Msg64
+[19.5] EventGen: Published priority 4 Msg66
+[19.8] EventGen: Published priority 3 Msg67
 
 === Priority Queue Statistics ===
 Messages published: 67
@@ -86,7 +86,9 @@ Messages delivered: 67
 Messages received: 14
 
 Received by priority:
-  Priority 0: 5
-  Priority 1: 6
+  Priority 0: 3
+  Priority 1: 3
   Priority 2: 2
-  Priority 5: 1
+  Priority 3: 2
+  Priority 4: 3
+  Priority 9: 1

@@ -1,19 +1,19 @@
 """Work-stealing scheduler coordinator."""
 
-from asimpy import Environment
-from typing import List, Optional
 import random
+from asimpy import Environment
 from task import Task
 from worker import Worker
 
 
+# mccole: scheduler
 class WorkStealingScheduler:
     """Scheduler that coordinates work-stealing workers."""
 
     def __init__(self, env: Environment, num_workers: int):
         self.env = env
         self.num_workers = num_workers
-        self.workers: List[Worker] = []
+        self.workers: list[Worker] = []
         self.task_counter = 0
 
         # Create workers
@@ -22,7 +22,7 @@ class WorkStealingScheduler:
             self.workers.append(worker)
 
     def submit_task(
-        self, duration: float, parent_id: Optional[str] = None
+        self, duration: float, parent_id: str | None = None
     ) -> Task:
         """Submit a task to a random worker."""
         self.task_counter += 1
@@ -32,7 +32,6 @@ class WorkStealingScheduler:
             parent_id=parent_id,
         )
 
-        # Assign to random worker (could use other strategies)
         worker = random.choice(self.workers)
         worker.deque.push_bottom(task)
 
@@ -42,6 +41,7 @@ class WorkStealingScheduler:
         )
 
         return task
+# mccole: scheduler
 
     def get_statistics(self):
         """Get scheduler statistics."""

@@ -1,153 +1,27 @@
-[0.0] Submitted T1 to Worker 3
-[0.1] Worker 0: Stole T1 from Worker 3
+[0.0] Submitted T1 to Worker 1
+[0.1] Worker 0: Stole T1 from Worker 1
 [0.1] Worker 0: Executing T1
-[0.5] Submitted T2 to Worker 2
-[0.5] Worker 1: Stole T2 from Worker 2
+[0.5] Submitted T2 to Worker 1
 [0.5] Worker 1: Executing T2
-[1.0] Submitted T3 to Worker 0
-[1.1] Worker 2: Stole T3 from Worker 0
+[1.0] Submitted T3 to Worker 1
+[1.1] Worker 2: Stole T3 from Worker 1
 [1.1] Worker 2: Executing T3
-[1.2] Worker 0: Spawned T1.0
-[1.2] Worker 0: Spawned T1.1
-[1.2] Worker 0: Spawned T1.2
-[1.3] Worker 3: Stole T1.0 from Worker 0
-[1.3] Worker 3: Executing T1.0
-[1.5] Submitted T4 to Worker 0
-[1.5] Worker 3: Spawned T1.0.0
-[1.5] Worker 3: Spawned T1.0.1
-[1.7] Worker 3: Completed T1.0
-[1.7] Worker 3: Executing T1.0.1
-[1.8] Worker 1: Spawned T2.0
-[1.8] Worker 1: Spawned T2.1
-[2.0] Submitted T5 to Worker 3
-[2.1] Worker 3: Spawned T1.0.1.0
-[2.1] Worker 3: Spawned T1.0.1.1
-[2.1] Worker 3: Spawned T1.0.1.2
-[2.2] Worker 2: Spawned T3.0
-[2.2] Worker 2: Spawned T3.1
-[2.2] Worker 2: Spawned T3.2
-[2.4] Worker 3: Completed T1.0.1
-[2.4] Worker 3: Executing T1.0.1.2
-[2.4] Worker 0: Completed T1
-[2.4] Worker 0: Executing T4
-[2.6] Worker 3: Spawned T1.0.1.2.0
-[2.6] Worker 3: Spawned T1.0.1.2.1
-[2.6] Worker 3: Spawned T1.0.1.2.2
-[2.9] Worker 3: Completed T1.0.1.2
-[2.9] Worker 3: Executing T1.0.1.2.2
-[3.0] Worker 1: Completed T2
-[3.0] Worker 1: Executing T2.1
-[3.1] Worker 3: Spawned T1.0.1.2.2.0
-[3.1] Worker 3: Spawned T1.0.1.2.2.1
-[3.3] Worker 2: Completed T3
-[3.3] Worker 2: Executing T3.2
-[3.4] Worker 3: Completed T1.0.1.2.2
-[3.4] Worker 3: Executing T1.0.1.2.2.1
-[3.4] Worker 1: Completed T2.1
-[3.4] Worker 1: Executing T2.0
-[3.6] Worker 2: Spawned T3.2.0
-[3.6] Worker 2: Spawned T3.2.1
-[3.8] Worker 1: Spawned T2.0.0
-[3.8] Worker 1: Spawned T2.0.1
-[3.8] Worker 1: Spawned T2.0.2
-[3.8] Worker 2: Completed T3.2
-[3.8] Worker 2: Executing T3.2.1
-[4.2] Worker 1: Completed T2.0
-[4.2] Worker 1: Executing T2.0.2
-[4.2] Worker 2: Spawned T3.2.1.0
-[4.2] Worker 2: Spawned T3.2.1.1
-[4.2] Worker 2: Spawned T3.2.1.2
-[4.2] Worker 3: Completed T1.0.1.2.2.1
-[4.2] Worker 3: Executing T1.0.1.2.2.0
-[4.6] Worker 2: Completed T3.2.1
-[4.6] Worker 2: Executing T3.2.1.2
-[4.8] Worker 1: Completed T2.0.2
-[4.8] Worker 1: Executing T2.0.1
-[5.0] Worker 3: Completed T1.0.1.2.2.0
-[5.0] Worker 3: Executing T1.0.1.2.1
-[5.2] Worker 0: Completed T4
-[5.2] Worker 0: Executing T1.2
-[5.3] Worker 1: Spawned T2.0.1.0
-[5.3] Worker 1: Spawned T2.0.1.1
-[5.3] Worker 1: Spawned T2.0.1.2
-[5.3] Worker 3: Completed T1.0.1.2.1
-[5.3] Worker 3: Executing T1.0.1.2.0
-[5.5] Worker 2: Completed T3.2.1.2
-[5.5] Worker 2: Executing T3.2.1.1
-[5.7] Worker 1: Completed T2.0.1
-[5.7] Worker 1: Executing T2.0.1.2
-[5.8] Worker 0: Completed T1.2
-[5.8] Worker 0: Executing T1.1
-[5.9] Worker 2: Spawned T3.2.1.1.0
-[5.9] Worker 2: Spawned T3.2.1.1.1
-[6.1] Worker 0: Spawned T1.1.0
-[6.1] Worker 0: Spawned T1.1.1
-[6.1] Worker 0: Spawned T1.1.2
-[6.1] Worker 3: Completed T1.0.1.2.0
-[6.1] Worker 3: Executing T1.0.1.1
-[6.2] Worker 2: Completed T3.2.1.1
-[6.2] Worker 2: Executing T3.2.1.1.1
-[6.3] Worker 0: Completed T1.1
-[6.3] Worker 0: Executing T1.1.2
-[6.4] Worker 1: Completed T2.0.1.2
-[6.4] Worker 1: Executing T2.0.1.1
-[6.7] Worker 2: Spawned T3.2.1.1.1.0
-[6.7] Worker 0: Completed T1.1.2
-[6.7] Worker 0: Executing T1.1.1
-[6.8] Worker 3: Completed T1.0.1.1
-[6.8] Worker 3: Executing T1.0.1.0
-[6.8] Worker 1: Spawned T2.0.1.1.0
-[6.8] Worker 1: Spawned T2.0.1.1.1
-[7.1] Worker 2: Completed T3.2.1.1.1
-[7.1] Worker 2: Executing T3.2.1.1.1.0
-[7.2] Worker 1: Completed T2.0.1.1
-[7.2] Worker 1: Executing T2.0.1.1.1
-[7.6] Worker 0: Completed T1.1.1
-[7.6] Worker 0: Executing T1.1.0
-[7.7] Worker 3: Completed T1.0.1.0
-[7.7] Worker 3: Executing T5
-[7.8] Worker 2: Completed T3.2.1.1.1.0
-[7.8] Worker 2: Executing T3.2.1.1.0
-[8.0] Worker 1: Completed T2.0.1.1.1
-[8.0] Worker 1: Executing T2.0.1.1.0
-[8.1] Worker 0: Completed T1.1.0
-[8.1] Worker 0: Stole T2.0.0 from Worker 1
-[8.1] Worker 0: Executing T2.0.0
-[8.3] Worker 1: Spawned T2.0.1.1.0.0
-[8.6] Worker 0: Completed T2.0.0
-[8.6] Worker 0: Stole T3.0 from Worker 2
-[8.6] Worker 0: Executing T3.0
-[8.7] Worker 2: Completed T3.2.1.1.0
-[8.7] Worker 2: Executing T3.2.1.0
-[8.7] Worker 1: Completed T2.0.1.1.0
-[8.7] Worker 1: Executing T2.0.1.1.0.0
-[8.9] Worker 1: Spawned T2.0.1.1.0.0.0
-[8.9] Worker 1: Spawned T2.0.1.1.0.0.1
-[9.1] Worker 1: Completed T2.0.1.1.0.0
-[9.1] Worker 1: Executing T2.0.1.1.0.0.1
-[9.4] Worker 0: Completed T3.0
-[9.4] Worker 0: Stole T1.0.0 from Worker 3
-[9.4] Worker 0: Executing T1.0.0
-[9.5] Worker 2: Completed T3.2.1.0
-[9.5] Worker 2: Executing T3.2.0
-[9.9] Worker 0: Completed T1.0.0
-[9.9] Worker 0: Stole T3.1 from Worker 2
-[9.9] Worker 0: Executing T3.1
-[9.9] Worker 1: Completed T2.0.1.1.0.0.1
-[9.9] Worker 1: Executing T2.0.1.1.0.0.0
-[10.3] Worker 0: Completed T3.1
-[10.3] Worker 0: Stole T2.0.1.0 from Worker 1
-[10.3] Worker 0: Executing T2.0.1.0
-[10.4] Worker 3: Completed T5
-[10.5] Worker 1: Completed T2.0.1.1.0.0.0
-[10.5] Worker 2: Completed T3.2.0
-[10.7] Worker 0: Completed T2.0.1.0
+[1.5] Submitted T4 to Worker 3
+[1.5] Worker 3: Executing T4
+[2.0] Worker 0: Completed T1
+[2.0] Submitted T5 to Worker 1
+[2.1] Worker 0: Stole T5 from Worker 1
+[2.1] Worker 0: Executing T5
+[2.4] Worker 2: Completed T3
+[3.3] Worker 0: Completed T5
+[3.4] Worker 1: Completed T2
+[4.5] Worker 3: Completed T4
 
 === Statistics ===
-Total tasks executed: 45
-Total tasks stolen: 9
-Steal rate: 20.0%
-Worker 0: executed=12, stolen=6, queue=0
-Worker 1: executed=12, stolen=1, queue=0
-Worker 2: executed=10, stolen=1, queue=0
-Worker 3: executed=11, stolen=1, queue=0
+Total tasks executed: 5
+Total tasks stolen: 3
+Steal rate: 60.0%
+Worker 0: executed=2, stolen=2, queue=0
+Worker 1: executed=1, stolen=0, queue=0
+Worker 2: executed=1, stolen=1, queue=0
+Worker 3: executed=1, stolen=0, queue=0

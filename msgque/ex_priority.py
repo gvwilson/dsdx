@@ -1,3 +1,7 @@
+"""Prioritized message queue simulation."""
+
+import random
+import sys
 from asimpy import Environment, Process
 from priority_backpressure import PriorityBackpressureBroker, PriorityMessage
 
@@ -117,4 +121,6 @@ def run_priority_simulation():
 
 
 if __name__ == "__main__":
+    if len(sys.argv) == 2:
+        random.seed(int(sys.argv[1]))
     run_priority_simulation()

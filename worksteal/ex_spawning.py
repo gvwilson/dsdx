@@ -1,10 +1,13 @@
 """Simulation with nested task spawning."""
 
+import random
+import sys
 from asimpy import Environment
 from scheduler_with_spawning import SchedulerWithSpawning
 from task_generator import TaskGenerator
 
 
+# mccole: sim
 def run_spawning_simulation():
     """Demonstrate nested task spawning."""
     env = Environment()
@@ -20,7 +23,10 @@ def run_spawning_simulation():
 
     # Print statistics
     scheduler.get_statistics()
+# mccole: /sim
 
 
 if __name__ == "__main__":
+    if len(sys.argv) == 2:
+        random.seed(int(sys.argv[1]))
     run_spawning_simulation()

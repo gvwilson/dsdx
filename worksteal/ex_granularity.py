@@ -1,5 +1,7 @@
 """Experiment with different task granularities."""
 
+import random
+import sys
 from asimpy import Environment
 from scheduler import WorkStealingScheduler
 from performance_analyzer import PerformanceAnalyzer
@@ -24,4 +26,6 @@ def run_granularity_experiment():
 
 
 if __name__ == "__main__":
+    if len(sys.argv) == 2:
+        random.seed(int(sys.argv[1]))
     run_granularity_experiment()

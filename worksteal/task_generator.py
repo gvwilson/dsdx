@@ -1,10 +1,11 @@
 """Task generator for spawning simulations."""
 
-from asimpy import Process
 import random
+from asimpy import Process
 from scheduler import WorkStealingScheduler
 
 
+# mccole: gen
 class TaskGenerator(Process):
     """Generates tasks including ones that spawn subtasks."""
 
@@ -17,3 +18,4 @@ class TaskGenerator(Process):
         for i in range(self.num_initial_tasks):
             self.scheduler.submit_task(duration=random.uniform(1.0, 3.0))
             await self.timeout(0.5)
+# mccole: /gen

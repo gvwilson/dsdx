@@ -37,6 +37,17 @@
 </nav>
 <main>
 <h1>Glossary</h1>
+<h2>A</h2>
+<dl>
+<dt><span id="at-least-once">at-least-once delivery</span></dt>
+<dd>Message delivery guarantee ensuring every message is delivered one or more times.
+Requires acknowledgments and message redelivery on failure but may result in duplicates.</dd>
+<dt><span id="at-most-once">at-most-once delivery</span></dt>
+<dd>Message delivery guarantee ensuring messages are delivered zero or one time,
+never duplicated but possibly lost.
+This is simple to implement but provides the weakest guarantee.</dd>
+</dl>
+<h2>B</h2>
 <dl>
 <dt><span id="backoff-multiplier">backoff multiplier</span></dt>
 <dd>FIXME</dd>
@@ -46,29 +57,82 @@ by signaling upstream components to slow down
 when downstream components cannot keep up.</dd>
 <dt><span id="buffer">buffer</span></dt>
 <dd>FIXME</dd>
+</dl>
+<h2>C</h2>
+<dl>
 <dt><span id="consumer-group">consumer group/span&gt;</span></dt>
 <dd>A set of message queue subscribers that share the workload.
 Messages are distributed among group members rather than duplicated to each.</dd>
+<dt><span id="contention">contention/span&gt;</span></dt>
+<dd>FIXME</dd>
+</dl>
+<h2>D</h2>
+<dl>
 <dt><span id="dataclass">dataclass</span></dt>
 <dd>FIXME</dd>
 <dt><span id="decoupling">decoupling</span></dt>
 <dd>FIXME</dd>
+<dt><span id="deque">double-ended queue</span> (deque)</dt>
+<dd>FIXME</dd>
+<dt><span id="divide-and-conquer">divide and conquer</span></dt>
+<dd>FIXME</dd>
+</dl>
+<h2>E</h2>
+<dl>
+<dt><span id="exactly-once">exactly-once delivery</span></dt>
+<dd>Message delivery guarantee ensuring each message is processed exactly once.
+This is difficult to achieve in practice.</dd>
 <dt><span id="exponential-backoff">exponential backoff</span></dt>
 <dd>FIXME</dd>
+</dl>
+<h2>F</h2>
+<dl>
 <dt><span id="fan-out">fan-out</span></dt>
-<dd>Pattern where one message or request triggers multiple downstream operations, such as publishing to multiple subscribers or calling multiple services in parallel.</dd>
+<dd>Pattern where one message or request triggers multiple downstream operations,
+such as publishing to multiple subscribers or calling multiple services in parallel.</dd>
+<dt><span id="future">future</span></dt>
+<dd>FIXME</dd>
+</dl>
+<h2>J</h2>
+<dl>
 <dt><span id="json">JSON</span></dt>
 <dd>FIXME</dd>
+</dl>
+<h2>L</h2>
+<dl>
+<dt><span id="load-balancing">load balancing</span></dt>
+<dd>FIXME</dd>
+</dl>
+<h2>M</h2>
+<dl>
 <dt><span id="message-broker">message broker</span></dt>
 <dd>FIXME</dd>
+</dl>
+<h2>N</h2>
+<dl>
 <dt><span id="negative-feedback-loop">negative feedback loop</span></dt>
 <dd>FIXME</dd>
+</dl>
+<h2>P</h2>
+<dl>
 <dt><span id="priority-queue">priority queue</span></dt>
 <dd>FIXME</dd>
 <dt><span id="publish-subscribe">publish-subscribe</span></dt>
-<dd>Messaging pattern where publishers send messages to topics and subscribers receive all messages from topics they're interested in. Decouples senders from receivers.</dd>
+<dd>Messaging pattern where publishers send messages to topics
+and subscribers receive all messages from topics they're interested in.
+This pattern decouples senders from receivers.</dd>
+</dl>
+<h2>R</h2>
+<dl>
 <dt><span id="round-robin-polling">round-robin polling</span></dt>
 <dd>FIXME</dd>
+</dl>
+<h2>W</h2>
+<dl>
+<dt><span id="work-stealing">work stealing</span></dt>
+<dd>A scheduling strategy where each worker maintains a local task queue
+and idle workers take tasks from others' queues
+in order to minimize contention while balancing load.</dd>
 </dl>
 </main>
 <footer>

@@ -1,10 +1,12 @@
 """Basic work-stealing simulation."""
 
-from asimpy import Environment
 import random
+import sys
+from asimpy import Environment
 from scheduler import WorkStealingScheduler
 
 
+# mccole: sim
 def run_basic_simulation():
     """Basic work-stealing simulation."""
     env = Environment()
@@ -21,7 +23,10 @@ def run_basic_simulation():
 
     # Print statistics
     scheduler.get_statistics()
+# mccole: /sim
 
 
 if __name__ == "__main__":
+    if len(sys.argv) == 2:
+        random.seed(int(sys.argv[1]))
     run_basic_simulation()

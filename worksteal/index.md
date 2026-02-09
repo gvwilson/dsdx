@@ -77,182 +77,48 @@ in order to spread the load as evenly as possible:
 
 <div data-inc="worker.py" data-filter="inc=steal"></div>
 
-## Scheduler {: #worksteal-scheduler}
+## The Scheduler {: #worksteal-scheduler}
 
 The scheduler coordinates workers and provides task submission:
 
-```python
-class WorkStealingScheduler:
-    """Scheduler that coordinates work-stealing workers."""
-    
-    def __init__(self, env: Environment, num_workers: int):
-        self.env = env
-        self.num_workers = num_workers
-        self.workers: List[Worker] = []
-        self.task_counter = 0
-        
-        # Create workers
-        for i in range(num_workers):
-            worker = Worker(env, i, self)
-            self.workers.append(worker)
-    
-    def submit_task(self, work_duration: float, 
-                   parent_id: Optional[str] = None) -> Task:
-        """Submit a task to a random worker."""
-        self.task_counter += 1
-        task = Task(
-            task_id=f"T{self.task_counter}",
-            work_duration=work_duration,
-            parent_id=parent_id
-        )
-        
-        # Assign to random worker (could use other strategies)
-        worker = random.choice(self.workers)
-        worker.deque.push_bottom(task)
-        
-        print(f"[{self.env.now:.1f}] Submitted {task.task_id} "
-              f"to Worker {worker.worker_id}")
-        
-        return task
-    
-    def get_statistics(self):
-        """Get scheduler statistics."""
-        total_executed = sum(w.tasks_executed for w in self.workers)
-        total_stolen = sum(w.tasks_stolen for w in self.workers)
-        
-        print("\n=== Statistics ===")
-        print(f"Total tasks executed: {total_executed}")
-        print(f"Total tasks stolen: {total_stolen}")
-        print(f"Steal rate: {100 * total_stolen / max(total_executed, 1):.1f}%")
-        
-        for worker in self.workers:
-            print(f"Worker {worker.worker_id}: "
-                  f"executed={worker.tasks_executed}, "
-                  f"stolen={worker.tasks_stolen}, "
-                  f"queue={worker.deque.size()}")
-```
+<div data-inc="scheduler.py" data-filter="inc=scheduler"></div>
 
-## Basic Simulation {: #worksteal-sim}
+We can create a simple simulation with load imbalance to see it in action:
 
-Let's create a simple simulation with load imbalance to see stealing in action:
+<div data-inc="ex_basic_ws.py" data-filter="inc=sim"></div>
 
-```python
-def run_basic_simulation():
-    """Basic work-stealing simulation."""
-    env = Environment()
-    
-    # Create scheduler with 3 workers
-    scheduler = WorkStealingScheduler(env, num_workers=3)
-    
-    # Submit tasks with varying durations
-    for i in range(10):
-        scheduler.submit_task(work_duration=random.uniform(0.5, 2.0))
-    
-    # Run simulation
-    env.run(until=20)
-    
-    # Print statistics
-    scheduler.get_statistics()
+The output shows workers executing tasks and stealing from each other when they run out of local work.
+The steal rate shows how much load balancing occurred:
 
-
-if __name__ == "__main__":
-    run_basic_simulation()
-```
-
-When you run this, you'll see workers executing tasks and stealing from each other when they run out of local work.
-The steal rate shows how much load balancing occurred.
+<div data-inc="ex_basic_ws.txt" data-filter="head=10 + tail=7"></div>
 
 ## Nested Task Spawning {: #worksteal-spawn}
 
-One powerful feature of work-stealing is handling nested parallelism—tasks that create subtasks.
-This is the foundation of parallel divide-and-conquer algorithms:
+A common extension of work-stealing is
+to support [divide-and-conquer](g:divide-and-conquer) algorithms
+by allowing tasks to spawn subtasks.
+To explore this,
+we can create a task generator:
 
-```python
-class TaskGenerator(Process):
-    """Generates tasks including ones that spawn subtasks."""
-    
-    def init(self, scheduler: WorkStealingScheduler, 
-             num_initial_tasks: int):
-        self.scheduler = scheduler
-        self.num_initial_tasks = num_initial_tasks
-    
-    async def run(self):
-        """Generate initial tasks."""
-        for i in range(self.num_initial_tasks):
-            task = self.scheduler.submit_task(
-                work_duration=random.uniform(1.0, 3.0)
-            )
-            await self.timeout(0.5)
+<div data-inc="task_generator.py" data-filter="inc=gen"></div>
 
+and then create a worker that spawns subtasks with some random probability
+(in our case, 30%):
 
-class WorkerWithSpawning(Worker):
-    """Worker that can spawn child tasks during execution."""
-    
-    async def execute_task(self, task: Task):
-        """Execute task and possibly spawn children."""
-        self.current_task = task
-        self.tasks_executed += 1
-        
-        print(f"[{self.now:.1f}] Worker {self.worker_id}: "
-              f"Executing {task.task_id}")
-        
-        # Do half the work
-        await self.timeout(task.work_duration / 2)
-        
-        # Randomly spawn child tasks (simulating divide-and-conquer)
-        if random.random() < 0.3:  # 30% chance
-            num_children = random.randint(1, 3)
-            for i in range(num_children):
-                child = Task(
-                    task_id=f"{task.task_id}.{i}",
-                    work_duration=random.uniform(0.3, 1.0),
-                    parent_id=task.task_id
-                )
-                self.spawn_task(child)
-        
-        # Finish the work
-        await self.timeout(task.work_duration / 2)
-        
-        print(f"[{self.now:.1f}] Worker {self.worker_id}: "
-              f"Completed {task.task_id}")
-        
-        self.current_task = None
+<div data-inc="worker_with_spawning.py" data-filter="inc=spawner"></div>
 
+The final step is to write a scheduler that creates these workers:
 
-class SchedulerWithSpawning(WorkStealingScheduler):
-    """Scheduler using workers that can spawn tasks."""
-    
-    def __init__(self, env: Environment, num_workers: int):
-        self.env = env
-        self.num_workers = num_workers
-        self.workers: List[WorkerWithSpawning] = []
-        self.task_counter = 0
-        
-        # Create workers with spawning capability
-        for i in range(num_workers):
-            worker = WorkerWithSpawning(env, i, self)
-            self.workers.append(worker)
+<div data-inc="scheduler_with_spawning.py" data-filter="inc=gen"></div>
 
+Our simulation looks similar to our first one:
 
-def run_spawning_simulation():
-    """Demonstrate nested task spawning."""
-    env = Environment()
-    
-    # Create scheduler with spawning workers
-    scheduler = SchedulerWithSpawning(env, num_workers=4)
-    
-    # Generate initial tasks
-    generator = TaskGenerator(env, scheduler, num_initial_tasks=5)
-    
-    # Run simulation
-    env.run(until=30)
-    
-    # Print statistics
-    scheduler.get_statistics()
-```
+<div data-inc="ex_spawning.py" data-filter="inc=sim"></div>
 
-This simulation shows how tasks can spawn children, which are added to the local deque and may be stolen by other workers.
-This naturally balances load even with irregular task creation patterns.
+Its output shows that spawning helps balance the load
+even with irregular task creation:
+
+<div data-inc="ex_spawning.txt" data-filter="head=20 + tail=8"></div>
 
 ## Load Balancing Strategies {: #worksteal-balance}
 
