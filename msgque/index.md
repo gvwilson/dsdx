@@ -223,21 +223,21 @@ to manage efficient eviction of low-priority messages.
 
 Different message delivery systems provide different kinds of delivery guarantees:
 
-At-most-once delivery
+[Exactly-once](g:exactly-once) delivery
+:   This is the strongest guarantee: each message is processed exactly once.
+    It is surprisingly difficult to achieve in distributed systems due to failures and network issues.
+
+[At-most-once](g:at-most-once) delivery
 :   This ensures that messages are delivered zero or one times,
     i.e., are never duplicated, but possibly lost.
     This is achieved by dropping messages when queues are full or when subscribers are unavailable.
     It's the weakest guarantee but the simplest and fastest to implement.
 
-At-least-once delivery
+[At-least-once](g:at-least-once) delivery
 :   This ensures every message is delivered, possibly multiple times.
     It acknowledgments: the broker keeps messages until subscribers confirm receipt.
     If a subscriber crashes before acknowledging,
     the broker redelivers to another subscriber or retries.
-
-Exactly-once delivery
-:   This is the strongest guarantee: each message is processed exactly once.
-    It is surprisingly difficult to achieve in distributed systems due to failures and network issues.
 
 We can extend our broker to support at-least-once delivery with acknowledgments.
 First,
@@ -283,18 +283,6 @@ Real systems use more sophisticated load balancing algorithms,
 such as weighted distribution,
 least-loaded routing,
 or partition-based assignment.
-
-## Summary {: #msgque-summary}
-
-1.  The publish-subscribe pattern decouples system components,
-    enabling independent scaling and evolution.
-
-1.  Routing messages through a broker enables buffering,
-    fan-out,
-    and fault tolerance.
-
-1.  Backpressure ensures the system prevents cascading failures
-    when consumers can't keep up with producers.
 
 ## Exercises {: #msgque-exercises}
 

@@ -1,0 +1,52 @@
+Initial load distribution:
+  Worker 0: 12 tasks
+  Worker 1: 0 tasks
+  Worker 2: 1 tasks
+  Worker 3: 2 tasks
+[0.0] Worker 0: Executing T12 (queue size: 11)
+[0.0] Worker 1: Stole T1 from Worker 0 (victim queue: 10)
+[0.0] Worker 1: Executing T1 (queue size: 0)
+[0.0] Worker 2: Executing T14 (queue size: 0)
+[0.0] Worker 3: Executing T15 (queue size: 1)
+[1.1] Worker 3: Completed T15
+[1.1] Worker 3: Executing T13 (queue size: 0)
+[1.2] Worker 0: Completed T12
+[1.2] Worker 0: Executing T11 (queue size: 9)
+[1.2] Worker 2: Completed T14
+[1.2] Worker 2: Stole T2 from Worker 0 (victim queue: 8)
+[1.2] Worker 2: Executing T2 (queue size: 0)
+[1.7] Worker 1: Completed T1
+[1.7] Worker 1: Stole T3 from Worker 0 (victim queue: 7)
+[1.7] Worker 1: Executing T3 (queue size: 0)
+[2.1] Worker 3: Completed T13
+[2.1] Worker 3: Stole T4 from Worker 0 (victim queue: 6)
+[2.1] Worker 3: Executing T4 (queue size: 0)
+[2.4] Worker 0: Completed T11
+[2.4] Worker 0: Executing T10 (queue size: 5)
+[2.7] Worker 2: Completed T2
+[2.7] Worker 2: Stole T5 from Worker 0 (victim queue: 4)
+[2.7] Worker 2: Executing T5 (queue size: 0)
+[3.3] Worker 1: Completed T3
+[3.3] Worker 1: Stole T6 from Worker 0 (victim queue: 3)
+[3.3] Worker 1: Executing T6 (queue size: 0)
+[3.4] Worker 3: Completed T4
+[3.4] Worker 3: Stole T7 from Worker 0 (victim queue: 2)
+[3.4] Worker 3: Executing T7 (queue size: 0)
+[3.4] Worker 0: Completed T10
+[3.4] Worker 0: Executing T9 (queue size: 1)
+[3.9] Worker 2: Completed T5
+[3.9] Worker 2: Stole T8 from Worker 0 (victim queue: 0)
+[3.9] Worker 2: Executing T8 (queue size: 0)
+[4.4] Worker 1: Completed T6
+[5.1] Worker 3: Completed T7
+[5.3] Worker 0: Completed T9
+[5.7] Worker 2: Completed T8
+
+=== Statistics ===
+Total tasks executed: 15
+Total tasks stolen: 8
+Steal rate: 53.3%
+Worker 0: executed=4, stolen=0, queue=0
+Worker 1: executed=3, stolen=3, queue=0
+Worker 2: executed=4, stolen=3, queue=0
+Worker 3: executed=4, stolen=2, queue=0

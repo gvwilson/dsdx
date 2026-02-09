@@ -1,0 +1,39 @@
+[0.0] Submitted T1 to Worker 0
+[0.0] Submitted T2 to Worker 2
+[0.0] Submitted T3 to Worker 1
+[0.0] Submitted T4 to Worker 2
+[0.0] Submitted T5 to Worker 0
+[0.0] Submitted T6 to Worker 2
+[0.0] Submitted T7 to Worker 2
+[0.0] Submitted T8 to Worker 1
+[0.0] Submitted T9 to Worker 0
+[0.0] Submitted T10 to Worker 0
+[0.0] Worker 0: Executing T10 (queue size: 3)
+[0.0] Worker 1: Executing T8 (queue size: 1)
+[0.0] Worker 2: Executing T7 (queue size: 3)
+[0.9] Worker 2: Completed T7
+[0.9] Worker 2: Executing T6 (queue size: 2)
+[0.9] Worker 0: Completed T10
+[0.9] Worker 0: Executing T9 (queue size: 2)
+[1.7] Worker 1: Completed T8
+[1.7] Worker 1: Executing T3 (queue size: 0)
+[2.3] Worker 0: Completed T9
+[2.3] Worker 0: Executing T5 (queue size: 1)
+[2.4] Worker 2: Completed T6
+[2.4] Worker 2: Executing T4 (queue size: 1)
+[2.6] Worker 1: Completed T3
+[2.6] Worker 1: Stole T2 from Worker 2
+[2.6] Worker 1: Executing T2 (queue size: 0)
+[3.2] Worker 0: Completed T5
+[3.2] Worker 0: Executing T1 (queue size: 0)
+[3.2] Worker 2: Completed T4
+[4.1] Worker 0: Completed T1
+[4.2] Worker 1: Completed T2
+
+=== Statistics ===
+Total tasks executed: 10
+Total tasks stolen: 1
+Steal rate: 10.0%
+Worker 0: executed=4, stolen=0, queue=0
+Worker 1: executed=3, stolen=1, queue=0
+Worker 2: executed=3, stolen=0, queue=0

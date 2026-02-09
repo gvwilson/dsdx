@@ -51,7 +51,7 @@ class Worker(Process):
         )
 
         # Simulate work
-        await self.timeout(task.work_duration)
+        await self.timeout(task.duration)
 
         print(f"[{self.now:.1f}] Worker {self.worker_id}: Completed {task.task_id}")
 

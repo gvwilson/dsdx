@@ -12,12 +12,12 @@ FIXME
 
 1.  [Introduction](@/intro/): what this training does and doesn't cover.
 1.  [A Publish-Subscribe Message Queue](@/msgque/): loosely-coupled communication.
+1.  [A Work-Stealing Scheduler](@/worksteal/): sharing work more efficiently.
 1.  [Conclusion](@/finale/): looking back and next steps.
 
 </div>
 
 <!--
-1.  [Work-Stealing Scheduler](@/worksteal/): sharing work more efficiently.
 1.  [Distributed Tracing](@/tracing/): keeping track of what's happening.
 1.  [Conflict-Free Replicated Data Types](@/crdt/): scalable data structures.
 1.  [MapReduce](@/mapreduce/): processing large datasets.

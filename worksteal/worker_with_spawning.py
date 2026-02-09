@@ -16,7 +16,7 @@ class WorkerWithSpawning(Worker):
         print(f"[{self.now:.1f}] Worker {self.worker_id}: Executing {task.task_id}")
 
         # Do half the work
-        await self.timeout(task.work_duration / 2)
+        await self.timeout(task.duration / 2)
 
         # Randomly spawn child tasks (simulating divide-and-conquer)
         if random.random() < 0.3:  # 30% chance
@@ -24,13 +24,13 @@ class WorkerWithSpawning(Worker):
             for i in range(num_children):
                 child = Task(
                     task_id=f"{task.task_id}.{i}",
-                    work_duration=random.uniform(0.3, 1.0),
+                    duration=random.uniform(0.3, 1.0),
                     parent_id=task.task_id,
                 )
                 self.spawn_task(child)
 
         # Finish the work
-        await self.timeout(task.work_duration / 2)
+        await self.timeout(task.duration / 2)
 
         print(f"[{self.now:.1f}] Worker {self.worker_id}: Completed {task.task_id}")
 

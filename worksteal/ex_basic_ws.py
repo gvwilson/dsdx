@@ -14,7 +14,7 @@ def run_basic_simulation():
 
     # Submit tasks with varying durations
     for i in range(10):
-        scheduler.submit_task(work_duration=random.uniform(0.5, 2.0))
+        scheduler.submit_task(duration=random.uniform(0.5, 2.0))
 
     # Run simulation
     env.run(until=20)

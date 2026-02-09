@@ -1,67 +1,46 @@
-# Work-Stealing Scheduler
+# A Work-Stealing Scheduler
 
-Modern programs need to efficiently utilize multiple CPU cores to achieve high performance.
-When you have hundreds or thousands of tasks to execute and a handful of CPU cores,
-how do you distribute the work?
-A naive approach would use a central queue: workers pull tasks from one end,
-and new tasks are added to the other.
-But this creates a bottleneck—every worker must compete for access to the shared queue.
+How do you distribute work
+When you have hundreds or thousands of tasks to execute and a handful of CPU cores?
+A naïve approach is to use a single queue,
+but this creates a bottleneck,
+since every worker must compete for access to that queue.
 
-Work-stealing schedulers solve this problem through decentralization.
-Each worker maintains its own local deque (double-ended queue) of tasks.
+A [work-stealing](g:work-stealing) scheduler solves this problem through decentralization.
+Each worker maintains a local [deque](g:deque) of tasks.
 Workers execute tasks from one end of their own deque,
-but when a worker runs out of work
-it can "steal" tasks from the other end of another worker's deque.
-This design minimizes contention—workers mostly operate on their own queues,
-only interacting when load balancing is needed.
+but if a worker runs out of tasks it can take some from the other end of another worker's deque.
+This design minimizes [contention](g:contention) while providing some [load balancing](g:load-balancing).
 
 This pattern appears throughout high-performance computing:
-[Go's runtime scheduler][go-scheduler] uses work-stealing to distribute goroutines across threads,
-[Java's Fork/Join framework][java-fork-join] enables parallel divide-and-conquer algorithms,
-and [Tokio][tokio] (Rust's async runtime) schedules futures across worker threads.
-Understanding work-stealing is essential for writing efficient parallel programs.
+[Go's runtime scheduler][go-scheduler] uses is to distribute goroutines across threads,
+Java's [fork/join framework][java-fork-join] enables parallel divide-and-conquer algorithms,
+and [Tokio][tokio] (Rust's async runtime) uses it to schedule [futures](g:future) across worker threads.
 
-## The Work-Stealing Pattern
+## The Work-Stealing Pattern {: #worksteal-pattern}
 
-In a work-stealing system, we have:
+A work-stealing system has five parts:
 
-1.  **Workers**: Each worker has a local deque of tasks
-1.  **Tasks**: Units of work that can be executed independently
-1.  **Local execution**: Workers pop tasks from the "private" end of their deque
-1.  **Stealing**: Idle workers steal tasks from the "public" end of other workers' deques
-1.  **Task spawning**: Running tasks can create new child tasks
+1.  Each worker has a local deque of tasks.
+1.  Those tasks are independent of each other.
+1.  Workers pop tasks from the private end of their deque.
+1.  Idle workers take tasks from the public end of other workers' deques.
+1.  Running tasks can create new child tasks.
 
-The key insight is asymmetry: the owning worker operates on one end (the "bottom") while thieves steal from the other end (the "top").
-This reduces contention because the owner and thieves usually don't compete for the same task.
-
-## Our Implementation
-
-We'll build a work-stealing scheduler using asimpy.
-Our simulation will show how tasks are distributed, how stealing balances load, and how nested task creation (a task spawning child tasks) works naturally.
+The key idea is asymmetry:
+the owning worker operates on one end of their deque
+(usually called the bottom)
+while other workers (called thieves) steal from its other end (the top).
+This reduces contention because owners and thieves don't compete for the same task
+unless the queue is almost empty.
 
 Let's start with the task representation:
 
-```python
-from asimpy import Environment, Process, Queue
-from typing import List, Optional, Callable, Any
-from dataclasses import dataclass
-import random
-
-
-@dataclass
-class Task:
-    """A unit of work to be executed."""
-    task_id: str
-    work_duration: float
-    parent_id: Optional[str] = None  # For nested tasks
-    
-    def __str__(self):
-        return f"Task({self.task_id})"
-```
+<div data-inc="task.py" data-filter="inc=task"></div>
 
 Each task has an ID, a duration (simulating CPU-bound work), and optionally a parent task ID for tracking task dependencies.
 
-## Worker Deques
+## Worker Deques {: #worksteal-deque}
 
 Each worker maintains a deque.
 In our simulation, we'll use a simple list-based deque:
@@ -101,7 +80,7 @@ class WorkerDeque:
 In production systems, this would use atomic operations and careful memory ordering to avoid locks.
 Our simulation focuses on the algorithmic pattern rather than low-level synchronization.
 
-## Worker Implementation
+## Worker Implementation {: #worksteal-worker}
 
 A worker executes tasks from its local deque and steals when idle:
 
@@ -184,7 +163,7 @@ The worker continuously tries to execute tasks.
 If its local deque is empty, it attempts to steal from other workers.
 If stealing fails, it waits briefly before trying again.
 
-## Scheduler
+## Scheduler {: #worksteal-scheduler}
 
 The scheduler coordinates workers and provides task submission:
 
@@ -239,7 +218,7 @@ class WorkStealingScheduler:
                   f"queue={worker.deque.size()}")
 ```
 
-## Basic Simulation
+## Basic Simulation {: #worksteal-sim}
 
 Let's create a simple simulation with load imbalance to see stealing in action:
 
@@ -269,7 +248,7 @@ if __name__ == "__main__":
 When you run this, you'll see workers executing tasks and stealing from each other when they run out of local work.
 The steal rate shows how much load balancing occurred.
 
-## Nested Task Spawning
+## Nested Task Spawning {: #worksteal-spawn}
 
 One powerful feature of work-stealing is handling nested parallelism—tasks that create subtasks.
 This is the foundation of parallel divide-and-conquer algorithms:
@@ -361,7 +340,7 @@ def run_spawning_simulation():
 This simulation shows how tasks can spawn children, which are added to the local deque and may be stolen by other workers.
 This naturally balances load even with irregular task creation patterns.
 
-## Load Balancing Strategies
+## Load Balancing Strategies {: #worksteal-balance}
 
 Different victim selection strategies affect performance:
 
@@ -430,7 +409,7 @@ def run_adaptive_simulation():
 
 The adaptive strategy targets victims with the most work, leading to faster load balancing.
 
-## Task Granularity and Performance
+## Task Granularity and Performance {: #worksteal-perf}
 
 Task granularity—how much work each task does—significantly affects performance.
 Too fine-grained, and scheduling overhead dominates; too coarse-grained, and load imbalance reduces parallelism:
@@ -507,7 +486,7 @@ def run_granularity_experiment():
 This experiment shows how granularity affects speedup and efficiency.
 Fine-grained tasks enable better load balancing but increase overhead.
 
-## Real-World Considerations
+## Real-World Considerations {: #worksteal-real}
 
 Our implementation demonstrates core concepts, but production work-stealing schedulers need:
 
@@ -525,16 +504,3 @@ The [Chase-Lev deque][chase-lev-deque] is a popular choice.
 -   **Work affinity**: Tasks that share data should execute on the same worker when possible.
 
 -   **Termination detection**: Determining when all work is complete in a distributed system is non-trivial.
-
-## Conclusion
-
-Work-stealing schedulers achieve efficient load balancing through decentralization.
-Each worker operates mostly independently, reducing contention.
-Stealing provides dynamic load balancing without central coordination.
-The key principles are:
-
-1.  **Local deques** minimize contention between workers
-1.  **Asymmetric access** (bottom vs. top) reduces conflicts
-1.  **Random victim selection** prevents pathological patterns
-1.  **Task spawning** naturally supports divide-and-conquer algorithms
-1.  **Granularity** must balance overhead against load balancing

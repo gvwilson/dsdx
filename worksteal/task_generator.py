@@ -15,5 +15,5 @@ class TaskGenerator(Process):
     async def run(self):
         """Generate initial tasks."""
         for i in range(self.num_initial_tasks):
-            self.scheduler.submit_task(work_duration=random.uniform(1.0, 3.0))
+            self.scheduler.submit_task(duration=random.uniform(1.0, 3.0))
             await self.timeout(0.5)

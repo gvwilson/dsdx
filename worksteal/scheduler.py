@@ -22,13 +22,13 @@ class WorkStealingScheduler:
             self.workers.append(worker)
 
     def submit_task(
-        self, work_duration: float, parent_id: Optional[str] = None
+        self, duration: float, parent_id: Optional[str] = None
     ) -> Task:
         """Submit a task to a random worker."""
         self.task_counter += 1
         task = Task(
             task_id=f"T{self.task_counter}",
-            work_duration=work_duration,
+            duration=duration,
             parent_id=parent_id,
         )
 
