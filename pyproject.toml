@@ -15,10 +15,10 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
-    "asimpy>=0.7.0",
+    "asimpy==0.8.1",
     "mccole>=1.5.1",
     "ruff>=0.1.0",
-    "taskipy>=1.14.1"
+    "taskipy>=1.14.1",
 ]
 
 [project.urls]
