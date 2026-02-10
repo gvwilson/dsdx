@@ -65,7 +65,7 @@ class FrontendService(Process):
 
         # Finish root span
         root_span.finish(self.now)
-        await self.collector.span_queue.put(root_span)
+        self.collector.span_queue.put(root_span)
 
     async def call_backend_services(
         self, context: TraceContext, parent_span: Span
@@ -88,5 +88,5 @@ class FrontendService(Process):
                 response_queue=response_queue,
             )
 
-            await service.request_queue.put(request)
+            service.request_queue.put(request)
             await response_queue.get()

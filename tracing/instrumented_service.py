@@ -68,7 +68,7 @@ class InstrumentedService(Process):
             self.finish_span(span, success=True)
 
             # Send response
-            await request.response_queue.put(
+            request.response_queue.put(
                 ServiceResponse(
                     request_id=request.request_id, success=True, data=downstream_data
                 )
@@ -81,7 +81,7 @@ class InstrumentedService(Process):
 
             self.finish_span(span, success=False)
 
-            await request.response_queue.put(
+            request.response_queue.put(
                 ServiceResponse(
                     request_id=request.request_id, success=False, error=str(e)
                 )
@@ -115,7 +115,7 @@ class InstrumentedService(Process):
             async def run(self) -> None:
                 # Simulate network delay
                 await self.timeout(0.01)
-                await self.collector.span_queue.put(self.target_span)
+                self.collector.span_queue.put(self.target_span)
 
         SpanSender(self._env, span, self.collector)
 
@@ -152,14 +152,14 @@ class InstrumentedService(Process):
                 response_queue=response_queue,
             )
 
-            await service.request_queue.put(downstream_request)
+            service.request_queue.put(downstream_request)
             response = await response_queue.get()
 
             # Finish call span
             call_span.finish(self.now)
             call_span.add_tag("success", response.success)
 
-            await self.collector.span_queue.put(call_span)
+            self.collector.span_queue.put(call_span)
 
             results[service.service_name] = response.data
 
