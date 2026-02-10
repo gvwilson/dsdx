@@ -26,12 +26,19 @@
 
 ## C
 
+<span id="cache-miss">cache miss</span>
+:   FIXME
+
 <span id="consumer-group">consumer group/span>
 :   A set of message queue subscribers that share the workload.
     Messages are distributed among group members rather than duplicated to each.
 
 <span id="contention">contention/span>
 :   FIXME
+
+<span id="context-propagation">context propagation</span>
+:   Passing trace IDs, span IDs, and other metadata between services
+    so that operations can be correlated in distributed tracing.
 
 ## D
 
@@ -70,6 +77,14 @@
 <span id="granularity">granulaty</span>
 :   FIXME
 
+## H
+
+<span id="http-header">HTTP header</span>
+:   FIXME
+
+<span id="http-status-code">HTTP status code</span>
+:   FIXME
+
 ## J
 
 <span id="json">JSON</span>
@@ -86,6 +101,9 @@
 ## M
 
 <span id="message-broker">message broker</span>
+:   FIXME
+
+<span id="microservice">microservice</span>
 :   FIXME
 
 ## N
@@ -107,6 +125,21 @@
 
 <span id="round-robin-polling">round-robin polling</span>
 :   FIXME
+
+## S
+
+<span id="sampling">sampling</span>
+:   Recording only a fraction of traces in distributed tracing
+    to reduce overhead and storage requirements.
+
+<span id="span">span</span>
+:   FIXME
+
+## T
+
+<span id="trace">trace</span>
+:   The complete journey of a request through a distributed system,
+    identified by a unique trace ID and composed of multiple spans forming a tree.
 
 ## W
 

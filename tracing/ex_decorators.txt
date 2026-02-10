@@ -1,0 +1,71 @@
+[0.0] OrderService started
+[0.0] TraceCollector started
+
+[1.5] Client: Starting request req_1
+[1.5] OrderService: Processing Request(req_1)
+
+[3.3] Client: Starting request req_2
+[3.3] OrderService: Processing Request(req_2)
+
+[5.1] Client: Starting request req_3
+[5.1] OrderService: Processing Request(req_3)
+
+============================================================
+Decorator-Based Tracing Results:
+============================================================
+Traces completed: 9
+Spans received: 9
+
+Trace(trace_27..., 1 spans, 0.119s)
+  Duration: 0.119s
+  Spans: 1
+  Operations:
+    - process_data (0.119s)
+
+Trace(trace_27..., 1 spans, 0.312s)
+  Duration: 0.312s
+  Spans: 1
+  Operations:
+    - handle_request (0.312s)
+
+Trace(trace_27..., 1 spans, 0.312s)
+  Duration: 0.312s
+  Spans: 1
+  Operations:
+  - Client.make_request (0.312s)
+
+Trace(trace_54..., 1 spans, 0.058s)
+  Duration: 0.058s
+  Spans: 1
+  Operations:
+    - process_data (0.058s)
+
+Trace(trace_54..., 1 spans, 0.323s)
+  Duration: 0.323s
+  Spans: 1
+  Operations:
+    - handle_request (0.323s)
+
+Trace(trace_54..., 1 spans, 0.323s)
+  Duration: 0.323s
+  Spans: 1
+  Operations:
+  - Client.make_request (0.323s)
+
+Trace(trace_60..., 1 spans, 0.074s)
+  Duration: 0.074s
+  Spans: 1
+  Operations:
+    - process_data (0.074s)
+
+Trace(trace_60..., 1 spans, 0.270s)
+  Duration: 0.270s
+  Spans: 1
+  Operations:
+    - handle_request (0.270s)
+
+Trace(trace_60..., 1 spans, 0.270s)
+  Duration: 0.270s
+  Spans: 1
+  Operations:
+  - Client.make_request (0.270s)

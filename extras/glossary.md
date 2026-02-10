@@ -49,9 +49,6 @@ consensus
 consistent hashing
 :   Technique for distributing data across nodes where adding or removing nodes causes minimal data movement. Used in distributed hash tables and key-value stores.
 
-context propagation
-:   Passing trace IDs, span IDs, and other metadata between services so operations can be correlated across service boundaries in distributed tracing.
-
 CmRDT (operation-based CRDT)
 :   CRDT variant where replicas send operations (deltas) that must commute. Requires reliable delivery but has lower network overhead than state-based CRDTs.
 
@@ -244,9 +241,6 @@ round-trip time (RTT)
 saga
 :   Pattern for managing distributed transactions as a sequence of local transactions with compensating transactions for rollback, providing eventual consistency without distributed locks.
 
-sampling
-:   Recording only a fraction of traces in distributed tracing to manage overhead and storage costs while maintaining observability.
-
 scope
 :   In OAuth 2.0, specific permissions granted by an access token (e.g., "read:profile", "write:posts"), enabling fine-grained access control.
 
@@ -309,9 +303,6 @@ tombstone
 
 torrent
 :   BitTorrent metadata file describing files to download, piece hashes for verification, and tracker URLs for peer discovery.
-
-trace
-:   Complete journey of a request through a distributed system, identified by a unique trace ID and composed of multiple spans forming a tree.
 
 tracker
 :   BitTorrent server coordinating peers by maintaining lists of participants in each swarm and facilitating peer discovery.

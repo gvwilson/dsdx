@@ -19,6 +19,7 @@
 <a href="../intro/">Introduction</a>
 <a href="../msgque/">A Publish-Subscribe Message Queue</a>
 <a href="../worksteal/">A Work-Stealing Scheduler</a>
+<a href="../tracing/">Distributed Tracing</a>
 <a href="../finale/">Conclusion</a>
 </span>
 </span>
@@ -60,11 +61,16 @@ when downstream components cannot keep up.</dd>
 </dl>
 <h2>C</h2>
 <dl>
+<dt><span id="cache-miss">cache miss</span></dt>
+<dd>FIXME</dd>
 <dt><span id="consumer-group">consumer group/span&gt;</span></dt>
 <dd>A set of message queue subscribers that share the workload.
 Messages are distributed among group members rather than duplicated to each.</dd>
 <dt><span id="contention">contention/span&gt;</span></dt>
 <dd>FIXME</dd>
+<dt><span id="context-propagation">context propagation</span></dt>
+<dd>Passing trace IDs, span IDs, and other metadata between services
+so that operations can be correlated in distributed tracing.</dd>
 </dl>
 <h2>D</h2>
 <dl>
@@ -98,6 +104,13 @@ such as publishing to multiple subscribers or calling multiple services in paral
 <dt><span id="granularity">granulaty</span></dt>
 <dd>FIXME</dd>
 </dl>
+<h2>H</h2>
+<dl>
+<dt><span id="http-header">HTTP header</span></dt>
+<dd>FIXME</dd>
+<dt><span id="http-status-code">HTTP status code</span></dt>
+<dd>FIXME</dd>
+</dl>
 <h2>J</h2>
 <dl>
 <dt><span id="json">JSON</span></dt>
@@ -113,6 +126,8 @@ such as publishing to multiple subscribers or calling multiple services in paral
 <h2>M</h2>
 <dl>
 <dt><span id="message-broker">message broker</span></dt>
+<dd>FIXME</dd>
+<dt><span id="microservice">microservice</span></dt>
 <dd>FIXME</dd>
 </dl>
 <h2>N</h2>
@@ -133,6 +148,20 @@ This pattern decouples senders from receivers.</dd>
 <dl>
 <dt><span id="round-robin-polling">round-robin polling</span></dt>
 <dd>FIXME</dd>
+</dl>
+<h2>S</h2>
+<dl>
+<dt><span id="sampling">sampling</span></dt>
+<dd>Recording only a fraction of traces in distributed tracing
+to reduce overhead and storage requirements.</dd>
+<dt><span id="span">span</span></dt>
+<dd>FIXME</dd>
+</dl>
+<h2>T</h2>
+<dl>
+<dt><span id="trace">trace</span></dt>
+<dd>The complete journey of a request through a distributed system,
+identified by a unique trace ID and composed of multiple spans forming a tree.</dd>
 </dl>
 <h2>W</h2>
 <dl>

@@ -1,0 +1,54 @@
+<div data-inc="tracing_decorators.py" data-filter="inc=traced"></div>
+
+## Data Structures
+
+Let's define the core types for distributed tracing.
+`TraceContext` propagates between services
+
+<div data-inc="tracing_types.py" data-filter="inc=context"></div>
+
+`Span` tracks individual operations,
+and has methods for adding tags and log entries
+and to mark the span as completed:
+
+<div data-inc="tracing_types.py" data-filter="inc=span"></div>
+
+Finally, `Trace` aggregates spans,
+and has methods for adding spans and getting the overall duration of the trace:
+
+<div data-inc="tracing_types.py" data-filter="inc=trace"></div>
+
+## Instrumented Service
+
+Services create spans for their operations and propagate context:
+
+<div data-inc="instrumented_service.py"></div>
+
+## Frontend Service
+
+The frontend initiates traces and calls backend services:
+
+<div data-inc="frontend_service.py"></div>
+
+The frontend creates root spans and initiates traces that flow through the system.
+
+## Basic Tracing Example
+
+Let's see distributed tracing in action:
+
+<div data-inc="ex_tracing.py"></div>
+
+<div data-inc="ex_tracing.txt" data-filter="head=30 + tail=26"></div>
+
+This demonstrates how traces flow through a multi-tier service architecture.
+
+## Sampling Strategies
+
+Not all traces need to be recorded.
+Sampling reduces overhead:
+
+<div data-inc="sampler.py"></div>
+
+Sampling is essential for production systems—recording every trace is prohibitively expensive.
+
+<div data-inc="ex_sample.py"></div>
