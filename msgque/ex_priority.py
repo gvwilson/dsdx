@@ -76,7 +76,6 @@ class PrioritySubscriber(Process):
     async def run(self):
         """Process messages in priority order."""
         while True:
-            # PriorityQueue returns items in priority order
             message = await self.queue.get()
 
             self.num_received += 1

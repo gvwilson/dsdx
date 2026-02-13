@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from asimpy import Environment, PriorityQueue
+from asimpy import Environment, Queue
 from collections import defaultdict
 
 from message import Message
@@ -24,13 +24,13 @@ class PriorityBackpressureBroker:
     def __init__(self, env: Environment, max_queue_size: int = 10):
         self.env = env
         self.max_queue_size = max_queue_size
-        self.topics: dict[str, list[PriorityQueue]] = defaultdict(list)
+        self.topics: dict[str, list[Queue]] = defaultdict(list)
         self.num_published = 0
         self.num_delivered = 0
 
-    def subscribe(self, topic: str) -> PriorityQueue:
+    def subscribe(self, topic: str) -> Queue:
         """Create a bounded priority queue for a subscriber to a topic."""
-        queue = PriorityQueue(self.env, max_capacity=self.max_queue_size)
+        queue = Queue(self.env, max_capacity=self.max_queue_size, priority=True)
         self.topics[topic].append(queue)
         return queue
 
@@ -46,8 +46,10 @@ class PriorityBackpressureBroker:
 
         all_delivered = True
         for queue in queues:
-            all_delivered = all_delivered and queue.put(message)
-            self.num_delivered += 1
+            if queue.put(message):
+                self.num_delivered += 1
+            else:
+                all_delivered = False
 
         return all_delivered
     # mccole: /publish

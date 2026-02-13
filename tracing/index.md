@@ -97,7 +97,7 @@ or [async context variables](g:async-context-vars) instead of globals.
 ## Data Types {: #tracing-types}
 
 Let's define the core types for distributed tracing.
-`TraceContext` propagates between services
+`TraceContext` propagates between services:
 
 <div data-inc="tracing_types.py" data-filter="inc=context"></div>
 
@@ -134,15 +134,14 @@ the collector moves it from the active set into the completed set:
 With all this machinery in place,
 tracing a microservice is relatively straightforward:
 
-<div data-inc="simple_service.py" data-filter="inc=storage"></div>
+<div data-inc="simple_service.py" data-filter="inc=simple"></div>
 
 `handle_request` is automatically traced;
 `process_data` is also traced and becomes a child span.
 No spans are created manually,
 and error handling is automatic.
 
-The client creates the root span manually (since it initiates the trace),
-but services use decorators for all instrumentation:
+The client creates the root span manually (since it initiates the trace):
 
 <div data-inc="ex_decorators.py" data-filter="inc=client"></div>
 

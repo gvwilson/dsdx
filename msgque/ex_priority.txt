@@ -82,7 +82,7 @@
 
 === Priority Queue Statistics ===
 Messages published: 67
-Messages delivered: 67
+Messages delivered: 38
 Messages received: 14
 
 Received by priority:

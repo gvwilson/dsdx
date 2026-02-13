@@ -53,7 +53,11 @@ class AckBroker(MessageBroker):
         """Check if message needs redelivery (called by scheduler)."""
         if ack_id in self.pending_acks:
             msg, _, queue = self.pending_acks[ack_id]
-            queue.put(msg)
+            if queue._getters:
+                evt = queue._getters.pop(0)
+                evt.succeed(msg)
+            else:
+                queue._items.append(msg)
 
     # mccole: /publish
 

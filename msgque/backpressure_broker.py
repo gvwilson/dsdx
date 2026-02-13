@@ -37,12 +37,11 @@ class BackpressureBroker:
 
         all_delivered = True
         for queue in queues:
-            if queue.is_full():
+            if queue.put(message):
+                self.num_delivered += 1
+            else:
                 self.num_dropped += 1
                 all_delivered = False
-            else:
-                queue.put(message)
-                self.num_delivered += 1
 
         return all_delivered
     # mccole: /publish

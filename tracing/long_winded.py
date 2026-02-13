@@ -40,5 +40,5 @@ class Service(GenericService):
         finally:
             # Finish and send span
             span.finish(self.now)
-            self.collector.span_queue.put(span)
+            await self.collector.span_queue.put(span)
 # mccole: /service
