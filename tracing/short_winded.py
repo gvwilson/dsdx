@@ -1,8 +1,10 @@
 from tracing_decorators import traced
 
+
 class GenericService:
     async def do_work(self):
         pass
+
 
 # mccole: service
 class Service(GenericService):

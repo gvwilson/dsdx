@@ -328,12 +328,11 @@ and returns <code>False</code> to signal backpressure to the publisher:</p>
 
         <span class="n">all_delivered</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="k">for</span> <span class="n">queue</span> <span class="ow">in</span> <span class="n">queues</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">queue</span><span class="o">.</span><span class="n">is_full</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">message</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">num_delivered</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">num_dropped</span> <span class="o">+=</span> <span class="mi">1</span>
                 <span class="n">all_delivered</span> <span class="o">=</span> <span class="kc">False</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">num_delivered</span> <span class="o">+=</span> <span class="mi">1</span>
 
         <span class="k">return</span> <span class="n">all_delivered</span>
 </code></pre></div>
@@ -461,8 +460,10 @@ we either evict a lower-priority message or discard the one that just arrived:</
 
         <span class="n">all_delivered</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="k">for</span> <span class="n">queue</span> <span class="ow">in</span> <span class="n">queues</span><span class="p">:</span>
-            <span class="n">all_delivered</span> <span class="o">=</span> <span class="n">all_delivered</span> <span class="ow">and</span> <span class="n">queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">num_delivered</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">message</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">num_delivered</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">all_delivered</span> <span class="o">=</span> <span class="kc">False</span>
 
         <span class="k">return</span> <span class="n">all_delivered</span>
 </code></pre></div>
@@ -539,7 +540,11 @@ The lambda captures the acknowledgment ID and calls <code>_check_ack()</code> af
 <span class="w">        </span><span class="sd">"""Check if message needs redelivery (called by scheduler)."""</span>
         <span class="k">if</span> <span class="n">ack_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">pending_acks</span><span class="p">:</span>
             <span class="n">msg</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">queue</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pending_acks</span><span class="p">[</span><span class="n">ack_id</span><span class="p">]</span>
-            <span class="n">queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">queue</span><span class="o">.</span><span class="n">_getters</span><span class="p">:</span>
+                <span class="n">evt</span> <span class="o">=</span> <span class="n">queue</span><span class="o">.</span><span class="n">_getters</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+                <span class="n">evt</span><span class="o">.</span><span class="n">succeed</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">queue</span><span class="o">.</span><span class="n">_items</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
 </code></pre></div>
 </div>
 <p>A subscriber using this broker calls <code>broker.acknowledge(message.ack_id)</code>

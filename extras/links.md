@@ -10,6 +10,7 @@
 [go-scheduler]: https://golang.org/s/go11sched
 [java-fork-join]: https://docs.oracle.com/javase/tutorial/essential/concurrency/forkjoin.html
 [kafka]: https://kafka.apache.org/
+[opentelemetry]: https://opentelemetry.io/
 [paxos]: https://en.wikipedia.org/wiki/Paxos_(computer_science)
 [rabbitmq]: https://www.rabbitmq.com/
 [raft]: https://en.wikipedia.org/wiki/Raft_(algorithm)

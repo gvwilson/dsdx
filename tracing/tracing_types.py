@@ -1,11 +1,14 @@
 """Data types for distributed tracing implementation."""
 
 from dataclasses import dataclass, field
-from enum import Enum
 import random
 import time
 from typing import Any
-from asimpy import Queue
+from asimpy import Process, Queue
+
+
+class BaseCollector(Process):
+    pass
 
 
 # mccole: context
@@ -16,13 +19,12 @@ class TraceContext:
     trace_id: str
     span_id: str
     parent_span_id: str | None = None
-    sampled: bool = True
     baggage: dict[str, str] = field(default_factory=dict)
-# mccole: /context
+    # mccole: /context
 
     def __str__(self) -> str:
         return f"TraceContext(trace={self.trace_id[:8]}..., span={self.span_id[:8]}...)"
-
+# mccole: /context
 
 # mccole: span
 @dataclass
@@ -46,20 +48,19 @@ class Span:
 
     def add_log(self, message: str, **fields: Any) -> None:
         """Add log entry to span."""
-        self.logs.append(
-            {"message": message, "timestamp": time.time(), **fields}
-        )
+        self.logs.append({"message": message, "timestamp": time.time(), **fields})
 
     def finish(self, end_time: float) -> None:
         """Mark span as complete."""
         self.end_time = end_time
         self.duration = end_time - self.start_time
-# mccole: /span
+
+    # mccole: /span
 
     def __str__(self) -> str:
         status = f"{self.duration:.3f}s" if self.duration else "active"
         return f"Span({self.operation_name}, {status})"
-
+# mccole: /span
 
 # mccole: trace
 @dataclass
@@ -102,21 +103,12 @@ class Trace:
         return f"Trace({self.trace_id[:8]}..., {len(self.spans)} spans, {status})"
 
 
-class SamplingStrategy(Enum):
-    """Sampling strategies for trace collection."""
-
-    ALWAYS = "always"
-    NEVER = "never"
-    PROBABILISTIC = "probabilistic"
-    RATE_LIMITED = "rate_limited"
-
-
 @dataclass
 class ServiceRequest:
     """Request between services with trace context."""
 
     request_id: str
-    context: TraceContext
+    context: TraceContext | None
     payload: dict[str, Any]
     response_queue: Queue
 

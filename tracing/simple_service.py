@@ -3,22 +3,24 @@
 import random
 from asimpy import Process, Queue
 from tracing_types import ServiceRequest, ServiceResponse
-from tracing_decorators import traced, set_trace_context, set_collector
+from tracing_decorators import Storage, traced
 
 
 # mccole: simple
 class SimpleService(Process):
     """Service instrumented with decorators."""
 
-    def init(self, service_name: str, collector):
+    def init(self, service_name: str, collector, verbose: bool = True):
         self.service_name = service_name
         self.collector = collector
+        self.verbose = verbose
         self.request_queue = Queue(self._env)
-        
+
         # Set collector for decorators
-        set_collector(collector)
-        
-        print(f"[{self.now:.1f}] {self.service_name} started")
+        Storage.set_collector(collector)
+
+        if self.verbose:
+            print(f"[{self.now:.1f}] {self.service_name} started")
 
     async def run(self) -> None:
         """Handle incoming requests."""
@@ -29,17 +31,18 @@ class SimpleService(Process):
     @traced("handle_request")
     async def handle_request(self, request: ServiceRequest) -> None:
         """Handle request - automatically traced."""
-        print(f"[{self.now:.1f}] {self.service_name}: Processing {request}")
-        
+        if self.verbose:
+            print(f"[{self.now:.1f}] {self.service_name}: Processing {request}")
+
         # Set context for nested calls
-        set_trace_context(request.context)
-        
+        Storage.set_context(request.context)
+
         # Simulate processing
         await self.timeout(random.uniform(0.1, 0.3))
-        
+
         # Do some work
         data = await self.process_data(request.payload)
-        
+
         # Send response
         request.response_queue.put(
             ServiceResponse(request_id=request.request_id, success=True, data=data)

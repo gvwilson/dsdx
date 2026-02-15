@@ -1,5 +1,6 @@
 from tracing_types import Span
 
+
 def generate_id(prefix):
     return prefix
 
@@ -25,7 +26,7 @@ class Service(GenericService):
             service_name=self.service_name,
             start_time=self.now,
         )
-    
+
         try:
             # Do work
             result = await self.do_work()

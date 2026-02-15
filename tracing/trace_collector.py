@@ -1,11 +1,11 @@
 """Trace collector for aggregating spans into traces."""
 
-from asimpy import Process, Queue
-from tracing_types import Span, Trace
+from asimpy import Queue
+from tracing_types import BaseCollector, Span, Trace
 
 
 # mccole: collector
-class TraceCollector(Process):
+class TraceCollector(BaseCollector):
     """Collects and aggregates spans into traces."""
 
     def init(self, verbose=True) -> None:
