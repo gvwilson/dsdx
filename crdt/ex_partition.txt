@@ -1,0 +1,31 @@
+[0] Ahmed: increment -> 1
+[0] Baemi: increment -> 1
+[0] Chiti: increment -> 1
+[2] Ahmed: synced with Chiti -> 2
+[2] Baemi: synced with Chiti -> 2
+[2] Chiti: synced with Baemi -> 2
+[3] *** partition: Ahmed <-/-> Baemi
+[4] Ahmed: increment -> 3
+[4] Baemi: increment -> 3
+[4] Chiti: increment -> 3
+[6] Ahmed: synced with Chiti -> 5
+[6] Baemi: cannot reach Ahmed
+[6] Chiti: synced with Ahmed -> 5
+[8] Ahmed: increment -> 6
+[8] Baemi: increment -> 4
+[8] Chiti: increment -> 6
+[10] Ahmed: synced with Chiti -> 7
+[10] Baemi: synced with Chiti -> 8
+[10] Chiti: synced with Ahmed -> 7
+[11] *** healed: Ahmed <---> Baemi
+[12] Ahmed: increment -> 8
+[12] Baemi: increment -> 9
+[12] Chiti: increment -> 8
+[14] Ahmed: synced with Baemi -> 11
+[14] Baemi: synced with Chiti -> 11
+[14] Chiti: synced with Ahmed -> 12
+
+--- Final State
+GCounter(id=Ahmed, value=11, counts={'Ahmed': 4, 'Chiti': 3, 'Baemi': 4})
+GCounter(id=Baemi, value=11, counts={'Baemi': 4, 'Chiti': 4, 'Ahmed': 3})
+GCounter(id=Chiti, value=12, counts={'Chiti': 4, 'Baemi': 4, 'Ahmed': 4})

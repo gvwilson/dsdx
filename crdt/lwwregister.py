@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 
 
+# mccole: lww
 @dataclass
 class LWWRegister:
     """Last-Write-Wins register (state-based CRDT)."""
@@ -30,6 +31,7 @@ class LWWRegister:
             self.value = other.value
             self.timestamp = other.timestamp
             self.replica_id = other.replica_id
+# mccole: /lww
 
     def copy(self) -> "LWWRegister":
         """Create a copy of this register."""

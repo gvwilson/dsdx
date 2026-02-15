@@ -1,0 +1,23 @@
+[0] Ahmed: increment -> 1
+[0] Baemi: increment -> 1
+[0] Chiti: increment -> 1
+[2] Ahmed: applied inbox -> 3
+[2] Baemi: applied inbox -> 3
+[2] Chiti: applied inbox -> 3
+[4] Ahmed: decrement -> 2
+[4] Baemi: decrement -> 2
+[4] Chiti: increment -> 4
+[6] Ahmed: applied inbox -> 2
+[6] Baemi: applied inbox -> 2
+[6] Chiti: applied inbox -> 2
+[8] Ahmed: increment -> 3
+[8] Baemi: decrement -> 1
+[8] Chiti: decrement -> 1
+[10] Ahmed: applied inbox -> 1
+[10] Baemi: applied inbox -> 1
+[10] Chiti: applied inbox -> 1
+
+--- Final State
+OpCounter(id=Ahmed, value=1)
+OpCounter(id=Baemi, value=1)
+OpCounter(id=Chiti, value=1)

@@ -1,0 +1,43 @@
+=== GCounter
+[0] Ahmed: increment -> 1
+[0] Baemi: increment -> 1
+[0] Chiti: increment -> 1
+[2] Ahmed: synced with Chiti -> 2
+[2] Baemi: synced with Chiti -> 2
+[2] Chiti: synced with Baemi -> 2
+[5] Ahmed: increment -> 3
+[5] Baemi: increment -> 3
+[5] Chiti: increment -> 3
+[7] Ahmed: synced with Chiti -> 5
+[7] Baemi: synced with Ahmed -> 6
+[7] Chiti: synced with Ahmed -> 5
+[10] Ahmed: increment -> 6
+[10] Baemi: increment -> 7
+[10] Chiti: increment -> 6
+
+--- Final State
+GCounter(id=Ahmed, value=6, counts={'Ahmed': 3, 'Chiti': 2, 'Baemi': 1})
+GCounter(id=Baemi, value=7, counts={'Baemi': 3, 'Chiti': 2, 'Ahmed': 2})
+GCounter(id=Chiti, value=6, counts={'Chiti': 3, 'Baemi': 1, 'Ahmed': 2})
+
+=== PNCounter
+[0] Ahmed: increment -> 1
+[0] Baemi: decrement -> -1
+[0] Chiti: increment -> 1
+[2] Ahmed: synced with Baemi -> 0
+[2] Baemi: synced with Chiti -> 0
+[2] Chiti: synced with Ahmed -> 1
+[5] Ahmed: decrement -> -1
+[5] Baemi: decrement -> -1
+[5] Chiti: increment -> 2
+[7] Ahmed: synced with Chiti -> 1
+[7] Baemi: synced with Chiti -> 1
+[7] Chiti: synced with Baemi -> 1
+[10] Ahmed: increment -> 2
+[10] Baemi: increment -> 2
+[10] Chiti: increment -> 2
+
+--- Final State
+PNCounter(id=Ahmed, value=2)
+PNCounter(id=Baemi, value=2)
+PNCounter(id=Chiti, value=2)

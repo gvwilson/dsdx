@@ -33,7 +33,6 @@ skips = [
     "*~",
     ".ruff_cache/**",
     "__pycache__/**",
-    "crdt/**",
     "distlock/**",
     "dns/**",
     "eventual/**",

@@ -1,9 +1,10 @@
 """Operation-based PN-Counter (CmRDT)."""
 
 from dataclasses import dataclass
-from typing import Set, Any
+from typing import Any
 
 
+# mccole: op
 @dataclass
 class Operation:
     """An operation on a CRDT."""
@@ -11,18 +12,17 @@ class Operation:
     op_type: str
     replica_id: str
     amount: int = 0
-    element: Any = None
-    timestamp: float = 0.0
-    tag: str = ""
+# mccole: /op
 
 
+# mccole: counter
 class OpBasedCounter:
     """Operation-based PN-Counter."""
 
     def __init__(self, replica_id: str):
         self.replica_id = replica_id
         self.value = 0
-        self.applied_ops: Set[str] = set()  # For deduplication
+        self.applied_ops: set[str] = set()  # For deduplication
 
     def increment(self, amount: int = 1) -> Operation:
         """Create increment operation."""
@@ -43,6 +43,7 @@ class OpBasedCounter:
             self.value += op.amount
         elif op.op_type == "decrement":
             self.value -= op.amount
+# mccole: /counter
 
     def __str__(self):
         return f"OpCounter(id={self.replica_id}, value={self.value})"

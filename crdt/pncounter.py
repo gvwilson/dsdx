@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from gcounter import GCounter
 
 
+# mccole: pncounter
 @dataclass
 class PNCounter:
     """Positive-Negative counter supporting increment and decrement."""
@@ -39,6 +40,7 @@ class PNCounter:
         result.increments = self.increments.copy()
         result.decrements = self.decrements.copy()
         return result
+# mccole: /pncounter
 
     def __str__(self):
         return f"PNCounter(id={self.replica_id}, value={self.value()})"

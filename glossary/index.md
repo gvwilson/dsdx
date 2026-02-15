@@ -1,6 +1,13 @@
 # Glossary
 
+
 ## A
+
+<span id="associativity">associativity</span>
+:   FIXME
+
+<span id="async-context-vars">async context variables</span>
+:   FIXME
 
 <span id="at-least-once">at-least-once delivery</span>
 :   Message delivery guarantee ensuring every message is delivered one or more times.
@@ -29,6 +36,12 @@
 <span id="cache-miss">cache miss</span>
 :   FIXME
 
+<span id="commutativity">commutativity</span>
+:   FIXME
+
+<span id="crdt">conflict-free replicated data type</span> (CRDT)
+:   FIXME
+
 <span id="consumer-group">consumer group/span>
 :   A set of message queue subscribers that share the workload.
     Messages are distributed among group members rather than duplicated to each.
@@ -45,7 +58,13 @@
 <span id="dataclass">dataclass</span>
 :   FIXME
 
+<span id="decorator">decorator</span>
+:   FIXME
+
 <span id="decoupling">decoupling</span>
+:   FIXME
+
+<span id="delta">delta</span>
 :   FIXME
 
 <span id="deque">double-ended queue</span> (deque)
@@ -77,6 +96,9 @@
 <span id="granularity">granulaty</span>
 :   FIXME
 
+<span id="grow-only-counter">grow-only counter</span>
+:   FIXME
+
 ## H
 
 <span id="http-header">HTTP header</span>
@@ -85,12 +107,20 @@
 <span id="http-status-code">HTTP status code</span>
 :   FIXME
 
+## I
+
+<span id="idempotent">idempotent</span>
+:   FIXME
+
 ## J
 
 <span id="json">JSON</span>
 :   FIXME
 
 ## L
+
+<span id="lww-register">last-write-wins register</span>
+:   FIXME
 
 <span id="livelock">livelock</span>
 :   FIXME
@@ -111,7 +141,21 @@
 <span id="negative-feedback-loop">negative feedback loop</span>
 :   FIXME
 
+<span id="network-partition">network partition</span>
+:   FIXME
+
+## O
+
+<span id="op-based-crdt">operation-based CRDT</span>
+:   FIXME
+
 ## P
+
+<span id="partition-tolerance">partition tolerance</span>
+:   FIXME
+
+<span id="pn-counter">positive-negative counter</span>
+:   FIXME
 
 <span id="priority-queue">priority queue</span>
 :   FIXME
@@ -123,6 +167,9 @@
 
 ## R
 
+<span id="root-span">root span</span>
+:   FIXME
+
 <span id="round-robin-polling">round-robin polling</span>
 :   FIXME
 
@@ -132,14 +179,32 @@
 :   Recording only a fraction of traces in distributed tracing
     to reduce overhead and storage requirements.
 
+<span id="schema">schema</span>
+:   FIXME
+
+<span id="singleton">singleton</span>
+:   FIXME
+
 <span id="span">span</span>
+:   FIXME
+
+<span id="state-based-crdt">state-based CRDT</span>
+:   FIXME
+
+<span id="strong-eventual-consistency">strong eventual consistency</span>
 :   FIXME
 
 ## T
 
+<span id="thread-local-storage">thread-local storage</span>
+:   FIXME
+
 <span id="trace">trace</span>
 :   The complete journey of a request through a distributed system,
     identified by a unique trace ID and composed of multiple spans forming a tree.
+
+<span id="trace-collector">trace collector</span>
+:   FIXME
 
 ## W
 

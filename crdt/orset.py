@@ -1,28 +1,25 @@
 """Observed-Remove Set (state-based CRDT)."""
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, Set
+from typing import Any
 
 
+# mccole: orset
 @dataclass
 class ORSet:
     """Observed-Remove Set (state-based CRDT)."""
 
     replica_id: str
-    elements: Dict[Any, Set[str]] = field(
-        default_factory=dict
-    )  # element -> set of unique tags
+    elements: dict[Any, set[str]] = field(default_factory=dict)  # element -> set of unique tags
     tag_counter: int = 0
 
     def add(self, element: Any) -> str:
         """Add an element with a unique tag."""
         self.tag_counter += 1
         tag = f"{self.replica_id}-{self.tag_counter}"
-
         if element not in self.elements:
             self.elements[element] = set()
         self.elements[element].add(tag)
-
         return tag
 
     def remove(self, element: Any):
@@ -34,7 +31,7 @@ class ORSet:
         """Check if element is in the set."""
         return element in self.elements and len(self.elements[element]) > 0
 
-    def value(self) -> Set[Any]:
+    def value(self) -> set[Any]:
         """Get the current set of elements."""
         return {elem for elem, tags in self.elements.items() if tags}
 
@@ -47,7 +44,6 @@ class ORSet:
             self_tags = self.elements.get(element, set())
             other_tags = other.elements.get(element, set())
             merged_tags = self_tags | other_tags
-
             if merged_tags:
                 self.elements[element] = merged_tags
 
@@ -57,6 +53,7 @@ class ORSet:
         result.elements = {k: v.copy() for k, v in self.elements.items()}
         result.tag_counter = self.tag_counter
         return result
+# mccole: /orset
 
     def __str__(self):
         return f"ORSet(id={self.replica_id}, value={self.value()})"

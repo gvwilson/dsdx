@@ -1,0 +1,20 @@
+[0] Ahmed: set 'yellow'
+[0] Baemi: set 'yellow'
+[0] Chiti: set 'yellow'
+[2] Ahmed: synced with Chiti -> 'yellow'
+[2] Baemi: synced with Ahmed -> 'yellow'
+[2] Chiti: synced with Ahmed -> 'yellow'
+[5] Ahmed: set 'yellow'
+[5] Baemi: set 'yellow'
+[5] Chiti: set 'green'
+[7] Ahmed: synced with Baemi -> 'yellow'
+[7] Baemi: synced with Chiti -> 'green'
+[7] Chiti: synced with Ahmed -> 'green'
+[10] Ahmed: set 'red'
+[10] Baemi: set 'red'
+[10] Chiti: set 'green'
+
+--- Final State
+Ahmed: LWWRegister(value=red, ts=10.00)
+Baemi: LWWRegister(value=red, ts=10.00)
+Chiti: LWWRegister(value=green, ts=10.00)
