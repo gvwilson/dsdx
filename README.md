@@ -40,6 +40,7 @@ FIXME
 1.  [Contributing](@/contributing/)
 1.  [Bibliography](@/bibliography/)
 1.  [Glossary](@/glossary/)
+1.  [A Bit of Theory](@/theory/)
 1.  [Discrete Event Simulation with asimpy](@/asimpy/)
 
 </div>
