@@ -141,7 +141,7 @@ class MapReduceWorker(Process):
             # Check for simulated failure
             if random.random() < self.failure_rate:
                 print(f"[{self.now:.1f}] Worker {self.worker_id}: FAILED during {task}")
-                await self.coordinator.report_failure(task, self.worker_id)
+                self.coordinator.report_failure(task, self.worker_id)
                 continue
             
             # Execute task
@@ -175,7 +175,7 @@ class MapReduceWorker(Process):
               f"Completed {task}, produced {len(intermediate.pairs)} pairs")
         
         # Send results to coordinator
-        await self.coordinator.map_completed(task.task_id, partitions, self.worker_id)
+        self.coordinator.map_completed(task.task_id, partitions, self.worker_id)
         
         self.current_task = None
     
@@ -210,7 +210,7 @@ class MapReduceWorker(Process):
               f"Completed {task}, produced {len(results)} results")
         
         # Send results to coordinator
-        await self.coordinator.reduce_completed(task.task_id, results, self.worker_id)
+        self.coordinator.reduce_completed(task.task_id, results, self.worker_id)
         
         self.current_task = None
 ```
@@ -278,7 +278,7 @@ class MapReduceCoordinator:
                 self.pending_map_tasks.append(task)
             
             # Dispatch map tasks
-            await self._dispatch_map_tasks()
+            self._dispatch_map_tasks()
             
             # Wait for map phase to complete
             while not self.map_phase_complete:
@@ -292,7 +292,7 @@ class MapReduceCoordinator:
                 self.pending_reduce_tasks.append(task)
             
             # Dispatch reduce tasks
-            await self._dispatch_reduce_tasks()
+            self._dispatch_reduce_tasks()
             
             # Wait for reduce phase to complete
             while not self.reduce_phase_complete:
@@ -320,25 +320,25 @@ class MapReduceCoordinator:
         
         return splits
     
-    async def _dispatch_map_tasks(self):
+    def _dispatch_map_tasks(self):
         """Assign map tasks to workers."""
         for task in self.pending_map_tasks:
             # Find available worker
             worker = self._get_available_worker()
-            await worker.task_queue.put(task)
+            worker.task_queue.put(task)
     
-    async def _dispatch_reduce_tasks(self):
+    def _dispatch_reduce_tasks(self):
         """Assign reduce tasks to workers."""
         for task in self.pending_reduce_tasks:
             worker = self._get_available_worker()
-            await worker.task_queue.put(task)
+            worker.task_queue.put(task)
     
     def _get_available_worker(self) -> MapReduceWorker:
         """Get next available worker (round-robin)."""
         return random.choice(self.workers)
     
-    async def map_completed(self, task_id: str, partitions: List[IntermediateData], 
-                           worker_id: int):
+    def map_completed(self, task_id: str, partitions: List[IntermediateData],
+                      worker_id: int):
         """Handle map task completion."""
         self.completed_map_tasks.add(task_id)
         
@@ -351,8 +351,8 @@ class MapReduceCoordinator:
         if len(self.completed_map_tasks) == len(self.pending_map_tasks):
             self.map_phase_complete = True
     
-    async def reduce_completed(self, task_id: str, results: List[Tuple[Any, Any]], 
-                              worker_id: int):
+    def reduce_completed(self, task_id: str, results: List[Tuple[Any, Any]],
+                         worker_id: int):
         """Handle reduce task completion."""
         self.completed_reduce_tasks.add(task_id)
         self.results.extend(results)
@@ -361,7 +361,7 @@ class MapReduceCoordinator:
         if len(self.completed_reduce_tasks) == len(self.pending_reduce_tasks):
             self.reduce_phase_complete = True
     
-    async def report_failure(self, task: Any, worker_id: int):
+    def report_failure(self, task: Any, worker_id: int):
         """Handle task failure."""
         print(f"[{self.env.now:.1f}] Task {task} failed on worker {worker_id}, "
               f"will retry")
@@ -370,7 +370,7 @@ class MapReduceCoordinator:
         
         # Reschedule task
         worker = self._get_available_worker()
-        await worker.task_queue.put(task)
+        worker.task_queue.put(task)
     
     async def get_intermediate_data(self, partition_id: int) -> IntermediateData:
         """Fetch intermediate data for a partition."""
@@ -521,7 +521,7 @@ class WorkerWithCombiner(MapReduceWorker):
         print(f"[{self.now:.1f}] Worker {self.worker_id}: "
               f"Completed {task}")
         
-        await self.coordinator.map_completed(task.task_id, partitions, self.worker_id)
+        self.coordinator.map_completed(task.task_id, partitions, self.worker_id)
         self.current_task = None
 
 
@@ -591,19 +591,19 @@ class SpeculativeCoordinator(MapReduceCoordinator):
         self.task_start_times: Dict[str, float] = {}
         self.speculative_tasks: set = set()
     
-    async def _dispatch_map_tasks(self):
+    def _dispatch_map_tasks(self):
         """Dispatch map tasks with speculative execution."""
-        await super()._dispatch_map_tasks()
+        super()._dispatch_map_tasks()
         
         # Start monitoring for stragglers
         async def monitor_stragglers():
             while not self.map_phase_complete:
                 await self.env.timeout(1.0)
-                await self._check_for_stragglers()
+                self._check_for_stragglers()
         
         self.env.process(monitor_stragglers())
     
-    async def _check_for_stragglers(self):
+    def _check_for_stragglers(self):
         """Launch speculative tasks for stragglers."""
         now = self.env.now
         
@@ -625,7 +625,7 @@ class SpeculativeCoordinator(MapReduceCoordinator):
                 
                 # Launch backup copy
                 worker = self._get_available_worker()
-                await worker.task_queue.put(task)
+                worker.task_queue.put(task)
 ```
 
 Speculative execution ensures one slow worker doesn't delay the entire job.

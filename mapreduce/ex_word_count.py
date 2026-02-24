@@ -3,7 +3,6 @@
 from asimpy import Environment, Process
 from mapreduce_coordinator import MapReduceCoordinator
 from mapreduce_worker import MapReduceWorker
-from typing import List
 
 
 def word_count_map(record: str):
@@ -13,7 +12,7 @@ def word_count_map(record: str):
         yield (word.lower(), 1)
 
 
-def word_count_reduce(key: str, values: List[int]) -> int:
+def word_count_reduce(key: str, values: list[int]) -> int:
     """Reduce function: sum all counts for a word."""
     return sum(values)
 
@@ -22,7 +21,7 @@ class WordCountJob(Process):
     """Process that runs the MapReduce job."""
 
     def init(
-        self, coordinator: MapReduceCoordinator, input_data: List[str], num_splits: int
+        self, coordinator: MapReduceCoordinator, input_data: list[str], num_splits: int
     ):
         self.coordinator = coordinator
         self.input_data = input_data

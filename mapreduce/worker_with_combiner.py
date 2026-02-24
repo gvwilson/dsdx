@@ -44,5 +44,5 @@ class WorkerWithCombiner(MapReduceWorker):
 
         print(f"[{self.now:.1f}] Worker {self.worker_id}: Completed {task}")
 
-        await self.coordinator.map_completed(task.task_id, partitions, self.worker_id)
+        self.coordinator.map_completed(task.task_id, partitions, self.worker_id)
         self.current_task = None

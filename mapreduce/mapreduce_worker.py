@@ -34,7 +34,7 @@ class MapReduceWorker(Process):
             # Check for simulated failure
             if random.random() < self.failure_rate:
                 print(f"[{self.now:.1f}] Worker {self.worker_id}: FAILED during {task}")
-                await self.coordinator.report_failure(task, self.worker_id)
+                self.coordinator.report_failure(task, self.worker_id)
                 continue
 
             # Execute task
@@ -72,7 +72,7 @@ class MapReduceWorker(Process):
         )
 
         # Send results to coordinator
-        await self.coordinator.map_completed(task.task_id, partitions, self.worker_id)
+        self.coordinator.map_completed(task.task_id, partitions, self.worker_id)
 
         self.current_task = None
 
@@ -111,6 +111,6 @@ class MapReduceWorker(Process):
         )
 
         # Send results to coordinator
-        await self.coordinator.reduce_completed(task.task_id, results, self.worker_id)
+        self.coordinator.reduce_completed(task.task_id, results, self.worker_id)
 
         self.current_task = None

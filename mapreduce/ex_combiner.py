@@ -3,7 +3,6 @@
 from asimpy import Environment, Process
 from coordinator_with_combiner import MapReduceCoordinatorWithCombiner
 from worker_with_combiner import WorkerWithCombiner
-from typing import List
 
 
 def word_count_map(record: str):
@@ -13,7 +12,7 @@ def word_count_map(record: str):
         yield (word.lower(), 1)
 
 
-def word_count_reduce(key: str, values: List[int]) -> int:
+def word_count_reduce(key: str, values: list[int]) -> int:
     """Reduce function: sum all counts for a word."""
     return sum(values)
 
@@ -24,7 +23,7 @@ class CombinerJob(Process):
     def init(
         self,
         coordinator: MapReduceCoordinatorWithCombiner,
-        input_data: List[str],
+        input_data: list[str],
         num_splits: int,
     ):
         self.coordinator = coordinator

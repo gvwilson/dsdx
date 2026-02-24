@@ -1,8 +1,8 @@
 """MapReduce coordinator that orchestrates computation."""
 
 from asimpy import Environment
-from typing import List, Dict, Tuple, Callable, Any, Optional
 import random
+from typing import Callable, Any
 from mapreduce_types import InputSplit, MapTask, ReduceTask, IntermediateData
 from mapreduce_worker import MapReduceWorker
 
@@ -23,34 +23,34 @@ class MapReduceCoordinator:
         self.num_reducers = num_reducers
 
         # Workers
-        self.workers: List[MapReduceWorker] = []
+        self.workers: list[MapReduceWorker] = []
 
         # Task tracking
-        self.pending_map_tasks: List[MapTask] = []
-        self.pending_reduce_tasks: List[ReduceTask] = []
+        self.pending_map_tasks: list[MapTask] = []
+        self.pending_reduce_tasks: list[ReduceTask] = []
         self.completed_map_tasks: set = set()
         self.completed_reduce_tasks: set = set()
-        self.failed_tasks: List[Any] = []
+        self.failed_tasks: list[Any] = []
 
         # Intermediate data storage (indexed by partition)
-        self.intermediate_storage: Dict[int, IntermediateData] = {
+        self.intermediate_storage: dict[int, IntermediateData] = {
             i: IntermediateData() for i in range(num_reducers)
         }
 
         # Final results
-        self.results: List[Tuple[Any, Any]] = []
+        self.results: list[tuple[Any, Any]] = []
 
         # Statistics
         self.map_phase_complete = False
         self.reduce_phase_complete = False
-        self.start_time: Optional[float] = None
-        self.end_time: Optional[float] = None
+        self.start_time: float | None = None
+        self.end_time: float | None = None
 
     def add_worker(self, worker: MapReduceWorker):
         """Register a worker."""
         self.workers.append(worker)
 
-    def run(self, input_data: List[Any], num_splits: int):
+    def run(self, input_data: list[Any], num_splits: int):
         """Run MapReduce job on input data - returns a coroutine."""
 
         async def _execute():
@@ -66,7 +66,7 @@ class MapReduceCoordinator:
                 self.pending_map_tasks.append(task)
 
             # Dispatch map tasks
-            await self._dispatch_map_tasks()
+            self._dispatch_map_tasks()
 
             # Wait for map phase to complete
             while not self.map_phase_complete:
@@ -80,7 +80,7 @@ class MapReduceCoordinator:
                 self.pending_reduce_tasks.append(task)
 
             # Dispatch reduce tasks
-            await self._dispatch_reduce_tasks()
+            self._dispatch_reduce_tasks()
 
             # Wait for reduce phase to complete
             while not self.reduce_phase_complete:
@@ -96,7 +96,7 @@ class MapReduceCoordinator:
 
         return _execute()
 
-    def _split_input(self, data: List[Any], num_splits: int) -> List[InputSplit]:
+    def _split_input(self, data: list[Any], num_splits: int) -> list[InputSplit]:
         """Split input data into roughly equal chunks."""
         splits = []
         chunk_size = max(1, len(data) // num_splits)
@@ -108,25 +108,25 @@ class MapReduceCoordinator:
 
         return splits
 
-    async def _dispatch_map_tasks(self):
+    def _dispatch_map_tasks(self):
         """Assign map tasks to workers."""
         for task in self.pending_map_tasks:
             # Find available worker
             worker = self._get_available_worker()
-            await worker.task_queue.put(task)
+            worker.task_queue.put(task)
 
-    async def _dispatch_reduce_tasks(self):
+    def _dispatch_reduce_tasks(self):
         """Assign reduce tasks to workers."""
         for task in self.pending_reduce_tasks:
             worker = self._get_available_worker()
-            await worker.task_queue.put(task)
+            worker.task_queue.put(task)
 
     def _get_available_worker(self) -> MapReduceWorker:
         """Get next available worker (round-robin)."""
         return random.choice(self.workers)
 
-    async def map_completed(
-        self, task_id: str, partitions: List[IntermediateData], worker_id: int
+    def map_completed(
+        self, task_id: str, partitions: list[IntermediateData], worker_id: int
     ):
         """Handle map task completion."""
         self.completed_map_tasks.add(task_id)
@@ -140,8 +140,8 @@ class MapReduceCoordinator:
         if len(self.completed_map_tasks) == len(self.pending_map_tasks):
             self.map_phase_complete = True
 
-    async def reduce_completed(
-        self, task_id: str, results: List[Tuple[Any, Any]], worker_id: int
+    def reduce_completed(
+        self, task_id: str, results: list[tuple[Any, Any]], worker_id: int
     ):
         """Handle reduce task completion."""
         self.completed_reduce_tasks.add(task_id)
@@ -151,7 +151,7 @@ class MapReduceCoordinator:
         if len(self.completed_reduce_tasks) == len(self.pending_reduce_tasks):
             self.reduce_phase_complete = True
 
-    async def report_failure(self, task: Any, worker_id: int):
+    def report_failure(self, task: Any, worker_id: int):
         """Handle task failure."""
         print(
             f"[{self.env.now:.1f}] Task {task} failed on worker {worker_id}, will retry"
@@ -161,7 +161,7 @@ class MapReduceCoordinator:
 
         # Reschedule task
         worker = self._get_available_worker()
-        await worker.task_queue.put(task)
+        worker.task_queue.put(task)
 
     async def get_intermediate_data(self, partition_id: int) -> IntermediateData:
         """Fetch intermediate data for a partition."""

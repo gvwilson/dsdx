@@ -1,0 +1,36 @@
+[0.0] Starting MapReduce job
+[0.0] Worker 0: Starting MapTask(map_0) with 1 records
+[0.0] Worker 3: Starting MapTask(map_1) with 1 records
+[0.1] Worker 0: Completed MapTask(map_0), produced 4 pairs
+[0.1] Worker 3: Completed MapTask(map_1), produced 5 pairs
+[0.1] Worker 3: Starting MapTask(map_2) with 3 records
+[0.4] Worker 3: Completed MapTask(map_2), produced 15 pairs
+
+[0.5] Map phase complete, starting reduce phase
+[0.5] Worker 3: Starting ReduceTask(reduce_0, partition=0)
+[0.5] Worker 1: Starting ReduceTask(reduce_1, partition=1)
+[0.6] Worker 3: Processing 4 keys
+[0.6] Worker 1: Processing 6 keys
+[1.0] Worker 3: Completed ReduceTask(reduce_0, partition=0), produced 4 results
+[1.2] Worker 1: Completed ReduceTask(reduce_1, partition=1), produced 6 results
+[1.2] Worker 1: Starting ReduceTask(reduce_2, partition=2)
+[1.3] Worker 1: Processing 3 keys
+[1.6] Worker 1: Completed ReduceTask(reduce_2, partition=2), produced 3 results
+
+[2.0] MapReduce job complete in 2.0s
+Total results: 13
+
+=== Word Count Results ===
+the: 5
+dog: 3
+fox: 2
+quick: 2
+jumps: 2
+brown: 2
+lazy: 2
+was: 1
+amused: 1
+sleeps: 1
+over: 1
+not: 1
+again: 1

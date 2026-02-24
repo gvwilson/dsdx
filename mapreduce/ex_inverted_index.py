@@ -3,10 +3,9 @@
 from asimpy import Environment, Process
 from mapreduce_coordinator import MapReduceCoordinator
 from mapreduce_worker import MapReduceWorker
-from typing import Tuple, List
 
 
-def inverted_index_map(record: Tuple[str, str]):
+def inverted_index_map(record: tuple[str, str]):
     """Map function: record is (doc_id, text)."""
     doc_id, text = record
     words = text.split()
@@ -19,7 +18,7 @@ def inverted_index_map(record: Tuple[str, str]):
             yield (word, doc_id)
 
 
-def inverted_index_reduce(word: str, doc_ids: List[str]) -> List[str]:
+def inverted_index_reduce(word: str, doc_ids: list[str]) -> list[str]:
     """Reduce function: collect unique document IDs."""
     return list(set(doc_ids))
 
@@ -30,7 +29,7 @@ class InvertedIndexJob(Process):
     def init(
         self,
         coordinator: MapReduceCoordinator,
-        documents: List[Tuple[str, str]],
+        documents: list[tuple[str, str]],
         num_splits: int,
     ):
         self.coordinator = coordinator

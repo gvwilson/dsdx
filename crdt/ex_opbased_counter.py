@@ -70,7 +70,6 @@ def run_simulation():
     env = Environment()
     peers = [Peer(name, OpBasedCounter(name)) for name in NAMES]
     for p in peers:
-        others = [o for o in peers if o is not p]
         Replica(env, p.name, p.counter, p, peers, interval=2)
 
     env.run(until=10)

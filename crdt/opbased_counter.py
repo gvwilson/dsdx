@@ -1,7 +1,6 @@
 """Operation-based PN-Counter (CmRDT)."""
 
 from dataclasses import dataclass
-from typing import Any
 
 
 # mccole: op
