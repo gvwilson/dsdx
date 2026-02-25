@@ -3,10 +3,10 @@
 from asimpy import Process, Queue
 from typing import Optional, Any, TYPE_CHECKING
 import random
-from mapreduce_types import MapTask, ReduceTask, IntermediateData
+from mr_types import MapTask, ReduceTask, IntermediateData
 
 if TYPE_CHECKING:
-    from mapreduce_coordinator import MapReduceCoordinator
+    from mr_coordinator import MapReduceCoordinator
 
 
 class MapReduceWorker(Process):

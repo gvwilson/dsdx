@@ -1,28 +1,28 @@
 [0.0] Starting MapReduce job
-[0.0] Worker 2: Starting MapTask(map_0) with 2 records
-[0.0] Worker 0: Starting MapTask(map_1) with 2 records
-[0.2] Worker 2: Completed MapTask(map_0), produced 7 pairs
-[0.2] Worker 0: Completed MapTask(map_1), produced 8 pairs
+[0.0] Worker 1: Starting MapTask(map_0) with 2 records
+[0.2] Worker 1: Completed MapTask(map_0), produced 7 pairs
+[0.2] Worker 1: Starting MapTask(map_1) with 2 records
+[0.4] Worker 1: Completed MapTask(map_1), produced 8 pairs
 
 [0.5] Map phase complete, starting reduce phase
-[0.5] Worker 2: Starting ReduceTask(reduce_0, partition=0)
-[0.5] Worker 0: Starting ReduceTask(reduce_1, partition=1)
-[0.6] Worker 2: Processing 1 keys
+[0.5] Worker 0: Starting ReduceTask(reduce_0, partition=0)
+[0.5] Worker 2: Starting ReduceTask(reduce_2, partition=2)
 [0.6] Worker 0: Processing 2 keys
-[0.7] Worker 2: Completed ReduceTask(reduce_0, partition=0), produced 1 results
-[0.8] Worker 0: Completed ReduceTask(reduce_1, partition=1), produced 2 results
-[0.8] Worker 0: Starting ReduceTask(reduce_2, partition=2)
-[0.9] Worker 0: Processing 4 keys
-[1.3] Worker 0: Completed ReduceTask(reduce_2, partition=2), produced 4 results
+[0.6] Worker 2: Processing 3 keys
+[0.8] Worker 0: Completed ReduceTask(reduce_0, partition=0), produced 2 results
+[0.8] Worker 0: Starting ReduceTask(reduce_1, partition=1)
+[0.9] Worker 2: Completed ReduceTask(reduce_2, partition=2), produced 3 results
+[0.9] Worker 0: Processing 2 keys
+[1.1] Worker 0: Completed ReduceTask(reduce_1, partition=1), produced 2 results
 
 [1.5] MapReduce job complete in 1.5s
 Total results: 7
 
 === Inverted Index ===
 and: ['doc4']
-brown: ['doc1', 'doc4']
-dog: ['doc3', 'doc2', 'doc4']
-fox: ['doc1', 'doc4']
-lazy: ['doc2', 'doc4']
-quick: ['doc3', 'doc1']
-the: ['doc2', 'doc3', 'doc1']
+brown: ['doc4', 'doc1']
+dog: ['doc4', 'doc2', 'doc3']
+fox: ['doc4', 'doc1']
+lazy: ['doc4', 'doc2']
+quick: ['doc1', 'doc3']
+the: ['doc2', 'doc1', 'doc3']

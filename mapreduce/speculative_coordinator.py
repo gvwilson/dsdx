@@ -2,7 +2,7 @@
 
 from asimpy import Environment, Process
 from typing import Callable, Dict
-from mapreduce_coordinator import MapReduceCoordinator
+from mr_coordinator import MapReduceCoordinator
 
 
 class StragglerMonitor(Process):

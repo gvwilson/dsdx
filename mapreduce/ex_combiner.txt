@@ -1,33 +1,33 @@
 [0.0] Starting MapReduce job
 [0.0] Worker 3: Starting MapTask(map_0)
-[0.0] Worker 0: Starting MapTask(map_2)
-[0.0] Worker 2: Starting MapTask(map_5)
+[0.0] Worker 2: Starting MapTask(map_3)
+[0.0] Worker 0: Starting MapTask(map_4)
 [0.2] Worker 3: Combiner reduced to 8 pairs
 [0.2] Worker 3: Completed MapTask(map_0)
+[0.2] Worker 2: Combiner reduced to 8 pairs
+[0.2] Worker 2: Completed MapTask(map_3)
 [0.2] Worker 0: Combiner reduced to 8 pairs
-[0.2] Worker 0: Completed MapTask(map_2)
+[0.2] Worker 0: Completed MapTask(map_4)
 [0.2] Worker 3: Starting MapTask(map_1)
-[0.2] Worker 0: Starting MapTask(map_4)
+[0.2] Worker 0: Starting MapTask(map_5)
 [0.4] Worker 3: Combiner reduced to 8 pairs
 [0.4] Worker 3: Completed MapTask(map_1)
-[0.4] Worker 0: Combiner reduced to 8 pairs
-[0.4] Worker 0: Completed MapTask(map_4)
-[0.4] Worker 3: Starting MapTask(map_3)
-[0.5] Worker 2: Combiner reduced to 11 pairs
-[0.5] Worker 2: Completed MapTask(map_5)
+[0.4] Worker 3: Starting MapTask(map_2)
 [0.6] Worker 3: Combiner reduced to 8 pairs
-[0.6] Worker 3: Completed MapTask(map_3)
+[0.6] Worker 3: Completed MapTask(map_2)
+[0.7] Worker 0: Combiner reduced to 11 pairs
+[0.7] Worker 0: Completed MapTask(map_5)
 
 [1.0] Map phase complete, starting reduce phase
-[1.0] Worker 2: Starting ReduceTask(reduce_0, partition=0)
-[1.0] Worker 3: Starting ReduceTask(reduce_2, partition=2)
-[1.1] Worker 2: Processing 3 keys
-[1.1] Worker 3: Processing 3 keys
-[1.4] Worker 2: Completed ReduceTask(reduce_0, partition=0), produced 3 results
-[1.4] Worker 3: Completed ReduceTask(reduce_2, partition=2), produced 3 results
-[1.4] Worker 2: Starting ReduceTask(reduce_1, partition=1)
-[1.5] Worker 2: Processing 5 keys
-[2.0] Worker 2: Completed ReduceTask(reduce_1, partition=1), produced 5 results
+[1.0] Worker 0: Starting ReduceTask(reduce_0, partition=0)
+[1.0] Worker 1: Starting ReduceTask(reduce_2, partition=2)
+[1.1] Worker 0: Processing 3 keys
+[1.1] Worker 1: Processing 3 keys
+[1.4] Worker 0: Completed ReduceTask(reduce_0, partition=0), produced 3 results
+[1.4] Worker 1: Completed ReduceTask(reduce_2, partition=2), produced 3 results
+[1.4] Worker 0: Starting ReduceTask(reduce_1, partition=1)
+[1.5] Worker 0: Processing 5 keys
+[2.0] Worker 0: Completed ReduceTask(reduce_1, partition=1), produced 5 results
 
 [2.5] MapReduce job complete in 2.5s
 Total results: 11

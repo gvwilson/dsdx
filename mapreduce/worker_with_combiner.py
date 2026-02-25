@@ -1,7 +1,7 @@
 """MapReduce worker with combiner optimization."""
 
-from mapreduce_worker import MapReduceWorker
-from mapreduce_types import MapTask, IntermediateData
+from mr_worker import MapReduceWorker
+from mr_types import MapTask, IntermediateData
 
 
 class WorkerWithCombiner(MapReduceWorker):

@@ -1,5 +1,7 @@
 """Word count with combiner optimization."""
 
+import random
+import sys
 from asimpy import Environment, Process
 from coordinator_with_combiner import MapReduceCoordinatorWithCombiner
 from worker_with_combiner import WorkerWithCombiner
@@ -68,4 +70,6 @@ def run_word_count_with_combiner():
 
 
 if __name__ == "__main__":
+    if len(sys.argv) == 2:
+        random.seed(int(sys.argv[1]))
     run_word_count_with_combiner()

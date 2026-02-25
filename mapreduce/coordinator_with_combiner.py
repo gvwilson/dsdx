@@ -2,7 +2,7 @@
 
 from asimpy import Environment
 from typing import Callable, Optional
-from mapreduce_coordinator import MapReduceCoordinator
+from mr_coordinator import MapReduceCoordinator
 
 
 class MapReduceCoordinatorWithCombiner(MapReduceCoordinator):

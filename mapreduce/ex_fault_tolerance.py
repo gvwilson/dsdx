@@ -1,8 +1,10 @@
 """Fault tolerance demonstration with worker failures."""
 
+import random
+import sys
 from asimpy import Environment, Process
-from mapreduce_coordinator import MapReduceCoordinator
-from mapreduce_worker import MapReduceWorker
+from mr_coordinator import MapReduceCoordinator
+from mr_worker import MapReduceWorker
 
 
 def word_count_map(record: str):
@@ -65,4 +67,6 @@ def run_fault_tolerance_test():
 
 
 if __name__ == "__main__":
+    if len(sys.argv) == 2:
+        random.seed(int(sys.argv[1]))
     run_fault_tolerance_test()

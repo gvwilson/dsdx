@@ -1,8 +1,10 @@
 """Inverted index construction for search engines."""
 
+import random
+import sys
 from asimpy import Environment, Process
-from mapreduce_coordinator import MapReduceCoordinator
-from mapreduce_worker import MapReduceWorker
+from mr_coordinator import MapReduceCoordinator
+from mr_worker import MapReduceWorker
 
 
 def inverted_index_map(record: tuple[str, str]):
@@ -72,4 +74,6 @@ def run_inverted_index():
 
 
 if __name__ == "__main__":
+    if len(sys.argv) == 2:
+        random.seed(int(sys.argv[1]))
     run_inverted_index()

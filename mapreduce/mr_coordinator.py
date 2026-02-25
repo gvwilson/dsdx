@@ -3,8 +3,8 @@
 from asimpy import Environment
 import random
 from typing import Callable, Any
-from mapreduce_types import InputSplit, MapTask, ReduceTask, IntermediateData
-from mapreduce_worker import MapReduceWorker
+from mr_types import InputSplit, MapTask, ReduceTask, IntermediateData
+from mr_worker import MapReduceWorker
 
 
 class MapReduceCoordinator:

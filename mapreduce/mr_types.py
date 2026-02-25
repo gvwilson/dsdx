@@ -1,5 +1,6 @@
 """Core data structures for MapReduce framework."""
 
+import hashlib
 from dataclasses import dataclass, field
 from typing import Any
 from collections import defaultdict
@@ -39,6 +40,11 @@ class ReduceTask:
         return f"ReduceTask({self.task_id}, partition={self.partition_id})"
 
 
+def _stable_hash(key: Any) -> int:
+    """Deterministic hash (not affected by PYTHONHASHSEED)."""
+    return int(hashlib.md5(str(key).encode()).hexdigest(), 16)
+
+
 @dataclass
 class IntermediateData:
     """Intermediate key-value pairs from map phase."""
@@ -54,7 +60,7 @@ class IntermediateData:
         partitions = [IntermediateData() for _ in range(num_partitions)]
 
         for key, value in self.pairs:
-            partition_id = hash(key) % num_partitions
+            partition_id = _stable_hash(key) % num_partitions
             partitions[partition_id].add(key, value)
 
         return partitions
