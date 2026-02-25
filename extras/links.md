@@ -1,5 +1,6 @@
 [amazon-sqs]: https://aws.amazon.com/sqs/
 [apache-cassandra]: https://cassandra.apache.org/
+[apache-spark]: https://spark.apache.org/
 [apache-zookeeper]: https://zookeeper.apache.org/
 [asimpy]: https://asimpy.readthedocs.io/
 [cap-theorem]: https://en.wikipedia.org/wiki/CAP_theorem
@@ -8,6 +9,7 @@
 [dynamodb]: https://en.wikipedia.org/wiki/Amazon_DynamoDB
 [etcd]: https://etcd.io/
 [go-scheduler]: https://golang.org/s/go11sched
+[hadoop]: https://hadoop.apache.org/
 [java-fork-join]: https://docs.oracle.com/javase/tutorial/essential/concurrency/forkjoin.html
 [kafka]: https://kafka.apache.org/
 [opentelemetry]: https://opentelemetry.io/

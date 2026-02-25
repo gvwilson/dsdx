@@ -1,5 +1,11 @@
 # Bibliography
 
+<span id="Dean2004">Dean2004</span>
+:   Jeffrey Dean and Sanjay Ghemawat:
+    "MapReduce: Simplified Data Processing on Large Clusters".
+    *OSDI'04*,
+    2004.
+
 <span id="Gilbert2002">Gilbert2002</span>
 :   Seth Gilbert and Nancy Lynch:
     "Brewer's conjecture and the feasibility of consistent, available, partition-tolerant web services".

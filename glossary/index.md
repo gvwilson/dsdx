@@ -101,6 +101,9 @@
 
 ## H
 
+<span id="hash-code">hash code</span>
+:   FIXME
+
 <span id="http-header">HTTP header</span>
 :   FIXME
 

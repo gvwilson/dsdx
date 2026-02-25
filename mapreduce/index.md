@@ -1,51 +1,75 @@
 # MapReduce Framework
 
-In 2004, Google published a paper that changed how we think about processing large datasets.
-The MapReduce framework made it possible for programmers to process terabytes of data
-across thousands of machines without worrying about parallelization,
-fault tolerance,
-or data distribution.
-By providing two simple abstractions—map and reduce—the framework handles
-all the distributed systems complexity behind the scenes.
+[](b:Dean2004) introduced the MapReduce framework,
+which allowed programmers to perform many different data processing tasks
+by using two abstractions called (as you might guess) map and reduce.
+[Hadoop][hadoop], [Apache Spark][apache-spark], and other tools
+embody the same model,
+which is a good starting point for learning about distributed systems.
 
-Hadoop brought MapReduce to the open-source world,
-powering early data processing at companies like Yahoo, Facebook, and Twitter.
-While newer frameworks like Apache Spark have largely superseded MapReduce,
-understanding this pattern remains essential,
-as it demonstrates fundamental principles of distributed computation
-that appear throughout modern data processing systems.
+## The MapReduce Pattern {: #mapreduce-pattern}
 
-MapReduce works by breaking computation into two phases:
-*map* transforms input records independently,
-and *reduce* aggregates results by key.
+MapReduce works by breaking computation into two phases.
+The *map* phase transforms input records independently,
+while the subsequent *reduce* phase combines results that have the same key.
 Between these phases the framework handles shuffling data across machines,
 sorting by key,
 and managing failures.
-This simple model enables processing massive datasets with relatively simple code.
+Each MapReduce computation consists of:
 
-## The MapReduce Pattern
+1.  Input splitting: the input data is divided into chunks.
+1.  Map phase: a user-supplied function is applied to each input record to produce key-value pairs.
+1.  Shuffle: all values with the same key are grouped together and distributed to reducers.
+1.  Reduce phase: the values associated with each key are processed to produce the final results.
+1.  Output: the results are saved somewhere.
 
-The MapReduce computation model consists of:
-
-1.  **Input splitting**: Divide the input into chunks
-1.  **Map phase**: Apply a function to each input record, producing key-value pairs
-1.  **Shuffle and sort**: Group all values by key and distribute to reducers
-1.  **Reduce phase**: Process each key's values to produce final output
-1.  **Output**: Write results
-
-The power comes from constraints:
-map operations must be independent (no shared state between maps),
-and reduce operations must be associative and commutative (can be applied in any order).
-These constraints enable parallelism and fault tolerance.
+In order for this to work,
+map operations must be independent,
+i.e.,
+there cannot be any shared state
+so that the operations can be done anywhere, in any order.
+Similarly,
+the reduce operations must be associative and commutative
+so that they can be applied in any order.
+These two constraints enable parallelism and fault tolerance.
 
 ## Core Data Structures
 
-Let's start with the basic types:
+Let's start with some dataclasses to represent the data flowing through the framework.
+Input is split into chunks:
 
-<div data-inc="mr_types.py"></div>
+<div data-inc="mr_types.py" data-filter="inc=input"></div>
 
-These structures represent the data flowing through the framework.
-Input is split into chunks, map tasks process splits, and intermediate data is partitioned for reducers.
+Map tasks process split data:
+
+<div data-inc="mr_types.py" data-filter="inc=map"></div>
+
+Intermediate data is partitioned for reducers:
+
+<div data-inc="mr_types.py" data-filter="inc=intermediate"></div>
+
+And finally,
+intermediate chunks are reduced:
+
+<div data-inc="mr_types.py" data-filter="inc=reduce"></div>
+
+<div class="callout" markdown="1">
+
+The initial implementation of MapReduce contained a subtle bug.
+Python's built-in function `hash` generates a [hash code](g:hash-code)
+from a chunk of data.
+That value is partially randomized:
+it is the same within any run of a program,
+but may differ from one run to the next.
+This meant that different runs of our simulations
+sent different chunks of data to different places,
+which in turn meant that runs weren't reproducible.
+To fix this,
+we introduced our own hashing function:
+
+<div data-inc="mr_types.py" data-filter="inc=hash"></div>
+
+</div>
 
 ## Worker Implementation
 
