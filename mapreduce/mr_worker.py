@@ -1,14 +1,19 @@
 """MapReduce worker process."""
 
 from asimpy import Process, Queue
-from typing import Optional, Any, TYPE_CHECKING
 import random
+from typing import Any, TYPE_CHECKING
 from mr_types import MapTask, ReduceTask, IntermediateData
 
 if TYPE_CHECKING:
     from mr_coordinator import MapReduceCoordinator
 
 
+MAP_TIME = 0.1
+REDUCE_TIME = 0.1
+
+
+# mccole: worker
 class MapReduceWorker(Process):
     """Worker that executes map and reduce tasks."""
 
@@ -16,15 +21,17 @@ class MapReduceWorker(Process):
         self.worker_id = worker_id
         self.coordinator = coordinator
         self.task_queue = Queue(self._env)
+        self.current_task = None
 
         # Statistics
         self.maps_executed = 0
         self.reduces_executed = 0
-        self.current_task: Optional[Any] = None
 
         # Simulate failure probability
         self.failure_rate = 0.0
+# mccole: /worker
 
+# mccole: run
     async def run(self):
         """Main worker loop: fetch and execute tasks."""
         while True:
@@ -42,7 +49,9 @@ class MapReduceWorker(Process):
                 await self.execute_map(task)
             elif isinstance(task, ReduceTask):
                 await self.execute_reduce(task)
+# mccole: /run
 
+# mccole: map
     async def execute_map(self, task: MapTask):
         """Execute a map task."""
         self.current_task = task
@@ -50,16 +59,16 @@ class MapReduceWorker(Process):
 
         print(
             f"[{self.now:.1f}] Worker {self.worker_id}: "
-            f"Starting {task} with {len(task.input_split.data)} records"
+            f"Starting {task} with {len(task.data)} records"
         )
 
         # Simulate processing time
-        processing_time = len(task.input_split.data) * 0.1
+        processing_time = len(task.data) * MAP_TIME
         await self.timeout(processing_time)
 
         # Apply map function
         intermediate = IntermediateData()
-        for record in task.input_split.data:
+        for record in task.data:
             for key, value in self.coordinator.map_fn(record):
                 intermediate.add(key, value)
 
@@ -75,7 +84,9 @@ class MapReduceWorker(Process):
         self.coordinator.map_completed(task.task_id, partitions, self.worker_id)
 
         self.current_task = None
+# mccole: /map
 
+# mccole: reduce
     async def execute_reduce(self, task: ReduceTask):
         """Execute a reduce task."""
         self.current_task = task
@@ -96,7 +107,7 @@ class MapReduceWorker(Process):
         )
 
         # Simulate processing time
-        processing_time = len(grouped) * 0.1
+        processing_time = len(grouped) * REDUCE_TIME
         await self.timeout(processing_time)
 
         # Apply reduce function
@@ -114,3 +125,4 @@ class MapReduceWorker(Process):
         self.coordinator.reduce_completed(task.task_id, results, self.worker_id)
 
         self.current_task = None
+# mccole: /reduce

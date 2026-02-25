@@ -73,25 +73,16 @@ so that they can be applied in any order.
 These two constraints enable parallelism and fault tolerance.</p>
 <h2>Core Data Structures</h2>
 <p>Let's start with some dataclasses to represent the data flowing through the framework.
-Input is split into chunks:</p>
-<div data-filter="inc=input" data-inc="mr_types.py"><div class="codehilite"><pre class=""><span></span><code><span class="nd">@dataclass</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">InputSplit</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">"""A partition of input data."""</span>
-
-    <span class="n">split_id</span><span class="p">:</span> <span class="nb">int</span>
-    <span class="n">data</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span>
-</code></pre></div>
-</div>
-<p>Map tasks process split data:</p>
+Input will be split into chunks for the map phase:</p>
 <div data-filter="inc=map" data-inc="mr_types.py"><div class="codehilite"><pre class=""><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">MapTask</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""A map task to be executed."""</span>
 
     <span class="n">task_id</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="n">input_split</span><span class="p">:</span> <span class="n">InputSplit</span>
+    <span class="n">data</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span>
 </code></pre></div>
 </div>
-<p>Intermediate data is partitioned for reducers:</p>
+<p>Intermediate data will be partitioned for reducers:</p>
 <div data-filter="inc=intermediate" data-inc="mr_types.py"><div class="codehilite"><pre class=""><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">IntermediateData</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Intermediate key-value pairs from map phase."""</span>
@@ -120,7 +111,7 @@ Input is split into chunks:</p>
 </code></pre></div>
 </div>
 <p>And finally,
-intermediate chunks are reduced:</p>
+intermediate chunks will be reduced:</p>
 <div data-filter="inc=reduce" data-inc="mr_types.py"><div class="codehilite"><pre class=""><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ReduceTask</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""A reduce task to be executed."""</span>
@@ -150,35 +141,35 @@ we introduced our own hashing function:</p>
 </div>
 </div>
 <h2>Worker Implementation</h2>
-<p>Workers execute map and reduce tasks:</p>
-<div data-inc="mr_worker.py"><div class="codehilite"><pre class=""><span></span><code><span class="sd">"""MapReduce worker process."""</span>
-
-<span class="kn">from</span><span class="w"> </span><span class="nn">asimpy</span><span class="w"> </span><span class="kn">import</span> <span class="n">Process</span><span class="p">,</span> <span class="n">Queue</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">mr_types</span><span class="w"> </span><span class="kn">import</span> <span class="n">MapTask</span><span class="p">,</span> <span class="n">ReduceTask</span><span class="p">,</span> <span class="n">IntermediateData</span>
-
-<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
-    <span class="kn">from</span><span class="w"> </span><span class="nn">mr_coordinator</span><span class="w"> </span><span class="kn">import</span> <span class="n">MapReduceCoordinator</span>
-
-
-<span class="k">class</span><span class="w"> </span><span class="nc">MapReduceWorker</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
+<p>Worker processes execute both map and reduce tasks.
+Each has a unique worker ID,
+a queue of incoming tasks,
+and a reference to the overall work coordinator:</p>
+<div data-filter="inc=worker" data-inc="mr_worker.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">MapReduceWorker</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""Worker that executes map and reduce tasks."""</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">worker_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">coordinator</span><span class="p">:</span> <span class="s2">"MapReduceCoordinator"</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">worker_id</span> <span class="o">=</span> <span class="n">worker_id</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span> <span class="o">=</span> <span class="n">coordinator</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">task_queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_env</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_task</span> <span class="o">=</span> <span class="kc">None</span>
 
         <span class="c1"># Statistics</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">maps_executed</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">reduces_executed</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">current_task</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
 
         <span class="c1"># Simulate failure probability</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">failure_rate</span> <span class="o">=</span> <span class="mf">0.0</span>
-
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</code></pre></div>
+</div>
+<p>The code shown above also records a few simple statistics
+and can simulate failure with a specified probability;
+we will use this last propery when we look at fault tolerance.</p>
+<p>When a worker runs,
+it repeatedly gets a task from its queue and executes it.
+If there's a simulated failure,
+the worker reports that back to the coordinator instead:</p>
+<div data-filter="inc=run" data-inc="mr_worker.py"><div class="codehilite"><pre class=""><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">"""Main worker loop: fetch and execute tasks."""</span>
         <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
             <span class="c1"># Get task from queue</span>
@@ -195,24 +186,30 @@ we introduced our own hashing function:</p>
                 <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">execute_map</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
             <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">ReduceTask</span><span class="p">):</span>
                 <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">execute_reduce</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
-
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">execute_map</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">MapTask</span><span class="p">):</span>
+</code></pre></div>
+</div>
+<p>Each map task consists of one or more records.
+For simplicity's sake we assume each record needs the same processing time,
+so after waiting that long,
+the worker partitions the results
+and sends them back to the coordinator:</p>
+<div data-filter="inc=map" data-inc="mr_worker.py"><div class="codehilite"><pre class=""><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">execute_map</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">MapTask</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">"""Execute a map task."""</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_task</span> <span class="o">=</span> <span class="n">task</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">maps_executed</span> <span class="o">+=</span> <span class="mi">1</span>
 
         <span class="nb">print</span><span class="p">(</span>
             <span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Worker </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">worker_id</span><span class="si">}</span><span class="s2">: "</span>
-            <span class="sa">f</span><span class="s2">"Starting </span><span class="si">{</span><span class="n">task</span><span class="si">}</span><span class="s2"> with </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">input_split</span><span class="o">.</span><span class="n">data</span><span class="p">)</span><span class="si">}</span><span class="s2"> records"</span>
+            <span class="sa">f</span><span class="s2">"Starting </span><span class="si">{</span><span class="n">task</span><span class="si">}</span><span class="s2"> with </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">data</span><span class="p">)</span><span class="si">}</span><span class="s2"> records"</span>
         <span class="p">)</span>
 
         <span class="c1"># Simulate processing time</span>
-        <span class="n">processing_time</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">input_split</span><span class="o">.</span><span class="n">data</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.1</span>
+        <span class="n">processing_time</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">data</span><span class="p">)</span> <span class="o">*</span> <span class="n">MAP_TIME</span>
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="n">processing_time</span><span class="p">)</span>
 
         <span class="c1"># Apply map function</span>
         <span class="n">intermediate</span> <span class="o">=</span> <span class="n">IntermediateData</span><span class="p">()</span>
-        <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">task</span><span class="o">.</span><span class="n">input_split</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">task</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span><span class="o">.</span><span class="n">map_fn</span><span class="p">(</span><span class="n">record</span><span class="p">):</span>
                 <span class="n">intermediate</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
 
@@ -228,8 +225,10 @@ we introduced our own hashing function:</p>
         <span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span><span class="o">.</span><span class="n">map_completed</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">task_id</span><span class="p">,</span> <span class="n">partitions</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">worker_id</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">current_task</span> <span class="o">=</span> <span class="kc">None</span>
-
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">execute_reduce</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">ReduceTask</span><span class="p">):</span>
+</code></pre></div>
+</div>
+<p>Reducing works the same way:</p>
+<div data-filter="inc=reduce" data-inc="mr_worker.py"><div class="codehilite"><pre class=""><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">execute_reduce</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">ReduceTask</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">"""Execute a reduce task."""</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_task</span> <span class="o">=</span> <span class="n">task</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">reduces_executed</span> <span class="o">+=</span> <span class="mi">1</span>
@@ -249,7 +248,7 @@ we introduced our own hashing function:</p>
         <span class="p">)</span>
 
         <span class="c1"># Simulate processing time</span>
-        <span class="n">processing_time</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">grouped</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.1</span>
+        <span class="n">processing_time</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">grouped</span><span class="p">)</span> <span class="o">*</span> <span class="n">REDUCE_TIME</span>
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="n">processing_time</span><span class="p">)</span>
 
         <span class="c1"># Apply reduce function</span>
@@ -269,9 +268,6 @@ we introduced our own hashing function:</p>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_task</span> <span class="o">=</span> <span class="kc">None</span>
 </code></pre></div>
 </div>
-<p>Workers are stateless:
-they fetch tasks, execute them, and report results.
-If a worker fails, the coordinator can reassign the task to another worker.</p>
 <h2>MapReduce Coordinator</h2>
 <p>The coordinator orchestrates the entire computation:</p>
 <div data-inc="mr_coordinator.py"><div class="codehilite"><pre class=""><span></span><code><span class="sd">"""MapReduce coordinator that orchestrates computation."""</span>
@@ -279,7 +275,7 @@ If a worker fails, the coordinator can reassign the task to another worker.</p>
 <span class="kn">from</span><span class="w"> </span><span class="nn">asimpy</span><span class="w"> </span><span class="kn">import</span> <span class="n">Environment</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Any</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">mr_types</span><span class="w"> </span><span class="kn">import</span> <span class="n">InputSplit</span><span class="p">,</span> <span class="n">MapTask</span><span class="p">,</span> <span class="n">ReduceTask</span><span class="p">,</span> <span class="n">IntermediateData</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mr_types</span><span class="w"> </span><span class="kn">import</span> <span class="n">MapTask</span><span class="p">,</span> <span class="n">ReduceTask</span><span class="p">,</span> <span class="n">IntermediateData</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">mr_worker</span><span class="w"> </span><span class="kn">import</span> <span class="n">MapReduceWorker</span>
 
 
@@ -333,12 +329,9 @@ If a worker fails, the coordinator can reassign the task to another worker.</p>
             <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Starting MapReduce job"</span><span class="p">)</span>
 
-            <span class="c1"># Split input data</span>
-            <span class="n">splits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_split_input</span><span class="p">(</span><span class="n">input_data</span><span class="p">,</span> <span class="n">num_splits</span><span class="p">)</span>
-
-            <span class="c1"># Create map tasks</span>
-            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">split</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">splits</span><span class="p">):</span>
-                <span class="n">task</span> <span class="o">=</span> <span class="n">MapTask</span><span class="p">(</span><span class="sa">f</span><span class="s2">"map_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">split</span><span class="p">)</span>
+            <span class="c1"># Create map tasks from input splits</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_split_input</span><span class="p">(</span><span class="n">input_data</span><span class="p">,</span> <span class="n">num_splits</span><span class="p">)):</span>
+                <span class="n">task</span> <span class="o">=</span> <span class="n">MapTask</span><span class="p">(</span><span class="sa">f</span><span class="s2">"map_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">pending_map_tasks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
 
             <span class="c1"># Dispatch map tasks</span>
@@ -372,7 +365,7 @@ If a worker fails, the coordinator can reassign the task to another worker.</p>
 
         <span class="k">return</span> <span class="n">_execute</span><span class="p">()</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_split_input</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span> <span class="n">num_splits</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">InputSplit</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_split_input</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span> <span class="n">num_splits</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="n">Any</span><span class="p">]]:</span>
 <span class="w">        </span><span class="sd">"""Split input data into roughly equal chunks."""</span>
         <span class="n">splits</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="n">chunk_size</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">//</span> <span class="n">num_splits</span><span class="p">)</span>
@@ -380,7 +373,7 @@ If a worker fails, the coordinator can reassign the task to another worker.</p>
         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_splits</span><span class="p">):</span>
             <span class="n">start</span> <span class="o">=</span> <span class="n">i</span> <span class="o">*</span> <span class="n">chunk_size</span>
             <span class="n">end</span> <span class="o">=</span> <span class="n">start</span> <span class="o">+</span> <span class="n">chunk_size</span> <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">num_splits</span> <span class="o">-</span> <span class="mi">1</span> <span class="k">else</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-            <span class="n">splits</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">InputSplit</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="n">start</span><span class="p">:</span><span class="n">end</span><span class="p">]))</span>
+            <span class="n">splits</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">start</span><span class="p">:</span><span class="n">end</span><span class="p">])</span>
 
         <span class="k">return</span> <span class="n">splits</span>
 

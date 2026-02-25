@@ -1,7 +1,9 @@
 # Glossary
 
-
 ## A
+
+<span id="ap-system">AP system</span>
+:   FIXME
 
 <span id="associativity">associativity</span>
 :   FIXME
@@ -36,7 +38,13 @@
 <span id="cache-miss">cache miss</span>
 :   FIXME
 
+<span id="causal-consistency">causal consistency</span>
+:   FIXME
+
 <span id="commutativity">commutativity</span>
+:   FIXME
+
+<span id="concurrency">concurrency</span>
 :   FIXME
 
 <span id="crdt">conflict-free replicated data type</span> (CRDT)
@@ -52,6 +60,9 @@
 <span id="context-propagation">context propagation</span>
 :   Passing trace IDs, span IDs, and other metadata between services
     so that operations can be correlated in distributed tracing.
+
+<span id="cp-system">CP system</span>
+:   FIXME
 
 ## D
 
@@ -74,6 +85,9 @@
 :   FIXME
 
 ## E
+
+<span id="eventual-consistency">eventual consistency</span>
+:   FIXME
 
 <span id="exactly-once">exactly-once delivery</span>
 :   Message delivery guarantee ensuring each message is processed exactly once.
@@ -101,6 +115,9 @@
 
 ## H
 
+<span id="happens-before">happens-before relation</span>
+:   FIXME
+
 <span id="hash-code">hash code</span>
 :   FIXME
 
@@ -120,15 +137,23 @@
 <span id="json">JSON</span>
 :   FIXME
 
+## K
+
 ## L
 
 <span id="lww-register">last-write-wins register</span>
+:   FIXME
+
+<span id="linearizability">linearizability</span>
 :   FIXME
 
 <span id="livelock">livelock</span>
 :   FIXME
 
 <span id="load-balancing">load balancing</span>
+:   FIXME
+
+<span id="logical-clock">logical clock</span>
 :   FIXME
 
 ## M
@@ -154,6 +179,9 @@
 
 ## P
 
+<span id="partial-order">partial order</span>
+:   FIXME
+
 <span id="partition-tolerance">partition tolerance</span>
 :   FIXME
 
@@ -167,6 +195,8 @@
 :   Messaging pattern where publishers send messages to topics
     and subscribers receive all messages from topics they're interested in.
     This pattern decouples senders from receivers.
+
+## Q
 
 ## R
 
@@ -185,6 +215,9 @@
 <span id="schema">schema</span>
 :   FIXME
 
+<span id="sequential-consistency">sequential consistency</span>
+:   FIXME
+
 <span id="singleton">singleton</span>
 :   FIXME
 
@@ -192,6 +225,9 @@
 :   FIXME
 
 <span id="state-based-crdt">state-based CRDT</span>
+:   FIXME
+
+<span id="strong-consistency">strong consistency</span>
 :   FIXME
 
 <span id="strong-eventual-consistency">strong eventual consistency</span>
@@ -202,11 +238,21 @@
 <span id="thread-local-storage">thread-local storage</span>
 :   FIXME
 
+<span id="total-order">total order</span>
+:   FIXME
+
 <span id="trace">trace</span>
 :   The complete journey of a request through a distributed system,
     identified by a unique trace ID and composed of multiple spans forming a tree.
 
 <span id="trace-collector">trace collector</span>
+:   FIXME
+
+## U
+
+## V
+
+<span id="vector-clock">vector clock</span>
 :   FIXME
 
 ## W
@@ -215,3 +261,9 @@
 :   A scheduling strategy where each worker maintains a local task queue
     and idle workers take tasks from others' queues
     in order to minimize contention while balancing load.
+
+## X
+
+## Y
+
+## Z

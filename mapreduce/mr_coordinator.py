@@ -3,7 +3,7 @@
 from asimpy import Environment
 import random
 from typing import Callable, Any
-from mr_types import InputSplit, MapTask, ReduceTask, IntermediateData
+from mr_types import MapTask, ReduceTask, IntermediateData
 from mr_worker import MapReduceWorker
 
 
@@ -57,12 +57,9 @@ class MapReduceCoordinator:
             self.start_time = self.env.now
             print(f"[{self.env.now:.1f}] Starting MapReduce job")
 
-            # Split input data
-            splits = self._split_input(input_data, num_splits)
-
-            # Create map tasks
-            for i, split in enumerate(splits):
-                task = MapTask(f"map_{i}", split)
+            # Create map tasks from input splits
+            for i, data in enumerate(self._split_input(input_data, num_splits)):
+                task = MapTask(f"map_{i}", data)
                 self.pending_map_tasks.append(task)
 
             # Dispatch map tasks
@@ -96,7 +93,7 @@ class MapReduceCoordinator:
 
         return _execute()
 
-    def _split_input(self, data: list[Any], num_splits: int) -> list[InputSplit]:
+    def _split_input(self, data: list[Any], num_splits: int) -> list[list[Any]]:
         """Split input data into roughly equal chunks."""
         splits = []
         chunk_size = max(1, len(data) // num_splits)
@@ -104,7 +101,7 @@ class MapReduceCoordinator:
         for i in range(num_splits):
             start = i * chunk_size
             end = start + chunk_size if i < num_splits - 1 else len(data)
-            splits.append(InputSplit(i, data[start:end]))
+            splits.append(data[start:end])
 
         return splits
 

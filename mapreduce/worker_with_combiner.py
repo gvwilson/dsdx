@@ -14,12 +14,12 @@ class WorkerWithCombiner(MapReduceWorker):
 
         print(f"[{self.now:.1f}] Worker {self.worker_id}: Starting {task}")
 
-        processing_time = len(task.input_split.data) * 0.1
+        processing_time = len(task.data) * 0.1
         await self.timeout(processing_time)
 
         # Apply map function
         intermediate = IntermediateData()
-        for record in task.input_split.data:
+        for record in task.data:
             for key, value in self.coordinator.map_fn(record):
                 intermediate.add(key, value)
 

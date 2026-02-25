@@ -36,20 +36,16 @@ These two constraints enable parallelism and fault tolerance.
 ## Core Data Structures
 
 Let's start with some dataclasses to represent the data flowing through the framework.
-Input is split into chunks:
-
-<div data-inc="mr_types.py" data-filter="inc=input"></div>
-
-Map tasks process split data:
+Input will be split into chunks for the map phase:
 
 <div data-inc="mr_types.py" data-filter="inc=map"></div>
 
-Intermediate data is partitioned for reducers:
+Intermediate data will be partitioned for reducers:
 
 <div data-inc="mr_types.py" data-filter="inc=intermediate"></div>
 
 And finally,
-intermediate chunks are reduced:
+intermediate chunks will be reduced:
 
 <div data-inc="mr_types.py" data-filter="inc=reduce"></div>
 
@@ -73,13 +69,35 @@ we introduced our own hashing function:
 
 ## Worker Implementation
 
-Workers execute map and reduce tasks:
+Worker processes execute both map and reduce tasks.
+Each has a unique worker ID,
+a queue of incoming tasks,
+and a reference to the overall work coordinator:
 
-<div data-inc="mr_worker.py"></div>
+<div data-inc="mr_worker.py" data-filter="inc=worker"></div>
 
-Workers are stateless:
-they fetch tasks, execute them, and report results.
-If a worker fails, the coordinator can reassign the task to another worker.
+The code shown above also records a few simple statistics
+and can simulate failure with a specified probability;
+we will use this last propery when we look at fault tolerance.
+
+When a worker runs,
+it repeatedly gets a task from its queue and executes it.
+If there's a simulated failure,
+the worker reports that back to the coordinator instead:
+
+<div data-inc="mr_worker.py" data-filter="inc=run"></div>
+
+Each map task consists of one or more records.
+For simplicity's sake we assume each record needs the same processing time,
+so after waiting that long,
+the worker partitions the results
+and sends them back to the coordinator:
+
+<div data-inc="mr_worker.py" data-filter="inc=map"></div>
+
+Reducing works the same way:
+
+<div data-inc="mr_worker.py" data-filter="inc=reduce"></div>
 
 ## MapReduce Coordinator
 

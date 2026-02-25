@@ -6,26 +6,13 @@ import hashlib
 from typing import Any
 
 
-# mccole: input
-@dataclass
-class InputSplit:
-    """A partition of input data."""
-
-    split_id: int
-    data: list[Any]
-# mccole: /input
-
-    def __str__(self):
-        return f"Split{self.split_id}(size={len(self.data)})"
-
-
 # mccole: map
 @dataclass
 class MapTask:
     """A map task to be executed."""
 
     task_id: str
-    input_split: InputSplit
+    data: list[Any]
 # mccole: /map
 
     def __str__(self):
