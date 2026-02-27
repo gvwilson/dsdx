@@ -71,7 +71,7 @@ class PartitionController(Process):
 NAMES = ["Ahmed", "Baemi", "Chiti"]
 
 
-def run_simulation():
+def main():
     """Show that GCounters converge after a partition heals."""
     env = Environment()
     peers = [Peer(name, GCounter(name)) for name in NAMES]
@@ -91,4 +91,4 @@ def run_simulation():
 if __name__ == "__main__":
     if len(sys.argv) == 2:
         random.seed(int(sys.argv[1]))
-    run_simulation()
+    main()

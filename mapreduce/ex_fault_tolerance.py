@@ -40,7 +40,7 @@ class FaultToleranceJob(Process):
         print(f"\nFailed tasks: {len(self.coordinator.failed_tasks)}")
 
 
-def run_fault_tolerance_test():
+def main():
     """Demonstrate fault tolerance with worker failures."""
     env = Environment()
 
@@ -69,4 +69,4 @@ def run_fault_tolerance_test():
 if __name__ == "__main__":
     if len(sys.argv) == 2:
         random.seed(int(sys.argv[1]))
-    run_fault_tolerance_test()
+    main()

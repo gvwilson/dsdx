@@ -7,7 +7,7 @@ from scheduler import WorkStealingScheduler
 
 
 # mccole: sim
-def run_basic_simulation():
+def main():
     """Basic work-stealing simulation."""
     env = Environment()
 
@@ -25,4 +25,4 @@ def run_basic_simulation():
 if __name__ == "__main__":
     if len(sys.argv) == 2:
         random.seed(int(sys.argv[1]))
-    run_basic_simulation()
+    main()

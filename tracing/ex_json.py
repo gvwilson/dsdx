@@ -46,7 +46,7 @@ class SimpleClient(Process):
 
 
 # mccole: demo
-def run_json_demo() -> None:
+def main() -> None:
     """Demonstrate JSON-formatted tracing output."""
     env = Environment()
     collector = JSONTraceCollector(env)
@@ -59,4 +59,4 @@ def run_json_demo() -> None:
 if __name__ == "__main__":
     if len(sys.argv) == 2:
         random.seed(int(sys.argv[1]))
-    run_json_demo()
+    main()

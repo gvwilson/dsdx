@@ -7,7 +7,7 @@ from adaptive_scheduler import AdaptiveScheduler
 from task import Task
 
 
-def run_adaptive_simulation():
+def main():
     """Demonstrate adaptive stealing strategy."""
     env = Environment()
 
@@ -32,4 +32,4 @@ def run_adaptive_simulation():
 if __name__ == "__main__":
     if len(sys.argv) == 2:
         random.seed(int(sys.argv[1]))
-    run_adaptive_simulation()
+    main()

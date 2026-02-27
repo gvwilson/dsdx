@@ -87,7 +87,7 @@ class AckPublisher(Process):
 
 
 # mccole: simulate
-def run_ack_simulation():
+def main():
     """Demonstrate acknowledgment-based redelivery."""
     env = Environment()
 
@@ -116,4 +116,4 @@ def run_ack_simulation():
 if __name__ == "__main__":
     if len(sys.argv) == 2:
         random.seed(int(sys.argv[1]))
-    run_ack_simulation()
+    main()

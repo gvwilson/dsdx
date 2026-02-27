@@ -8,7 +8,7 @@ from task_generator import TaskGenerator
 
 
 # mccole: sim
-def run_spawning_simulation():
+def main():
     """Demonstrate nested task spawning."""
     env = Environment()
 
@@ -29,4 +29,4 @@ def run_spawning_simulation():
 if __name__ == "__main__":
     if len(sys.argv) == 2:
         random.seed(int(sys.argv[1]))
-    run_spawning_simulation()
+    main()

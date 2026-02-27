@@ -38,7 +38,7 @@ class CombinerJob(Process):
         print(f"\n=== Results: {len(results)} unique words ===")
 
 
-def run_word_count_with_combiner():
+def main():
     """Word count with combiner optimization."""
     env = Environment()
 
@@ -72,4 +72,4 @@ def run_word_count_with_combiner():
 if __name__ == "__main__":
     if len(sys.argv) == 2:
         random.seed(int(sys.argv[1]))
-    run_word_count_with_combiner()
+    main()

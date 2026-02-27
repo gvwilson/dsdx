@@ -92,7 +92,7 @@ class PrioritySubscriber(Process):
 
 
 # mccole: simulate
-def run_priority_simulation():
+def main():
     """Demonstrate priority-based message handling."""
     env = Environment()
 
@@ -122,4 +122,4 @@ def run_priority_simulation():
 if __name__ == "__main__":
     if len(sys.argv) == 2:
         random.seed(int(sys.argv[1]))
-    run_priority_simulation()
+    main()

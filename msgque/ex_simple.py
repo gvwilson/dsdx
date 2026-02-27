@@ -9,7 +9,7 @@ from subscriber import Subscriber
 
 
 # mccole: simulate
-def run_simulation():
+def main():
     """Run a simulation of the message queue system."""
     env = Environment()
     broker = MessageBroker(env)
@@ -41,4 +41,4 @@ def run_simulation():
 if __name__ == "__main__":
     if len(sys.argv) == 2:
         random.seed(int(sys.argv[1]))
-    run_simulation()
+    main()

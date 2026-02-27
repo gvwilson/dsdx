@@ -20,9 +20,9 @@ Total results: 7
 
 === Inverted Index ===
 and: ['doc4']
-brown: ['doc4', 'doc1']
-dog: ['doc4', 'doc2', 'doc3']
-fox: ['doc4', 'doc1']
-lazy: ['doc4', 'doc2']
+brown: ['doc1', 'doc4']
+dog: ['doc2', 'doc3', 'doc4']
+fox: ['doc1', 'doc4']
+lazy: ['doc2', 'doc4']
 quick: ['doc1', 'doc3']
-the: ['doc2', 'doc1', 'doc3']
+the: ['doc1', 'doc2', 'doc3']

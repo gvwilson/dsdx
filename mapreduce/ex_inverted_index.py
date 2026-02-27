@@ -22,7 +22,7 @@ def inverted_index_map(record: tuple[str, str]):
 
 def inverted_index_reduce(word: str, doc_ids: list[str]) -> list[str]:
     """Reduce function: collect unique document IDs."""
-    return list(set(doc_ids))
+    return list(sorted(set(doc_ids)))
 
 
 class InvertedIndexJob(Process):
@@ -47,7 +47,7 @@ class InvertedIndexJob(Process):
             print(f"{word}: {docs}")
 
 
-def run_inverted_index():
+def main():
     """Build inverted index for search."""
     env = Environment()
 
@@ -76,4 +76,4 @@ def run_inverted_index():
 if __name__ == "__main__":
     if len(sys.argv) == 2:
         random.seed(int(sys.argv[1]))
-    run_inverted_index()
+    main()

@@ -9,7 +9,7 @@ from subscriber import Subscriber
 
 
 # mccole: sim
-def run_backpressure_simulation():
+def main():
     """Demonstrate backpressure in action."""
     env = Environment()
 
@@ -42,4 +42,4 @@ def run_backpressure_simulation():
 if __name__ == "__main__":
     if len(sys.argv) == 2:
         random.seed(int(sys.argv[1]))
-    run_backpressure_simulation()
+    main()

@@ -72,7 +72,7 @@ class SimpleClient(Process):
 
 
 # mccole: demo
-def run_decorator_demo() -> None:
+def main() -> None:
     """Demonstrate decorator-based tracing."""
     env = Environment()
 
@@ -114,4 +114,4 @@ def run_decorator_demo() -> None:
 if __name__ == "__main__":
     if len(sys.argv) == 2:
         random.seed(int(sys.argv[1]))
-    run_decorator_demo()
+    main()

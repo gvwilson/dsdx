@@ -40,7 +40,7 @@ class WordCountJob(Process):
             print(f"{word}: {count}")
 
 
-def run_word_count():
+def main():
     """Run word count example."""
     env = Environment()
 
@@ -72,4 +72,4 @@ def run_word_count():
 if __name__ == "__main__":
     if len(sys.argv) == 2:
         random.seed(int(sys.argv[1]))
-    run_word_count()
+    main()

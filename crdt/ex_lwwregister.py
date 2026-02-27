@@ -47,7 +47,7 @@ class Replica(Process):
 
 
 # mccole: sim
-def run_simulation():
+def main():
     """Demonstrate LWWRegister convergence across three replicas."""
     env = Environment()
     replicas = [Peer(name, LWWRegister()) for name in NAMES]
@@ -67,4 +67,4 @@ def run_simulation():
 if __name__ == "__main__":
     if len(sys.argv) == 2:
         random.seed(int(sys.argv[1]))
-    run_simulation()
+    main()

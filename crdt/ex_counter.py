@@ -69,11 +69,14 @@ def run_simulation(counter_cls):
 # mccole: /sim
 
 
-if __name__ == "__main__":
-    if len(sys.argv) == 2:
-        random.seed(int(sys.argv[1]))
-
+def main():
     print("=== GCounter")
     run_simulation(GCounter)
     print("\n=== PNCounter")
     run_simulation(PNCounter)
+
+
+if __name__ == "__main__":
+    if len(sys.argv) == 2:
+        random.seed(int(sys.argv[1]))
+    main()
