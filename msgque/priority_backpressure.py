@@ -1,3 +1,4 @@
+import bisect
 from dataclasses import dataclass
 from asimpy import Environment, Queue
 from collections import defaultdict
@@ -46,10 +47,18 @@ class PriorityBackpressureBroker:
 
         all_delivered = True
         for queue in queues:
-            if queue.put(message):
+            if not queue.is_full():
+                await queue.put(message)
                 self.num_delivered += 1
             else:
-                all_delivered = False
+                # Displace lowest priority item if new message has higher priority
+                bisect.insort(queue._items, message)
+                kept = message is not queue._items[-1]
+                queue._items = queue._items[:queue._max_capacity]
+                if kept:
+                    self.num_delivered += 1
+                else:
+                    all_delivered = False
 
         return all_delivered
     # mccole: /publish

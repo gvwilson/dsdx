@@ -63,7 +63,7 @@ class MapReduceCoordinator:
                 self.pending_map_tasks.append(task)
 
             # Dispatch map tasks
-            self._dispatch_map_tasks()
+            await self._dispatch_map_tasks()
 
             # Wait for map phase to complete
             while not self.map_phase_complete:
@@ -77,7 +77,7 @@ class MapReduceCoordinator:
                 self.pending_reduce_tasks.append(task)
 
             # Dispatch reduce tasks
-            self._dispatch_reduce_tasks()
+            await self._dispatch_reduce_tasks()
 
             # Wait for reduce phase to complete
             while not self.reduce_phase_complete:
@@ -105,18 +105,18 @@ class MapReduceCoordinator:
 
         return splits
 
-    def _dispatch_map_tasks(self):
+    async def _dispatch_map_tasks(self):
         """Assign map tasks to workers."""
         for task in self.pending_map_tasks:
             # Find available worker
             worker = self._get_available_worker()
-            worker.task_queue.put(task)
+            await worker.task_queue.put(task)
 
-    def _dispatch_reduce_tasks(self):
+    async def _dispatch_reduce_tasks(self):
         """Assign reduce tasks to workers."""
         for task in self.pending_reduce_tasks:
             worker = self._get_available_worker()
-            worker.task_queue.put(task)
+            await worker.task_queue.put(task)
 
     def _get_available_worker(self) -> MapReduceWorker:
         """Get next available worker (round-robin)."""
@@ -148,7 +148,7 @@ class MapReduceCoordinator:
         if len(self.completed_reduce_tasks) == len(self.pending_reduce_tasks):
             self.reduce_phase_complete = True
 
-    def report_failure(self, task: Any, worker_id: int):
+    async def report_failure(self, task: Any, worker_id: int):
         """Handle task failure."""
         print(
             f"[{self.env.now:.1f}] Task {task} failed on worker {worker_id}, will retry"
@@ -158,7 +158,7 @@ class MapReduceCoordinator:
 
         # Reschedule task
         worker = self._get_available_worker()
-        worker.task_queue.put(task)
+        await worker.task_queue.put(task)
 
     async def get_intermediate_data(self, partition_id: int) -> IntermediateData:
         """Fetch intermediate data for a partition."""

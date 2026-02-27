@@ -15,7 +15,7 @@ class StragglerMonitor(Process):
         """Monitor for stragglers."""
         while not self.coordinator.map_phase_complete:
             await self.timeout(1.0)
-            self.coordinator._check_for_stragglers()
+            await self.coordinator._check_for_stragglers()
 
 
 class SpeculativeCoordinator(MapReduceCoordinator):
@@ -34,14 +34,14 @@ class SpeculativeCoordinator(MapReduceCoordinator):
         self.task_start_times: Dict[str, float] = {}
         self.speculative_tasks: set = set()
 
-    def _dispatch_map_tasks(self):
+    async def _dispatch_map_tasks(self):
         """Dispatch map tasks with speculative execution."""
-        super()._dispatch_map_tasks()
+        await super()._dispatch_map_tasks()
 
         # Start monitoring for stragglers
         StragglerMonitor(self.env, self)
 
-    def _check_for_stragglers(self):
+    async def _check_for_stragglers(self):
         """Launch speculative tasks for stragglers."""
         now = self.env.now
 
@@ -64,4 +64,4 @@ class SpeculativeCoordinator(MapReduceCoordinator):
 
                 # Launch backup copy
                 worker = self._get_available_worker()
-                worker.task_queue.put(task)
+                await worker.task_queue.put(task)

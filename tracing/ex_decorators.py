@@ -1,5 +1,7 @@
 """Example using decorator-based tracing."""
 
+import random
+import sys
 from asimpy import Environment, Process, Queue
 from trace_collector import TraceCollector
 from simple_service import SimpleService
@@ -59,13 +61,13 @@ class SimpleClient(Process):
             response_queue=response_queue,
         )
 
-        self.service.request_queue.put(request)
+        await self.service.request_queue.put(request)
         response = await response_queue.get()
 
         # Finish root span
         root_span.finish(self.now)
         root_span.add_tag("success", response.success)
-        self.collector.span_queue.put(root_span)
+        await self.collector.span_queue.put(root_span)
 # mccole: /client
 
 
@@ -110,4 +112,6 @@ def run_decorator_demo() -> None:
 
 
 if __name__ == "__main__":
+    if len(sys.argv) == 2:
+        random.seed(int(sys.argv[1]))
     run_decorator_demo()

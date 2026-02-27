@@ -91,7 +91,7 @@ def traced(operation_name: str):
                 span.finish(self.now)
                 collector = Storage.get_collector()
                 if collector:
-                    collector.span_queue.put(span)
+                    await collector.span_queue.put(span)
 
                 # Restore old context
                 Storage.set_context(old_context)
@@ -177,7 +177,7 @@ def trace_root(operation_name: str | None = None):
                 root_span.finish(self.now)
                 collector = Storage.get_collector()
                 if collector:
-                    collector.span_queue.put(root_span)
+                    await collector.span_queue.put(root_span)
 
                 # Restore old context
                 Storage.set_context(old_context)

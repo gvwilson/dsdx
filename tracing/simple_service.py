@@ -44,7 +44,7 @@ class SimpleService(Process):
         data = await self.process_data(request.payload)
 
         # Send response
-        request.response_queue.put(
+        await request.response_queue.put(
             ServiceResponse(request_id=request.request_id, success=True, data=data)
         )
 

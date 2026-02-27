@@ -7,8 +7,8 @@
 [3.3] Client: Starting request req_2
 [3.3] OrderService: Processing Request(req_2)
 
-[5.1] Client: Starting request req_3
-[5.1] OrderService: Processing Request(req_3)
+[5.2] Client: Starting request req_3
+[5.2] OrderService: Processing Request(req_3)
 
 ============================================================
 Decorator-Based Tracing Results:
@@ -16,56 +16,56 @@ Decorator-Based Tracing Results:
 Traces completed: 9
 Spans received: 9
 
-Trace(trace_15..., 1 spans, 0.076s)
-  Duration: 0.076s
+Trace(trace_79..., 1 spans, 0.142s)
+  Duration: 0.142s
   Spans: 1
   Operations:
-    - process_data (0.076s)
+    - process_data (0.142s)
 
-Trace(trace_15..., 1 spans, 0.335s)
-  Duration: 0.335s
+Trace(trace_79..., 1 spans, 0.339s)
+  Duration: 0.339s
   Spans: 1
   Operations:
-    - handle_request (0.335s)
+    - handle_request (0.339s)
 
-Trace(trace_15..., 1 spans, 0.335s)
-  Duration: 0.335s
+Trace(trace_79..., 1 spans, 0.339s)
+  Duration: 0.339s
   Spans: 1
   Operations:
-  - Client.make_request (0.335s)
+  - Client.make_request (0.339s)
 
-Trace(trace_85..., 1 spans, 0.067s)
-  Duration: 0.067s
+Trace(trace_84..., 1 spans, 0.109s)
+  Duration: 0.109s
   Spans: 1
   Operations:
-    - process_data (0.067s)
+    - process_data (0.109s)
 
-Trace(trace_85..., 1 spans, 0.249s)
-  Duration: 0.249s
+Trace(trace_84..., 1 spans, 0.354s)
+  Duration: 0.354s
   Spans: 1
   Operations:
-    - handle_request (0.249s)
+    - handle_request (0.354s)
 
-Trace(trace_85..., 1 spans, 0.249s)
-  Duration: 0.249s
+Trace(trace_84..., 1 spans, 0.354s)
+  Duration: 0.354s
   Spans: 1
   Operations:
-  - Client.make_request (0.249s)
+  - Client.make_request (0.354s)
 
-Trace(trace_11..., 1 spans, 0.147s)
-  Duration: 0.147s
+Trace(trace_13..., 1 spans, 0.086s)
+  Duration: 0.086s
   Spans: 1
   Operations:
-    - process_data (0.147s)
+    - process_data (0.086s)
 
-Trace(trace_11..., 1 spans, 0.342s)
-  Duration: 0.342s
+Trace(trace_13..., 1 spans, 0.212s)
+  Duration: 0.212s
   Spans: 1
   Operations:
-    - handle_request (0.342s)
+    - handle_request (0.212s)
 
-Trace(trace_11..., 1 spans, 0.342s)
-  Duration: 0.342s
+Trace(trace_13..., 1 spans, 0.212s)
+  Duration: 0.212s
   Spans: 1
   Operations:
-  - Client.make_request (0.342s)
+  - Client.make_request (0.212s)

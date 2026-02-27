@@ -41,7 +41,7 @@ class MapReduceWorker(Process):
             # Check for simulated failure
             if random.random() < self.failure_rate:
                 print(f"[{self.now:.1f}] Worker {self.worker_id}: FAILED during {task}")
-                self.coordinator.report_failure(task, self.worker_id)
+                await self.coordinator.report_failure(task, self.worker_id)
                 continue
 
             # Execute task

@@ -42,7 +42,7 @@ class AckBroker(MessageBroker):
             )
 
             self.pending_acks[ack_id] = (ack_msg, self.env.now, queue)
-            queue.put(ack_msg)
+            await queue.put(ack_msg)
 
             # Schedule re-delivery
             self.env.schedule(

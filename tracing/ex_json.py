@@ -1,5 +1,7 @@
 """Example using JSON trace collector."""
 
+import random
+import sys
 from asimpy import Environment, Process, Queue
 from json_collector import JSONTraceCollector
 from simple_service import SimpleService
@@ -36,7 +38,7 @@ class SimpleClient(Process):
             response_queue=response_queue,
         )
 
-        self.service.request_queue.put(request)
+        await self.service.request_queue.put(request)
         response = await response_queue.get()
 
         return response
@@ -51,9 +53,10 @@ def run_json_demo() -> None:
     service = SimpleService(env, "OrderService", collector, verbose=False)
     SimpleClient(env, "Client", service, collector)
     env.run(until=4)
-
 # mccole: /demo
 
 
 if __name__ == "__main__":
+    if len(sys.argv) == 2:
+        random.seed(int(sys.argv[1]))
     run_json_demo()

@@ -1,8 +1,8 @@
 """Data types for distributed tracing implementation."""
 
+from asimpy import Environment
 from dataclasses import dataclass, field
 import random
-import time
 from typing import Any
 from asimpy import Process, Queue
 
@@ -20,11 +20,10 @@ class TraceContext:
     span_id: str
     parent_span_id: str | None = None
     baggage: dict[str, str] = field(default_factory=dict)
-    # mccole: /context
+# mccole: /context
 
     def __str__(self) -> str:
         return f"TraceContext(trace={self.trace_id[:8]}..., span={self.span_id[:8]}...)"
-# mccole: /context
 
 # mccole: span
 @dataclass
@@ -48,19 +47,18 @@ class Span:
 
     def add_log(self, message: str, **fields: Any) -> None:
         """Add log entry to span."""
-        self.logs.append({"message": message, "timestamp": time.time(), **fields})
+        self.logs.append({"message": message, "timestamp": Environment.sim_time(), **fields})
 
     def finish(self, end_time: float) -> None:
         """Mark span as complete."""
         self.end_time = end_time
         self.duration = end_time - self.start_time
-
-    # mccole: /span
+# mccole: /span
 
     def __str__(self) -> str:
         status = f"{self.duration:.3f}s" if self.duration else "active"
         return f"Span({self.operation_name}, {status})"
-# mccole: /span
+
 
 # mccole: trace
 @dataclass
