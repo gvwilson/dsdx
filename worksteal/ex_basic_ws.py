@@ -1,9 +1,9 @@
 """Basic work-stealing simulation."""
 
 import random
-import sys
 from asimpy import Environment
 from scheduler import WorkStealingScheduler
+from dsdx import dsdx
 
 
 # mccole: sim
@@ -23,6 +23,4 @@ def main():
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 2:
-        random.seed(int(sys.argv[1]))
-    main()
+    dsdx(main)

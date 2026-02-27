@@ -2,9 +2,9 @@
 
 from dataclasses import dataclass
 import random
-import sys
 from asimpy import Environment, Process
 from orset import ORSet
+from dsdx import dsdx
 
 
 @dataclass
@@ -70,6 +70,4 @@ def main():
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 2:
-        random.seed(int(sys.argv[1]))
-    main()
+    dsdx(main)

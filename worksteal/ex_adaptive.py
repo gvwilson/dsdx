@@ -1,10 +1,10 @@
 """Simulation with adaptive stealing strategy."""
 
 import random
-import sys
 from asimpy import Environment
 from adaptive_scheduler import AdaptiveScheduler
 from task import Task
+from dsdx import dsdx
 
 
 def main():
@@ -30,6 +30,4 @@ def main():
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 2:
-        random.seed(int(sys.argv[1]))
-    main()
+    dsdx(main)

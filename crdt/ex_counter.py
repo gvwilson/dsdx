@@ -1,11 +1,12 @@
 """Simulate CRDT counters across replicas using asimpy."""
 
-import random
-import sys
 from dataclasses import dataclass
+import random
 from asimpy import Environment, Process
 from gcounter import GCounter
 from pncounter import PNCounter
+from dsdx import dsdx
+
 
 NAMES = ["Ahmed", "Baemi", "Chiti"]
 P_DECREMENT = 0.5
@@ -77,6 +78,4 @@ def main():
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 2:
-        random.seed(int(sys.argv[1]))
-    main()
+    dsdx(main)

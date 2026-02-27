@@ -1,10 +1,9 @@
 """Word count with combiner optimization."""
 
-import random
-import sys
 from asimpy import Environment, Process
 from coordinator_with_combiner import MapReduceCoordinatorWithCombiner
 from worker_with_combiner import WorkerWithCombiner
+from dsdx import dsdx
 
 
 def word_count_map(record: str):
@@ -70,6 +69,4 @@ def main():
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 2:
-        random.seed(int(sys.argv[1]))
-    main()
+    dsdx(main)

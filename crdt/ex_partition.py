@@ -2,9 +2,9 @@
 
 from dataclasses import dataclass, field
 import random
-import sys
 from asimpy import Environment, Process
 from gcounter import GCounter
+from dsdx import dsdx
 
 
 # mccole: peer
@@ -89,6 +89,4 @@ def main():
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 2:
-        random.seed(int(sys.argv[1]))
-    main()
+    dsdx(main)

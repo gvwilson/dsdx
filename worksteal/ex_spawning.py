@@ -1,10 +1,9 @@
 """Simulation with nested task spawning."""
 
-import random
-import sys
 from asimpy import Environment
 from scheduler_with_spawning import SchedulerWithSpawning
 from task_generator import TaskGenerator
+from dsdx import dsdx
 
 
 # mccole: sim
@@ -27,6 +26,4 @@ def main():
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 2:
-        random.seed(int(sys.argv[1]))
-    main()
+    dsdx(main)

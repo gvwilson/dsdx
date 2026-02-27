@@ -1,12 +1,11 @@
 """Example using decorator-based tracing."""
 
-import random
-import sys
 from asimpy import Environment, Process, Queue
 from trace_collector import TraceCollector
 from simple_service import SimpleService
 from tracing_types import TraceContext, Span, ServiceRequest, generate_id
 from tracing_decorators import Storage
+from dsdx import dsdx
 
 
 # mccole: client
@@ -112,6 +111,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 2:
-        random.seed(int(sys.argv[1]))
-    main()
+    dsdx(main)

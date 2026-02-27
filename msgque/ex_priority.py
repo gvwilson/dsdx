@@ -1,9 +1,9 @@
 """Prioritized message queue simulation."""
 
 import random
-import sys
 from asimpy import Environment, Process
 from priority_backpressure import PriorityBackpressureBroker, PriorityMessage
+from dsdx import dsdx
 
 
 # mccole: prioritypublisher
@@ -120,6 +120,4 @@ def main():
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 2:
-        random.seed(int(sys.argv[1]))
-    main()
+    dsdx(main)

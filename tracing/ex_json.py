@@ -1,12 +1,11 @@
 """Example using JSON trace collector."""
 
-import random
-import sys
 from asimpy import Environment, Process, Queue
 from json_collector import JSONTraceCollector
 from simple_service import SimpleService
 from tracing_decorators import Storage, trace_root
 from tracing_types import BaseCollector, ServiceRequest
+from dsdx import dsdx
 
 
 # mccole: client
@@ -57,6 +56,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 2:
-        random.seed(int(sys.argv[1]))
-    main()
+    dsdx(main)

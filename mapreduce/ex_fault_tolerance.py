@@ -1,10 +1,9 @@
 """Fault tolerance demonstration with worker failures."""
 
-import random
-import sys
 from asimpy import Environment, Process
 from mr_coordinator import MapReduceCoordinator
 from mr_worker import MapReduceWorker
+from dsdx import dsdx
 
 
 def word_count_map(record: str):
@@ -67,6 +66,4 @@ def main():
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 2:
-        random.seed(int(sys.argv[1]))
-    main()
+    dsdx(main)

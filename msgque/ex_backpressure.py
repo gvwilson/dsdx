@@ -1,11 +1,10 @@
 """Backpressure message queue simulation."""
 
-import random
-import sys
 from asimpy import Environment
 from backpressure_broker import BackpressureBroker
 from backpressure_publisher import BackpressurePublisher
 from subscriber import Subscriber
+from dsdx import dsdx
 
 
 # mccole: sim
@@ -40,6 +39,4 @@ def main():
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 2:
-        random.seed(int(sys.argv[1]))
-    main()
+    dsdx(main)
