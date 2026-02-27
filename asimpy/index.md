@@ -74,38 +74,33 @@ Processes don't normally create these objects directly;
 instead,
 a class derived from `Process` can call `self.timeout(duration)`.
 
-## `Queue` and `PriorityQueue`: Exchanging Data
+## `Queue`: Exchanging Data
 
 `Queue` enables processes to exchange data.
-It has two members:
+It has three members:
 a list of items being passed between processes,
-and a list of processes waiting for items.
-The invariant for `Queue` is that one or the other list must be empty,
-i.e.,
-if there are processes waiting then there aren't any items to take,
-while if there are items waiting to be taken there aren't any waiting processes.
+a list of processes waiting to get items,
+and a list of processes waiting to add items.
 
-`Queue.put(item)` either adds an item to the queue
-or passes it to a waiting process.
-This a non-blocking operation,
-i.e.,
-it cannot be `await`ed.
-Conversely,
 `Queue.get()` either gets an item immediately
 or adds the calling process to the list of waiters.
+Conversely,
+`Queue.put(item)` will:
 
-`PriorityQueue` keeps queue items in priority order,
-which means items must be comparable (i.e., must implement `__lt__`).
+-   release a process waiting to get an item;
+-   suspend the process trying to put the item
+    until there is space for it in the queue;
+    or
+-   add the item to the queue.
+
+`Queue` normally stores items in first-in/first-out (FIFO) order,
+but can instead be told to store items in priority order.
+For this to work,
+items must be comparable (i.e., must implement `__lt__`).
 Note that lower values are higher priorities,
 i.e., `A<B` means that `A` has a higher priority than `B`.
-
-When a queue is created,
-the creator can specify a maximum capacity.
-If someone tries to `put()` an item in a `Queue` that is full,
-the item is not added.
-If someone tries to add an item to a full `PriorityQueue`,
-it *is* added,
-and then the lowest-priority item is removed from the queue.
+Note also that if a queue is created with unlimited capacity,
+`put` will never block.
 
 ## `Resource`: Capacity-Limited Sharing
 
