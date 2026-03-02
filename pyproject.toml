@@ -61,6 +61,9 @@ skips = [
 ]
 
 [tool.taskipy.tasks]
+all_examples = {help = "re-run all examples", cmd = """
+for i in mapreduce msgque worksteal tracing crdt; do task examples $i; done
+"""}
 build = {help = "build package", cmd = "python -m build"}
 check = {help = "check code", cmd = "ruff check ."}
 clean = {help = "clean up", cmd = """
