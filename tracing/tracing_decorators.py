@@ -30,6 +30,7 @@ class _StorageClass:
     def get_collector(cls) -> BaseCollector | None:
         return Storage._current_collector
 
+
 Storage = _StorageClass()
 # mccole: /storage
 
@@ -110,6 +111,8 @@ def traced(operation_name: str):
             return sync_wrapper
 
     return decorator
+
+
 # mccole: /traced
 
 
@@ -185,6 +188,8 @@ def trace_root(operation_name: str | None = None):
         return wrapper
 
     return decorator
+
+
 # mccole: /trace_root
 
 

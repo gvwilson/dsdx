@@ -25,8 +25,6 @@ class PriorityPublisher(Process):
 
     async def run(self):
         """Publish messages with varying priorities."""
-        import random
-
         while True:
             self.message_counter += 1
 
@@ -51,6 +49,8 @@ class PriorityPublisher(Process):
             )
 
             await self.timeout(self.interval)
+
+
 # mccole: /prioritypublisher
 
 
@@ -88,6 +88,8 @@ class PrioritySubscriber(Process):
             )
 
             await self.timeout(self.processing_time)
+
+
 # mccole: /prioritysubscriber
 
 
@@ -116,6 +118,8 @@ def main():
     print("\nReceived by priority:")
     for priority in sorted(subscriber.priority_counts.keys()):
         print(f"  Priority {priority}: {subscriber.priority_counts[priority]}")
+
+
 # mccole: /simulate
 
 

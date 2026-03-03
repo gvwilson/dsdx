@@ -10,6 +10,8 @@ class AckMessage(Message):
     """Message that requires acknowledgment."""
 
     ack_id: int = 0
+
+
 # mccole: /message
 
 
@@ -22,7 +24,8 @@ class AckBroker(MessageBroker):
         self.ack_timeout = ack_timeout
         self.pending_acks = {}  # ack_id -> (message, timestamp, queue)
         self.next_ack_id = 0
-# mccole: /broker
+
+    # mccole: /broker
 
     # mccole: publish
     async def publish(self, message: Message):
@@ -66,4 +69,5 @@ class AckBroker(MessageBroker):
         """Acknowledge receipt of a message."""
         if ack_id in self.pending_acks:
             del self.pending_acks[ack_id]
+
     # mccole: /acknowledge

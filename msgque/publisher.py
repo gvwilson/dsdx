@@ -28,4 +28,6 @@ class Publisher(Process):
             await self.broker.publish(message)
 
             await self.timeout(self.interval)
+
+
 # mccole: /publisher

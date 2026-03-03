@@ -13,6 +13,8 @@ class Peer:
     name: str
     counter: GCounter
     partitioned_from: set = field(default_factory=set)
+
+
 # mccole
 
 
@@ -34,13 +36,19 @@ class Replica(Process):
             await self.timeout(self.interval)
 
             # Try to sync with a random peer.
-            peer = random.choice([p for p in self.all_peers if p is not self.peer_record])
+            peer = random.choice(
+                [p for p in self.all_peers if p is not self.peer_record]
+            )
             if peer.name in self.peer_record.partitioned_from:
                 print(f"[{self.now}] {self.name}: cannot reach {peer.name}")
             else:
                 self.counter.merge(peer.counter)
-                print(f"[{self.now}] {self.name}: synced with {peer.name} -> {self.counter.value()}")
+                print(
+                    f"[{self.now}] {self.name}: synced with {peer.name} -> {self.counter.value()}"
+                )
             await self.timeout(self.interval)
+
+
 # mccole: /replica
 
 
@@ -58,12 +66,16 @@ class PartitionController(Process):
         await self.timeout(self.start)
         self.peer_a.partitioned_from.add(self.peer_b.name)
         self.peer_b.partitioned_from.add(self.peer_a.name)
-        print(f"[{self.now}] *** partition: {self.peer_a.name} <-/-> {self.peer_b.name}")
+        print(
+            f"[{self.now}] *** partition: {self.peer_a.name} <-/-> {self.peer_b.name}"
+        )
 
         await self.timeout(self.end - self.start)
         self.peer_a.partitioned_from.discard(self.peer_b.name)
         self.peer_b.partitioned_from.discard(self.peer_a.name)
         print(f"[{self.now}] *** healed: {self.peer_a.name} <---> {self.peer_b.name}")
+
+
 # mccole: /partition
 
 
@@ -85,6 +97,8 @@ def main():
     print("\n--- Final State")
     for p in peers:
         print(p.counter)
+
+
 # mccole: /sim
 
 

@@ -41,6 +41,8 @@ class SimpleClient(Process):
         response = await response_queue.get()
 
         return response
+
+
 # mccole: /client
 
 
@@ -52,6 +54,8 @@ def main() -> None:
     service = SimpleService(env, "OrderService", collector, verbose=False)
     SimpleClient(env, "Client", service, collector)
     env.run(until=4)
+
+
 # mccole: /demo
 
 

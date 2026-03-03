@@ -31,7 +31,8 @@ class LWWRegister:
             self.value = other.value
             self.timestamp = other.timestamp
             self.replica_id = other.replica_id
-# mccole: /lww
+
+    # mccole: /lww
 
     def copy(self) -> "LWWRegister":
         """Create a copy of this register."""

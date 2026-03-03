@@ -10,7 +10,9 @@ class ORSet:
     """Observed-Remove Set (state-based CRDT)."""
 
     replica_id: str
-    elements: dict[Any, set[str]] = field(default_factory=dict)  # element -> set of unique tags
+    elements: dict[Any, set[str]] = field(
+        default_factory=dict
+    )  # element -> set of unique tags
     tag_counter: int = 0
 
     def add(self, element: Any) -> str:
@@ -53,7 +55,8 @@ class ORSet:
         result.elements = {k: v.copy() for k, v in self.elements.items()}
         result.tag_counter = self.tag_counter
         return result
-# mccole: /orset
+
+    # mccole: /orset
 
     def __str__(self):
         return f"ORSet(id={self.replica_id}, value={self.value()})"

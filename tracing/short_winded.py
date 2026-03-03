@@ -12,4 +12,6 @@ class Service(GenericService):
     async def handle_request(self, request):
         result = await self.do_work()
         return result
+
+
 # mccole: /service

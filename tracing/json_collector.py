@@ -126,11 +126,13 @@ class JSONTraceCollector(BaseCollector):
                         event_attrs.append(
                             {"key": key, "value": {"stringValue": str(value)}}
                         )
-                events.append({
-                    "timeUnixNano": int(log.get("timestamp", 0) * 1_000_000_000),
-                    "name": log.get("message", "event"),
-                    "attributes": event_attrs,
-                })
+                events.append(
+                    {
+                        "timeUnixNano": int(log.get("timestamp", 0) * 1_000_000_000),
+                        "name": log.get("message", "event"),
+                        "attributes": event_attrs,
+                    }
+                )
             span_json["events"] = events
 
         return span_json

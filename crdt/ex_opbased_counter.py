@@ -61,6 +61,8 @@ class Replica(Process):
             print(f"[{self.now}] {self.name}: applied inbox -> {self.counter.value}")
 
             await self.timeout(self.interval)
+
+
 # mccole: /replica
 
 
@@ -76,6 +78,8 @@ def main():
     print("\n--- Final State")
     for p in peers:
         print(p.counter)
+
+
 # mccole: /sim
 
 

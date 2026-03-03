@@ -53,4 +53,6 @@ class SimpleService(Process):
         """Process data - automatically traced as child span."""
         await self.timeout(random.uniform(0.05, 0.15))
         return {"processed": True, "input": payload}
+
+
 # mccole: /simple

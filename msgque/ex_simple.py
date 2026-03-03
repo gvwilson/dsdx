@@ -34,6 +34,8 @@ def main():
     print(f"Inventory received: {inventory.num_received}")
     print(f"Email received: {email.num_received}")
     print(f"Analytics received: {analytics.num_received}")
+
+
 # mccole: /simulate
 
 

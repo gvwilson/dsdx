@@ -29,4 +29,6 @@ class WorkerDeque:
     def size(self) -> int:
         """Return number of tasks."""
         return len(self.tasks)
+
+
 # mccole: /deque

@@ -46,9 +46,13 @@ class Replica(Process):
             # Sync with a random peer.
             peer = random.choice(self.peers)
             self.counter.merge(peer.counter)
-            print(f"[{self.now}] {self.name}: synced with {peer.name} -> {self.counter.value()}")
+            print(
+                f"[{self.now}] {self.name}: synced with {peer.name} -> {self.counter.value()}"
+            )
 
             await self.timeout(self.sync_interval)
+
+
 # mccole: /replica
 
 
@@ -60,13 +64,17 @@ def run_simulation(counter_cls):
     processes = []
     for r in replicas:
         peers = [p for p in replicas if p is not r]
-        proc = Replica(env, r.name, r.counter, peers, update_interval=2, sync_interval=3)
+        proc = Replica(
+            env, r.name, r.counter, peers, update_interval=2, sync_interval=3
+        )
         processes.append(proc)
 
     env.run(until=10)
     print("\n--- Final State")
     for r in replicas:
         print(r.counter)
+
+
 # mccole: /sim
 
 

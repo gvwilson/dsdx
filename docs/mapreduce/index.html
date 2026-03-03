@@ -178,7 +178,7 @@ the worker reports that back to the coordinator instead:</p>
             <span class="c1"># Check for simulated failure</span>
             <span class="k">if</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">failure_rate</span><span class="p">:</span>
                 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Worker </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">worker_id</span><span class="si">}</span><span class="s2">: FAILED during </span><span class="si">{</span><span class="n">task</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span><span class="o">.</span><span class="n">report_failure</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">worker_id</span><span class="p">)</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span><span class="o">.</span><span class="n">report_failure</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">worker_id</span><span class="p">)</span>
                 <span class="k">continue</span>
 
             <span class="c1"># Execute task</span>
@@ -335,7 +335,7 @@ and sends them back to the coordinator:</p>
                 <span class="bp">self</span><span class="o">.</span><span class="n">pending_map_tasks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
 
             <span class="c1"># Dispatch map tasks</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_dispatch_map_tasks</span><span class="p">()</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dispatch_map_tasks</span><span class="p">()</span>
 
             <span class="c1"># Wait for map phase to complete</span>
             <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">map_phase_complete</span><span class="p">:</span>
@@ -349,7 +349,7 @@ and sends them back to the coordinator:</p>
                 <span class="bp">self</span><span class="o">.</span><span class="n">pending_reduce_tasks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
 
             <span class="c1"># Dispatch reduce tasks</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_dispatch_reduce_tasks</span><span class="p">()</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dispatch_reduce_tasks</span><span class="p">()</span>
 
             <span class="c1"># Wait for reduce phase to complete</span>
             <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">reduce_phase_complete</span><span class="p">:</span>
@@ -377,18 +377,18 @@ and sends them back to the coordinator:</p>
 
         <span class="k">return</span> <span class="n">splits</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_dispatch_map_tasks</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_dispatch_map_tasks</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">"""Assign map tasks to workers."""</span>
         <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">pending_map_tasks</span><span class="p">:</span>
             <span class="c1"># Find available worker</span>
             <span class="n">worker</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_available_worker</span><span class="p">()</span>
-            <span class="n">worker</span><span class="o">.</span><span class="n">task_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+            <span class="k">await</span> <span class="n">worker</span><span class="o">.</span><span class="n">task_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_dispatch_reduce_tasks</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_dispatch_reduce_tasks</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">"""Assign reduce tasks to workers."""</span>
         <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">pending_reduce_tasks</span><span class="p">:</span>
             <span class="n">worker</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_available_worker</span><span class="p">()</span>
-            <span class="n">worker</span><span class="o">.</span><span class="n">task_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+            <span class="k">await</span> <span class="n">worker</span><span class="o">.</span><span class="n">task_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">_get_available_worker</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MapReduceWorker</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Get next available worker (round-robin)."""</span>
@@ -420,7 +420,7 @@ and sends them back to the coordinator:</p>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">completed_reduce_tasks</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pending_reduce_tasks</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">reduce_phase_complete</span> <span class="o">=</span> <span class="kc">True</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">report_failure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">worker_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">report_failure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">worker_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">"""Handle task failure."""</span>
         <span class="nb">print</span><span class="p">(</span>
             <span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Task </span><span class="si">{</span><span class="n">task</span><span class="si">}</span><span class="s2"> failed on worker </span><span class="si">{</span><span class="n">worker_id</span><span class="si">}</span><span class="s2">, will retry"</span>
@@ -430,7 +430,7 @@ and sends them back to the coordinator:</p>
 
         <span class="c1"># Reschedule task</span>
         <span class="n">worker</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_available_worker</span><span class="p">()</span>
-        <span class="n">worker</span><span class="o">.</span><span class="n">task_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+        <span class="k">await</span> <span class="n">worker</span><span class="o">.</span><span class="n">task_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_intermediate_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">partition_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">IntermediateData</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Fetch intermediate data for a partition."""</span>
@@ -448,11 +448,10 @@ A Process wraps the coroutine to integrate it into the simulation.</p>
 <p>The classic MapReduce example counts occurrences of each word in a document:</p>
 <div data-inc="ex_word_count.py"><div class="codehilite"><pre class=""><span></span><code><span class="sd">"""Classic word count MapReduce example."""</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">asimpy</span><span class="w"> </span><span class="kn">import</span> <span class="n">Environment</span><span class="p">,</span> <span class="n">Process</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">mr_coordinator</span><span class="w"> </span><span class="kn">import</span> <span class="n">MapReduceCoordinator</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">mr_worker</span><span class="w"> </span><span class="kn">import</span> <span class="n">MapReduceWorker</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dsdx</span><span class="w"> </span><span class="kn">import</span> <span class="n">dsdx</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">word_count_map</span><span class="p">(</span><span class="n">record</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
@@ -488,7 +487,7 @@ A Process wraps the coroutine to integrate it into the simulation.</p>
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">word</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">count</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">run_word_count</span><span class="p">():</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">"""Run word count example."""</span>
     <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
 
@@ -518,9 +517,7 @@ A Process wraps the coroutine to integrate it into the simulation.</p>
 
 
 <span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
-    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
-        <span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
-    <span class="n">run_word_count</span><span class="p">()</span>
+    <span class="n">dsdx</span><span class="p">(</span><span class="n">main</span><span class="p">)</span>
 </code></pre></div>
 </div>
 <p>This demonstrates MapReduce's power: the programmer writes two simple functions (map and reduce),
@@ -573,7 +570,7 @@ MapReduce handles this with speculative execution—launching backup copies of s
 <span class="w">        </span><span class="sd">"""Monitor for stragglers."""</span>
         <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span><span class="o">.</span><span class="n">map_phase_complete</span><span class="p">:</span>
             <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span><span class="o">.</span><span class="n">_check_for_stragglers</span><span class="p">()</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span><span class="o">.</span><span class="n">_check_for_stragglers</span><span class="p">()</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">SpeculativeCoordinator</span><span class="p">(</span><span class="n">MapReduceCoordinator</span><span class="p">):</span>
@@ -592,14 +589,14 @@ MapReduce handles this with speculative execution—launching backup copies of s
         <span class="bp">self</span><span class="o">.</span><span class="n">task_start_times</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">speculative_tasks</span><span class="p">:</span> <span class="nb">set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_dispatch_map_tasks</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_dispatch_map_tasks</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">"""Dispatch map tasks with speculative execution."""</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_dispatch_map_tasks</span><span class="p">()</span>
+        <span class="k">await</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_dispatch_map_tasks</span><span class="p">()</span>
 
         <span class="c1"># Start monitoring for stragglers</span>
         <span class="n">StragglerMonitor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_check_for_stragglers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_check_for_stragglers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">"""Launch speculative tasks for stragglers."""</span>
         <span class="n">now</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">now</span>
 
@@ -622,7 +619,7 @@ MapReduce handles this with speculative execution—launching backup copies of s
 
                 <span class="c1"># Launch backup copy</span>
                 <span class="n">worker</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_available_worker</span><span class="p">()</span>
-                <span class="n">worker</span><span class="o">.</span><span class="n">task_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+                <span class="k">await</span> <span class="n">worker</span><span class="o">.</span><span class="n">task_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
 </code></pre></div>
 </div>
 <p>Speculative execution ensures one slow worker doesn't delay the entire job.
@@ -631,11 +628,10 @@ The first copy to complete wins; others are discarded.</p>
 <p>Let's simulate worker failures:</p>
 <div data-inc="ex_fault_tolerance.py"><div class="codehilite"><pre class=""><span></span><code><span class="sd">"""Fault tolerance demonstration with worker failures."""</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">asimpy</span><span class="w"> </span><span class="kn">import</span> <span class="n">Environment</span><span class="p">,</span> <span class="n">Process</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">mr_coordinator</span><span class="w"> </span><span class="kn">import</span> <span class="n">MapReduceCoordinator</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">mr_worker</span><span class="w"> </span><span class="kn">import</span> <span class="n">MapReduceWorker</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dsdx</span><span class="w"> </span><span class="kn">import</span> <span class="n">dsdx</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">word_count_map</span><span class="p">(</span><span class="n">record</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
@@ -671,7 +667,7 @@ The first copy to complete wins; others are discarded.</p>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Failed tasks: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span><span class="o">.</span><span class="n">failed_tasks</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">run_fault_tolerance_test</span><span class="p">():</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">"""Demonstrate fault tolerance with worker failures."""</span>
     <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
 
@@ -698,9 +694,7 @@ The first copy to complete wins; others are discarded.</p>
 
 
 <span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
-    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
-        <span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
-    <span class="n">run_fault_tolerance_test</span><span class="p">()</span>
+    <span class="n">dsdx</span><span class="p">(</span><span class="n">main</span><span class="p">)</span>
 </code></pre></div>
 </div>
 <p>The framework automatically retries failed tasks, ensuring computation completes despite failures.</p>
@@ -708,11 +702,10 @@ The first copy to complete wins; others are discarded.</p>
 <p>An inverted index maps words to documents—essential for search engines:</p>
 <div data-inc="ex_inverted_index.py"><div class="codehilite"><pre class=""><span></span><code><span class="sd">"""Inverted index construction for search engines."""</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">asimpy</span><span class="w"> </span><span class="kn">import</span> <span class="n">Environment</span><span class="p">,</span> <span class="n">Process</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">mr_coordinator</span><span class="w"> </span><span class="kn">import</span> <span class="n">MapReduceCoordinator</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">mr_worker</span><span class="w"> </span><span class="kn">import</span> <span class="n">MapReduceWorker</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dsdx</span><span class="w"> </span><span class="kn">import</span> <span class="n">dsdx</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">inverted_index_map</span><span class="p">(</span><span class="n">record</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]):</span>
@@ -730,7 +723,7 @@ The first copy to complete wins; others are discarded.</p>
 
 <span class="k">def</span><span class="w"> </span><span class="nf">inverted_index_reduce</span><span class="p">(</span><span class="n">word</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">doc_ids</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">"""Reduce function: collect unique document IDs."""</span>
-    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">doc_ids</span><span class="p">))</span>
+    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">doc_ids</span><span class="p">)))</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">InvertedIndexJob</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
@@ -755,7 +748,7 @@ The first copy to complete wins; others are discarded.</p>
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">word</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">docs</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
 
-<span class="k">def</span><span class="w"> </span><span class="nf">run_inverted_index</span><span class="p">():</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">"""Build inverted index for search."""</span>
     <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
 
@@ -782,9 +775,7 @@ The first copy to complete wins; others are discarded.</p>
 
 
 <span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
-    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
-        <span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
-    <span class="n">run_inverted_index</span><span class="p">()</span>
+    <span class="n">dsdx</span><span class="p">(</span><span class="n">main</span><span class="p">)</span>
 </code></pre></div>
 </div>
 <p>This shows how MapReduce handles complex analytics beyond simple aggregation.</p>

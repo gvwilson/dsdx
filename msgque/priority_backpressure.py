@@ -16,6 +16,8 @@ class PriorityMessage(Message):
     def __lt__(self, other):
         """Compare by priority for heap operations."""
         return self.priority < other.priority
+
+
 # mccole: /message
 
 
@@ -54,11 +56,12 @@ class PriorityBackpressureBroker:
                 # Displace lowest priority item if new message has higher priority
                 bisect.insort(queue._items, message)
                 kept = message is not queue._items[-1]
-                queue._items = queue._items[:queue._max_capacity]
+                queue._items = queue._items[: queue._max_capacity]
                 if kept:
                     self.num_delivered += 1
                 else:
                     all_delivered = False
 
         return all_delivered
+
     # mccole: /publish

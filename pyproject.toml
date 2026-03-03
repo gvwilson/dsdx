@@ -18,7 +18,6 @@ dependencies = [
     "asimpy>=0.10.0",
     "mccole>=1.5.2",
     "ruff>=0.1.0",
-    "taskipy>=1.14.1",
 ]
 
 [project.urls]
@@ -59,25 +58,3 @@ skips = [
     "uv.lock",
     "worksteal/**",
 ]
-
-[tool.taskipy.tasks]
-all_examples = {help = "re-run all examples", cmd = """
-for i in mapreduce msgque worksteal tracing crdt; do task examples $i; done
-"""}
-build = {help = "build package", cmd = "python -m build"}
-check = {help = "check code", cmd = "ruff check ."}
-clean = {help = "clean up", cmd = """
-find . -path './.venv' -prune -o -type d -name '__pycache__' -exec rm -rf {} + &&
-find . -path './.venv' -prune -o -type d -name '.ruff_cache' -exec rm -rf {} + &&
-find . -path './.venv' -prune -o -type f -name '*~' -exec rm {} +
-"""}
-docs = {help = "build HTML", cmd = "mccole build --src . --dst docs && touch docs/.nojekyll"}
-examples = {help = "re-run examples in a directory", cmd = """
-sh -c 'cd \"$0\" &&
-for filename in ex_*.py; do python $filename 192837 > ${filename%.py}.txt; done'"""}
-fix = {help = "fix code issues", cmd = "ruff check --fix ."}
-format = {help = "format code", cmd = "ruff format ."}
-html = {help = "check HTML", cmd = "mccole check --src . --dst docs"}
-lint = {help = "run all checks", cmd = "task check && task types"}
-serve = {help = "serve HTML", cmd = "python -m http.server -d docs"}
-types = {help = "check types", cmd = "ty check ."}

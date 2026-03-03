@@ -24,7 +24,8 @@ class TraceCollector(BaseCollector):
         while True:
             span = await self.span_queue.get()
             self.process_span(span)
-# mccole: /collector
+
+    # mccole: /collector
 
     # mccole: process
     def process_span(self, span: Span) -> None:
@@ -56,6 +57,7 @@ class TraceCollector(BaseCollector):
         self.completed_traces.append(trace)
         self.traces_completed += 1
         del self.active_traces[trace.trace_id]
+
     # mccole: /process
 
     def report_trace(self, trace: Trace) -> None:

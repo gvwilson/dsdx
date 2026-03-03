@@ -23,7 +23,8 @@ class BackpressurePublisher(Process):
         self.message_counter = 0
         self.current_interval = base_interval
         self.backpressure_events = 0
-# mccole: /init
+
+    # mccole: /init
 
     # mccole: run
     async def run(self):
@@ -62,4 +63,5 @@ class BackpressurePublisher(Process):
 
             # Wait before next message.
             await self.timeout(self.current_interval)
+
     # mccole: /run

@@ -12,7 +12,9 @@ if TYPE_CHECKING:
 class AdaptiveWorker(Worker):
     """Worker with adaptive target selection."""
 
-    def init(self, worker_id: int, scheduler: "WorkStealingScheduler", verbose: bool = True):
+    def init(
+        self, worker_id: int, scheduler: "WorkStealingScheduler", verbose: bool = True
+    ):
         super().init(worker_id, scheduler)
         self.steal_attempts = 0
         self.failed_steals = 0
@@ -39,4 +41,6 @@ class AdaptiveWorker(Worker):
 
         self.failed_steals += 1
         return None
+
+
 # mccole: /worker

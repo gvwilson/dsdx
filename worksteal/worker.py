@@ -24,6 +24,7 @@ class Worker(Process):
         self.current_task: Task | None = None
         self.tasks_executed = 0
         self.tasks_stolen = 0
+
     # mccole: /worker
 
     # mccole: run
@@ -44,6 +45,7 @@ class Worker(Process):
                 else:
                     # No work available anywhere, wait a bit
                     await self.timeout(0.1)
+
     # mccole: /run
 
     # mccole: execute
@@ -62,6 +64,7 @@ class Worker(Process):
         if self.verbose:
             print(f"[{self.now:.1f}] Worker {self.worker_id}: Completed {task.task_id}")
         self.current_task = None
+
     # mccole: /execute
 
     # mccole: steal
@@ -85,4 +88,5 @@ class Worker(Process):
                 return task
 
         return None
+
     # mccole: /steal

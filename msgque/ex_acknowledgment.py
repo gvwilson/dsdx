@@ -43,8 +43,6 @@ class AckSubscriber(Process):
             await self.timeout(self.processing_time)
 
             # Simulate occasional failures (don't acknowledge)
-            import random
-
             if random.random() > self.failure_rate:
                 self.broker.acknowledge(message.ack_id)
                 self.num_acked += 1
@@ -54,6 +52,8 @@ class AckSubscriber(Process):
                     f"[{self.now:.1f}] {self.name}: FAILED to process "
                     f"{message.content} (will be redelivered)"
                 )
+
+
 # mccole: /acksubscriber
 
 
@@ -83,6 +83,8 @@ class AckPublisher(Process):
             await self.broker.publish(message)
 
             await self.timeout(self.interval)
+
+
 # mccole: /ackpublisher
 
 
@@ -110,6 +112,8 @@ def main():
     print(f"Messages received: {subscriber.num_received}")
     print(f"Messages acknowledged: {subscriber.num_acked}")
     print(f"Pending acks: {len(broker.pending_acks)}")
+
+
 # mccole: /simulate
 
 

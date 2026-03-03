@@ -17,6 +17,7 @@ class Peer:
 NAMES = ["Ahmed", "Baemi", "Chiti"]
 VALUES = ["red", "green", "blue", "yellow"]
 
+
 class Replica(Process):
     """A replica that writes to its local register and syncs with peers."""
 
@@ -40,9 +41,13 @@ class Replica(Process):
             # Sync with a random peer.
             peer = random.choice(self.peers)
             self.register.merge(peer.register)
-            print(f"[{self.now}] {self.name}: synced with {peer.name} -> '{self.register.value}'")
+            print(
+                f"[{self.now}] {self.name}: synced with {peer.name} -> '{self.register.value}'"
+            )
 
             await self.timeout(self.sync_interval)
+
+
 # mccole: /replica
 
 
@@ -54,13 +59,17 @@ def main():
     processes = []
     for r in replicas:
         peers = [p for p in replicas if p is not r]
-        proc = Replica(env, r.name, r.register, peers, write_interval=2, sync_interval=3)
+        proc = Replica(
+            env, r.name, r.register, peers, write_interval=2, sync_interval=3
+        )
         processes.append(proc)
 
     env.run(until=10)
     print("\n--- Final State")
     for r in replicas:
         print(f"{r.name}: {r.register}")
+
+
 # mccole: /sim
 
 

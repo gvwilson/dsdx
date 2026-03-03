@@ -4,11 +4,11 @@ requires-python = ">=3.13"
 
 [[package]]
 name = "asimpy"
-version = "0.12.0"
+version = "0.14.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/34/c4/7a6eb3b8472a61c767172dd74127393aecf4535ad1663e7dac71a8033c50/asimpy-0.12.0.tar.gz", hash = "sha256:67ad1e7c42037e141defb0cc89f5b5e7f4ebec7ae4f9c3f8bc303c7863b453e4", size = 748436, upload-time = "2026-03-01T15:03:21.392Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/aa/76/6529d5951eafe0cefe6e86f06d6c1d3dace4bf2e723660e3feeecb15b063/asimpy-0.14.0.tar.gz", hash = "sha256:ddda6e79cd9104351ec80a50a509ca14d1de57c72d24855447dc7943d7ed83cb", size = 780863, upload-time = "2026-03-03T02:04:39.718Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/54/b4/0ed7941b8ee65019b4fccf7bd90ec821da6415f27caba9899f5cec90c80c/asimpy-0.12.0-py3-none-any.whl", hash = "sha256:44ef1ec3dcaa1a446d70a9ec618281d77f16f65479ffc2727af5b6120112b0cf", size = 16175, upload-time = "2026-03-01T15:03:20.17Z" },
+    { url = "https://files.pythonhosted.org/packages/e8/70/9226bc9528992e8c4ecc8832a015085ff5dd074c010addc20bee1479b644/asimpy-0.14.0-py3-none-any.whl", hash = "sha256:cf352edef3f0ac8d4ac5e3e6dc8fa4f03f1ff1e48a520ce8a479a948f5a47e67", size = 16033, upload-time = "2026-03-03T02:04:38.446Z" },
 ]
 
 [[package]]

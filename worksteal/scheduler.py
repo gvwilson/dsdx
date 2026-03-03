@@ -47,7 +47,8 @@ class WorkStealingScheduler:
             )
 
         return task
-# mccole: /scheduler
+
+    # mccole: /scheduler
 
     def get_statistics(self):
         """Get scheduler statistics."""

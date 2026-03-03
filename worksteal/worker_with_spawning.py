@@ -41,4 +41,6 @@ class WorkerWithSpawning(Worker):
         """Spawn a new task (called by executing task)."""
         self.deque.push_bottom(task)
         print(f"[{self.now:.1f}] Worker {self.worker_id}: Spawned {task.task_id}")
+
+
 # mccole: /spawner

@@ -18,4 +18,6 @@ class TaskGenerator(Process):
         for i in range(self.num_initial_tasks):
             self.scheduler.submit_task(duration=random.uniform(1.0, 3.0))
             await self.timeout(0.5)
+
+
 # mccole: /gen

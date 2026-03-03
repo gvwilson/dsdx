@@ -2,7 +2,7 @@
 
 from asimpy import Process, Queue
 import random
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING
 from mr_types import MapTask, ReduceTask, IntermediateData
 
 if TYPE_CHECKING:
@@ -29,9 +29,10 @@ class MapReduceWorker(Process):
 
         # Simulate failure probability
         self.failure_rate = 0.0
-# mccole: /worker
 
-# mccole: run
+    # mccole: /worker
+
+    # mccole: run
     async def run(self):
         """Main worker loop: fetch and execute tasks."""
         while True:
@@ -49,9 +50,10 @@ class MapReduceWorker(Process):
                 await self.execute_map(task)
             elif isinstance(task, ReduceTask):
                 await self.execute_reduce(task)
-# mccole: /run
 
-# mccole: map
+    # mccole: /run
+
+    # mccole: map
     async def execute_map(self, task: MapTask):
         """Execute a map task."""
         self.current_task = task
@@ -84,9 +86,10 @@ class MapReduceWorker(Process):
         self.coordinator.map_completed(task.task_id, partitions, self.worker_id)
 
         self.current_task = None
-# mccole: /map
 
-# mccole: reduce
+    # mccole: /map
+
+    # mccole: reduce
     async def execute_reduce(self, task: ReduceTask):
         """Execute a reduce task."""
         self.current_task = task
@@ -125,4 +128,6 @@ class MapReduceWorker(Process):
         self.coordinator.reduce_completed(task.task_id, results, self.worker_id)
 
         self.current_task = None
+
+
 # mccole: /reduce

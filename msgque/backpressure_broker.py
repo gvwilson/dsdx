@@ -15,7 +15,8 @@ class BackpressureBroker:
         self.num_published = 0
         self.num_delivered = 0
         self.num_dropped = 0
-# mccole: /backpressure
+
+    # mccole: /backpressure
 
     # mccole: subscribe
     def subscribe(self, topic: str) -> Queue:
@@ -23,6 +24,7 @@ class BackpressureBroker:
         queue = Queue(self.env, max_capacity=self.max_queue_size)
         self.topics[topic].append(queue)
         return queue
+
     # mccole: /subscribe
 
     # mccole: publish
@@ -45,4 +47,5 @@ class BackpressureBroker:
                 all_delivered = False
 
         return all_delivered
+
     # mccole: /publish

@@ -13,7 +13,8 @@ class MessageBroker:
         self.topics: dict[str, list[Queue]] = defaultdict(list)
         self.num_published = 0
         self.num_delivered = 0
-# mccole: /broker
+
+    # mccole: /broker
 
     # mccole: subscribe
     def subscribe(self, topic: str) -> Queue:
@@ -21,6 +22,7 @@ class MessageBroker:
         queue = Queue(self.env)
         self.topics[topic].append(queue)
         return queue
+
     # mccole: /subscribe
 
     # mccole: publish
@@ -31,4 +33,5 @@ class MessageBroker:
         for queue in queues:
             await queue.put(message)
             self.num_delivered += 1
+
     # mccole: /publish

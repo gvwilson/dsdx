@@ -13,7 +13,7 @@ class MapTask:
 
     task_id: str
     data: list[Any]
-# mccole: /map
+    # mccole: /map
 
     def __str__(self):
         return f"MapTask({self.task_id})"
@@ -45,6 +45,8 @@ class IntermediateData:
         for key, value in self.pairs:
             grouped[key].append(value)
         return dict(grouped)
+
+
 # mccole: /intermediate
 
 
@@ -56,7 +58,7 @@ class ReduceTask:
     task_id: str
     partition_id: int
     keys: list[Any]  # Keys this reducer is responsible for
-# mccole: /reduce
+    # mccole: /reduce
 
     def __str__(self):
         return f"ReduceTask({self.task_id}, partition={self.partition_id})"
@@ -67,4 +69,6 @@ def _stable_hash(key: Any) -> int:
     """Deterministic hash (not affected by PYTHONHASHSEED)."""
 
     return int(hashlib.md5(str(key).encode()).hexdigest(), 16)
+
+
 # mccole: /hash

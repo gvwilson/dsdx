@@ -11,6 +11,8 @@ class Operation:
     op_type: str
     replica_id: str
     amount: int = 0
+
+
 # mccole: /op
 
 
@@ -42,7 +44,8 @@ class OpBasedCounter:
             self.value += op.amount
         elif op.op_type == "decrement":
             self.value -= op.amount
-# mccole: /counter
+
+    # mccole: /counter
 
     def __str__(self):
         return f"OpCounter(id={self.replica_id}, value={self.value})"
