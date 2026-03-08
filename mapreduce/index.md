@@ -33,7 +33,19 @@ the reduce operations must be associative and commutative
 so that they can be applied in any order.
 These two constraints enable parallelism and fault tolerance.
 
-## Core Data Structures
+## Word Count {: #mapreduce-wordcount}
+
+Let's start by showing how MapReduce is used,
+and then show how it is implemented.
+The classic MapReduce example counts how often each word occurs in a document.
+
+<div data-inc="ex_word_count.py"></div>
+
+As this example shows,
+he programmer writes two simple functions and runs a process to coordinate them.
+The framework handles distribution, parallelization, and aggregation.
+
+## Core Data Structures {: #mapreduce-datastructures}
 
 Let's start with some dataclasses to represent the data flowing through the framework.
 Input will be split into chunks for the map phase:
@@ -67,7 +79,7 @@ we introduced our own hashing function:
 
 </div>
 
-## Worker Implementation
+## Worker Implementation {: #mapreduce-worker}
 
 Worker processes execute both map and reduce tasks.
 Each has a unique worker ID,
@@ -99,129 +111,64 @@ Reducing works the same way:
 
 <div data-inc="mr_worker.py" data-filter="inc=reduce"></div>
 
-## MapReduce Coordinator
-
-The coordinator orchestrates the entire computation:
-
-<div data-inc="mr_coordinator.py"></div>
+## MapReduce Coordinator {: #mapreduce-coordinator}
 
 The coordinator manages the entire lifecycle:
 splitting input, dispatching tasks, collecting results, and handling failures by re-executing failed tasks.
 
-Note that `run()` returns a coroutine (by returning the result of `_execute()`), which must be awaited.
-This pattern allows the coordinator to be a regular object (not a Process) while still providing async execution.
-A Process wraps the coroutine to integrate it into the simulation.
+<div data-inc="mr_coordinator.py"></div>
 
-## Example: Word Count
+Note that `run()` returns a coroutine by returning the result of `_execute()`;
+this coroutine is awaited by the `Process` that the user writes.
 
-The classic MapReduce example counts occurrences of each word in a document:
+## Combiner Functions {: #mapreduce-combiner}
 
-<div data-inc="ex_word_count.py"></div>
-
-This demonstrates MapReduce's power: the programmer writes two simple functions (map and reduce),
-wraps the job execution in a Process,
-and the framework handles distribution, parallelization, and aggregation.
-
-## Combiner Functions
-
-A combiner is a local reduce that runs on each mapper's output before shuffling.
-This reduces network traffic:
+A combiner is a local reduce that runs on each mapper's output before shuffling
+in order to reduce network traffic.
+Doing this can dramatically improve performance for operations like summation or counting.
 
 <div data-inc="coordinator_with_combiner.py"></div>
 
-The combiner reduces data before it crosses the network,
-which can dramatically improve performance for operations like summation or counting.
+## Handling Stragglers with Speculative Execution {: #mapreduce-speculative}
 
-## Handling Stragglers with Speculative Execution
-
-Some workers may be slow (stragglers) due to hardware issues, resource contention, or other reasons.
-MapReduce handles this with speculative execution—launching backup copies of slow tasks:
+Some workers may be stragglers due to hardware issues or resource contention.
+MapReduce can accommodate this by launching backup copies of slow tasks.
+The first copy to complete wins,
+while others are discarded.
+This is called [speculative execution](g:speculative-execution),
+and ensures that one slow worker doesn't delay the entire job.
 
 <div data-inc="speculative_coordinator.py"></div>
 
-Speculative execution ensures one slow worker doesn't delay the entire job.
-The first copy to complete wins; others are discarded.
+## Fault Tolerance Simulation {: #mapreduce-fault}
 
-## Fault Tolerance Simulation
-
-Let's simulate worker failures:
+A simple extension of speculative execution is [fault tolerance](g:fault-tolerance):
+the framework automatically retries failed tasks,
+ensuring that computation completes despite failures.
 
 <div data-inc="ex_fault_tolerance.py"></div>
 
-The framework automatically retries failed tasks, ensuring computation completes despite failures.
+## In the Real World {: #mapreduce-real}
 
-## Real-World Example: Inverted Index
+MapReduce's limitations led to the next-generation systems described in the introduction.
+First, MapReduce writes intermediate data to disk between phases.
+This is expensive for iterative algorithms of the kind used in machine learning,
+and becomes more so when complex computation require multiple MapReduce jobs to be chained together.
 
-An inverted index maps words to documents—essential for search engines:
+Second, MapReduce has no data sharing:
+there is no way to cache intermediate results in memory across jobs,
+which can lead to redundant computation.
+Finally, MapReduce is designed for batch processing:
+real-time stream processing requires a different approach.
 
-<div data-inc="ex_inverted_index.py"></div>
-
-This shows how MapReduce handles complex analytics beyond simple aggregation.
-
-## Limitations and Evolution
-
-MapReduce has limitations that led to systems like Apache Spark:
-
--  **Disk I/O overhead**: MapReduce writes intermediate data to disk between phases.
-For iterative algorithms (like machine learning), this is expensive.
-
--  **Two-phase limitation**: Complex computations require chaining multiple MapReduce jobs,
-each with full disk I/O overhead.
-
--  **No data sharing**: Each job starts from scratch.
-No way to cache intermediate results in memory across jobs.
-
--  **Batch-only**: MapReduce is designed for batch processing.
-Real-time stream processing requires different systems.
-
-Spark addresses these limitations with in-memory processing,
-lazy evaluation,
-and a more flexible computational model.
-But MapReduce's core ideas remain fundamental:
-functional transformations,
-partition-based parallelism,
-and fault tolerance through re-execution.
-
-## Real-World Considerations
-
-Production MapReduce systems need:
-
--  **Locality-aware scheduling**:
-Schedule tasks on nodes that already have the input data (data locality) to minimize network transfer.
-
--  **Dynamic task assignment**:
-Don't pre-assign all tasks; let fast workers take more work than slow ones.
-
--  **Compression**:
-Compress intermediate data to reduce disk and network usage.
-
--  **Counters and monitoring**:
-Track progress, identify bottlenecks, report statistics.
-
--  **Job prioritization**:
-Schedule important jobs before less important ones.
-
--  **Resource management**:
-Integrate with cluster resource managers (YARN, Mesos).
-
--  **Security**:
-Authentication, authorization, data encryption.
-
-## Conclusion
-
+Even with these shortcomings,
 MapReduce demonstrates how to build scalable distributed computation through simple abstractions.
 The key principles are:
 
-1.  **Functional programming**: Map and reduce are pure functions with no side effects
-1.  **Partitioning**: Data is automatically partitioned and distributed
-1.  **Independent processing**: Map tasks don't communicate; reduce tasks are independent
-1.  **Fault tolerance**: Re-execute failed tasks; idempotent operations make this safe
-1.  **Simplicity**: Programmers write two functions; framework handles everything else
-
-These patterns appear throughout distributed computing: Spark uses similar transformations, Flink extends the model to streams, and data warehouse systems like BigQuery use map-reduce-style execution plans.
-
-Our simulation demonstrates the core mechanics: splitting input, distributing tasks, shuffling data, and handling failures.
-While real implementations require sophisticated optimizations—network protocols, disk management, resource scheduling—the fundamental pattern we've built captures the essence of distributed batch processing.
+1.  Partitioning: data is automatically partitioned and distributed.
+1.  Independent processing: Map tasks don't communicate, and reduce tasks are independent.
+1.  Fault tolerance: Idempotent operations make it safe to re-execute tasks.
+1.  Simplicity: Programmers write two functions, and the framework handles everything else.
 
 ## A Note on Hashing and Reproducibility {: #mapreduce-hashing}
 

@@ -71,7 +71,88 @@ Similarly,
 the reduce operations must be associative and commutative
 so that they can be applied in any order.
 These two constraints enable parallelism and fault tolerance.</p>
-<h2>Core Data Structures</h2>
+<h2 id="mapreduce-wordcount">Word Count</h2>
+<p>Let's start by showing how MapReduce is used,
+and then show how it is implemented.
+The classic MapReduce example counts how often each word occurs in a document.</p>
+<div data-inc="ex_word_count.py"><div class="codehilite"><pre class=""><span></span><code><span class="sd">"""Classic word count MapReduce example."""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">asimpy</span><span class="w"> </span><span class="kn">import</span> <span class="n">Environment</span><span class="p">,</span> <span class="n">Process</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mr_coordinator</span><span class="w"> </span><span class="kn">import</span> <span class="n">MapReduceCoordinator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mr_worker</span><span class="w"> </span><span class="kn">import</span> <span class="n">MapReduceWorker</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dsdx</span><span class="w"> </span><span class="kn">import</span> <span class="n">dsdx</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">word_count_map</span><span class="p">(</span><span class="n">record</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Map function: emit (word, 1) for each word."""</span>
+    <span class="n">words</span> <span class="o">=</span> <span class="n">record</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">words</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="p">(</span><span class="n">word</span><span class="o">.</span><span class="n">lower</span><span class="p">(),</span> <span class="mi">1</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">word_count_reduce</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">values</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Reduce function: sum all counts for a word."""</span>
+    <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">WordCountJob</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Process that runs the MapReduce job."""</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">init</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">coordinator</span><span class="p">:</span> <span class="n">MapReduceCoordinator</span><span class="p">,</span> <span class="n">input_data</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">num_splits</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span> <span class="o">=</span> <span class="n">coordinator</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_data</span> <span class="o">=</span> <span class="n">input_data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_splits</span> <span class="o">=</span> <span class="n">num_splits</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Run the job and display results."""</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">input_data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_splits</span><span class="p">)</span>
+
+        <span class="c1"># Sort and display results</span>
+        <span class="n">results</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"=== Word Count Results ==="</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">word</span><span class="p">,</span> <span class="n">count</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">word</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">count</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">"""Run word count example."""</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
+
+    <span class="c1"># Create coordinator</span>
+    <span class="n">coordinator</span> <span class="o">=</span> <span class="n">MapReduceCoordinator</span><span class="p">(</span>
+        <span class="n">env</span><span class="p">,</span> <span class="n">map_fn</span><span class="o">=</span><span class="n">word_count_map</span><span class="p">,</span> <span class="n">reduce_fn</span><span class="o">=</span><span class="n">word_count_reduce</span><span class="p">,</span> <span class="n">num_reducers</span><span class="o">=</span><span class="mi">3</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Create workers</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+        <span class="n">worker</span> <span class="o">=</span> <span class="n">MapReduceWorker</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">coordinator</span><span class="p">)</span>
+        <span class="n">coordinator</span><span class="o">.</span><span class="n">add_worker</span><span class="p">(</span><span class="n">worker</span><span class="p">)</span>
+
+    <span class="c1"># Input data: lines of text</span>
+    <span class="n">input_data</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s2">"the quick brown fox"</span><span class="p">,</span>
+        <span class="s2">"jumps over the lazy dog"</span><span class="p">,</span>
+        <span class="s2">"the dog was not amused"</span><span class="p">,</span>
+        <span class="s2">"the quick brown fox jumps again"</span><span class="p">,</span>
+        <span class="s2">"the lazy dog sleeps"</span><span class="p">,</span>
+    <span class="p">]</span>
+
+    <span class="c1"># Run job</span>
+    <span class="n">WordCountJob</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">coordinator</span><span class="p">,</span> <span class="n">input_data</span><span class="p">,</span> <span class="n">num_splits</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+
+    <span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
+    <span class="n">dsdx</span><span class="p">(</span><span class="n">main</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<p>As this example shows,
+he programmer writes two simple functions and runs a process to coordinate them.
+The framework handles distribution, parallelization, and aggregation.</p>
+<h2 id="mapreduce-datastructures">Core Data Structures</h2>
 <p>Let's start with some dataclasses to represent the data flowing through the framework.
 Input will be split into chunks for the map phase:</p>
 <div data-filter="inc=map" data-inc="mr_types.py"><div class="codehilite"><pre class=""><span></span><code><span class="nd">@dataclass</span>
@@ -140,7 +221,7 @@ we introduced our own hashing function:</p>
 </code></pre></div>
 </div>
 </div>
-<h2>Worker Implementation</h2>
+<h2 id="mapreduce-worker">Worker Implementation</h2>
 <p>Worker processes execute both map and reduce tasks.
 Each has a unique worker ID,
 a queue of incoming tasks,
@@ -268,8 +349,9 @@ and sends them back to the coordinator:</p>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_task</span> <span class="o">=</span> <span class="kc">None</span>
 </code></pre></div>
 </div>
-<h2>MapReduce Coordinator</h2>
-<p>The coordinator orchestrates the entire computation:</p>
+<h2 id="mapreduce-coordinator">MapReduce Coordinator</h2>
+<p>The coordinator manages the entire lifecycle:
+splitting input, dispatching tasks, collecting results, and handling failures by re-executing failed tasks.</p>
 <div data-inc="mr_coordinator.py"><div class="codehilite"><pre class=""><span></span><code><span class="sd">"""MapReduce coordinator that orchestrates computation."""</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">asimpy</span><span class="w"> </span><span class="kn">import</span> <span class="n">Environment</span>
@@ -439,93 +521,12 @@ and sends them back to the coordinator:</p>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">intermediate_storage</span><span class="p">[</span><span class="n">partition_id</span><span class="p">]</span>
 </code></pre></div>
 </div>
-<p>The coordinator manages the entire lifecycle:
-splitting input, dispatching tasks, collecting results, and handling failures by re-executing failed tasks.</p>
-<p>Note that <code>run()</code> returns a coroutine (by returning the result of <code>_execute()</code>), which must be awaited.
-This pattern allows the coordinator to be a regular object (not a Process) while still providing async execution.
-A Process wraps the coroutine to integrate it into the simulation.</p>
-<h2>Example: Word Count</h2>
-<p>The classic MapReduce example counts occurrences of each word in a document:</p>
-<div data-inc="ex_word_count.py"><div class="codehilite"><pre class=""><span></span><code><span class="sd">"""Classic word count MapReduce example."""</span>
-
-<span class="kn">from</span><span class="w"> </span><span class="nn">asimpy</span><span class="w"> </span><span class="kn">import</span> <span class="n">Environment</span><span class="p">,</span> <span class="n">Process</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">mr_coordinator</span><span class="w"> </span><span class="kn">import</span> <span class="n">MapReduceCoordinator</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">mr_worker</span><span class="w"> </span><span class="kn">import</span> <span class="n">MapReduceWorker</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">dsdx</span><span class="w"> </span><span class="kn">import</span> <span class="n">dsdx</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">word_count_map</span><span class="p">(</span><span class="n">record</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""Map function: emit (word, 1) for each word."""</span>
-    <span class="n">words</span> <span class="o">=</span> <span class="n">record</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
-    <span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">words</span><span class="p">:</span>
-        <span class="k">yield</span> <span class="p">(</span><span class="n">word</span><span class="o">.</span><span class="n">lower</span><span class="p">(),</span> <span class="mi">1</span><span class="p">)</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">word_count_reduce</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">values</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">"""Reduce function: sum all counts for a word."""</span>
-    <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
-
-
-<span class="k">class</span><span class="w"> </span><span class="nc">WordCountJob</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""Process that runs the MapReduce job."""</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">init</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">coordinator</span><span class="p">:</span> <span class="n">MapReduceCoordinator</span><span class="p">,</span> <span class="n">input_data</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">num_splits</span><span class="p">:</span> <span class="nb">int</span>
-    <span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span> <span class="o">=</span> <span class="n">coordinator</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">input_data</span> <span class="o">=</span> <span class="n">input_data</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">num_splits</span> <span class="o">=</span> <span class="n">num_splits</span>
-
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">"""Run the job and display results."""</span>
-        <span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">input_data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_splits</span><span class="p">)</span>
-
-        <span class="c1"># Sort and display results</span>
-        <span class="n">results</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">=== Word Count Results ==="</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">word</span><span class="p">,</span> <span class="n">count</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">word</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">count</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
-<span class="w">    </span><span class="sd">"""Run word count example."""</span>
-    <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
-
-    <span class="c1"># Create coordinator</span>
-    <span class="n">coordinator</span> <span class="o">=</span> <span class="n">MapReduceCoordinator</span><span class="p">(</span>
-        <span class="n">env</span><span class="p">,</span> <span class="n">map_fn</span><span class="o">=</span><span class="n">word_count_map</span><span class="p">,</span> <span class="n">reduce_fn</span><span class="o">=</span><span class="n">word_count_reduce</span><span class="p">,</span> <span class="n">num_reducers</span><span class="o">=</span><span class="mi">3</span>
-    <span class="p">)</span>
-
-    <span class="c1"># Create workers</span>
-    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
-        <span class="n">worker</span> <span class="o">=</span> <span class="n">MapReduceWorker</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">coordinator</span><span class="p">)</span>
-        <span class="n">coordinator</span><span class="o">.</span><span class="n">add_worker</span><span class="p">(</span><span class="n">worker</span><span class="p">)</span>
-
-    <span class="c1"># Input data: lines of text</span>
-    <span class="n">input_data</span> <span class="o">=</span> <span class="p">[</span>
-        <span class="s2">"the quick brown fox"</span><span class="p">,</span>
-        <span class="s2">"jumps over the lazy dog"</span><span class="p">,</span>
-        <span class="s2">"the dog was not amused"</span><span class="p">,</span>
-        <span class="s2">"the quick brown fox jumps again"</span><span class="p">,</span>
-        <span class="s2">"the lazy dog sleeps"</span><span class="p">,</span>
-    <span class="p">]</span>
-
-    <span class="c1"># Run job</span>
-    <span class="n">WordCountJob</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">coordinator</span><span class="p">,</span> <span class="n">input_data</span><span class="p">,</span> <span class="n">num_splits</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
-
-    <span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
-
-
-<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
-    <span class="n">dsdx</span><span class="p">(</span><span class="n">main</span><span class="p">)</span>
-</code></pre></div>
-</div>
-<p>This demonstrates MapReduce's power: the programmer writes two simple functions (map and reduce),
-wraps the job execution in a Process,
-and the framework handles distribution, parallelization, and aggregation.</p>
-<h2>Combiner Functions</h2>
-<p>A combiner is a local reduce that runs on each mapper's output before shuffling.
-This reduces network traffic:</p>
+<p>Note that <code>run()</code> returns a coroutine by returning the result of <code>_execute()</code>;
+this coroutine is awaited by the <code>Process</code> that the user writes.</p>
+<h2 id="mapreduce-combiner">Combiner Functions</h2>
+<p>A combiner is a local reduce that runs on each mapper's output before shuffling
+in order to reduce network traffic.
+Doing this can dramatically improve performance for operations like summation or counting.</p>
 <div data-inc="coordinator_with_combiner.py"><div class="codehilite"><pre class=""><span></span><code><span class="sd">"""MapReduce coordinator with combiner optimization."""</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">asimpy</span><span class="w"> </span><span class="kn">import</span> <span class="n">Environment</span>
@@ -548,11 +549,13 @@ This reduces network traffic:</p>
         <span class="bp">self</span><span class="o">.</span><span class="n">combiner_fn</span> <span class="o">=</span> <span class="n">combiner_fn</span> <span class="ow">or</span> <span class="n">reduce_fn</span>
 </code></pre></div>
 </div>
-<p>The combiner reduces data before it crosses the network,
-which can dramatically improve performance for operations like summation or counting.</p>
-<h2>Handling Stragglers with Speculative Execution</h2>
-<p>Some workers may be slow (stragglers) due to hardware issues, resource contention, or other reasons.
-MapReduce handles this with speculative execution—launching backup copies of slow tasks:</p>
+<h2 id="mapreduce-speculative">Handling Stragglers with Speculative Execution</h2>
+<p>Some workers may be stragglers due to hardware issues or resource contention.
+MapReduce can accommodate this by launching backup copies of slow tasks.
+The first copy to complete wins,
+while others are discarded.
+This is called <a href="../glossary/#speculative-execution">speculative execution</a>,
+and ensures that one slow worker doesn't delay the entire job.</p>
 <div data-inc="speculative_coordinator.py"><div class="codehilite"><pre class=""><span></span><code><span class="sd">"""MapReduce coordinator with speculative execution."""</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">asimpy</span><span class="w"> </span><span class="kn">import</span> <span class="n">Environment</span><span class="p">,</span> <span class="n">Process</span>
@@ -622,10 +625,10 @@ MapReduce handles this with speculative execution—launching backup copies of s
                 <span class="k">await</span> <span class="n">worker</span><span class="o">.</span><span class="n">task_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
 </code></pre></div>
 </div>
-<p>Speculative execution ensures one slow worker doesn't delay the entire job.
-The first copy to complete wins; others are discarded.</p>
-<h2>Fault Tolerance Simulation</h2>
-<p>Let's simulate worker failures:</p>
+<h2 id="mapreduce-fault">Fault Tolerance Simulation</h2>
+<p>A simple extension of speculative execution is <a href="../glossary/#fault-tolerance">fault tolerance</a>:
+the framework automatically retries failed tasks,
+ensuring that computation completes despite failures.</p>
 <div data-inc="ex_fault_tolerance.py"><div class="codehilite"><pre class=""><span></span><code><span class="sd">"""Fault tolerance demonstration with worker failures."""</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">asimpy</span><span class="w"> </span><span class="kn">import</span> <span class="n">Environment</span><span class="p">,</span> <span class="n">Process</span>
@@ -697,160 +700,25 @@ The first copy to complete wins; others are discarded.</p>
     <span class="n">dsdx</span><span class="p">(</span><span class="n">main</span><span class="p">)</span>
 </code></pre></div>
 </div>
-<p>The framework automatically retries failed tasks, ensuring computation completes despite failures.</p>
-<h2>Real-World Example: Inverted Index</h2>
-<p>An inverted index maps words to documents—essential for search engines:</p>
-<div data-inc="ex_inverted_index.py"><div class="codehilite"><pre class=""><span></span><code><span class="sd">"""Inverted index construction for search engines."""</span>
-
-<span class="kn">from</span><span class="w"> </span><span class="nn">asimpy</span><span class="w"> </span><span class="kn">import</span> <span class="n">Environment</span><span class="p">,</span> <span class="n">Process</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">mr_coordinator</span><span class="w"> </span><span class="kn">import</span> <span class="n">MapReduceCoordinator</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">mr_worker</span><span class="w"> </span><span class="kn">import</span> <span class="n">MapReduceWorker</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">dsdx</span><span class="w"> </span><span class="kn">import</span> <span class="n">dsdx</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">inverted_index_map</span><span class="p">(</span><span class="n">record</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]):</span>
-<span class="w">    </span><span class="sd">"""Map function: record is (doc_id, text)."""</span>
-    <span class="n">doc_id</span><span class="p">,</span> <span class="n">text</span> <span class="o">=</span> <span class="n">record</span>
-    <span class="n">words</span> <span class="o">=</span> <span class="n">text</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
-
-    <span class="n">seen</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
-    <span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">words</span><span class="p">:</span>
-        <span class="n">word</span> <span class="o">=</span> <span class="n">word</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
-        <span class="k">if</span> <span class="n">word</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">seen</span><span class="p">:</span>
-            <span class="n">seen</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">word</span><span class="p">)</span>
-            <span class="k">yield</span> <span class="p">(</span><span class="n">word</span><span class="p">,</span> <span class="n">doc_id</span><span class="p">)</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">inverted_index_reduce</span><span class="p">(</span><span class="n">word</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">doc_ids</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">"""Reduce function: collect unique document IDs."""</span>
-    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">doc_ids</span><span class="p">)))</span>
-
-
-<span class="k">class</span><span class="w"> </span><span class="nc">InvertedIndexJob</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""Process that builds an inverted index."""</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">init</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">coordinator</span><span class="p">:</span> <span class="n">MapReduceCoordinator</span><span class="p">,</span>
-        <span class="n">documents</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]],</span>
-        <span class="n">num_splits</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-    <span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span> <span class="o">=</span> <span class="n">coordinator</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">documents</span> <span class="o">=</span> <span class="n">documents</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">num_splits</span> <span class="o">=</span> <span class="n">num_splits</span>
-
-    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">"""Run the job and display results."""</span>
-        <span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">documents</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_splits</span><span class="p">)</span>
-
-        <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">=== Inverted Index ==="</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">word</span><span class="p">,</span> <span class="n">docs</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">results</span><span class="p">):</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">word</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">docs</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
-<span class="w">    </span><span class="sd">"""Build inverted index for search."""</span>
-    <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
-
-    <span class="n">coordinator</span> <span class="o">=</span> <span class="n">MapReduceCoordinator</span><span class="p">(</span>
-        <span class="n">env</span><span class="p">,</span> <span class="n">map_fn</span><span class="o">=</span><span class="n">inverted_index_map</span><span class="p">,</span> <span class="n">reduce_fn</span><span class="o">=</span><span class="n">inverted_index_reduce</span><span class="p">,</span> <span class="n">num_reducers</span><span class="o">=</span><span class="mi">3</span>
-    <span class="p">)</span>
-
-    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
-        <span class="n">worker</span> <span class="o">=</span> <span class="n">MapReduceWorker</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">coordinator</span><span class="p">)</span>
-        <span class="n">coordinator</span><span class="o">.</span><span class="n">add_worker</span><span class="p">(</span><span class="n">worker</span><span class="p">)</span>
-
-    <span class="c1"># Input: (document_id, text) pairs</span>
-    <span class="n">documents</span> <span class="o">=</span> <span class="p">[</span>
-        <span class="p">(</span><span class="s2">"doc1"</span><span class="p">,</span> <span class="s2">"the quick brown fox"</span><span class="p">),</span>
-        <span class="p">(</span><span class="s2">"doc2"</span><span class="p">,</span> <span class="s2">"the lazy dog"</span><span class="p">),</span>
-        <span class="p">(</span><span class="s2">"doc3"</span><span class="p">,</span> <span class="s2">"the quick dog"</span><span class="p">),</span>
-        <span class="p">(</span><span class="s2">"doc4"</span><span class="p">,</span> <span class="s2">"brown fox and lazy dog"</span><span class="p">),</span>
-    <span class="p">]</span>
-
-    <span class="c1"># Run job</span>
-    <span class="n">InvertedIndexJob</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">coordinator</span><span class="p">,</span> <span class="n">documents</span><span class="p">,</span> <span class="n">num_splits</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
-
-    <span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
-
-
-<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
-    <span class="n">dsdx</span><span class="p">(</span><span class="n">main</span><span class="p">)</span>
-</code></pre></div>
-</div>
-<p>This shows how MapReduce handles complex analytics beyond simple aggregation.</p>
-<h2>Limitations and Evolution</h2>
-<p>MapReduce has limitations that led to systems like Apache Spark:</p>
-<ul>
-<li>
-<p><strong>Disk I/O overhead</strong>: MapReduce writes intermediate data to disk between phases.
-For iterative algorithms (like machine learning), this is expensive.</p>
-</li>
-<li>
-<p><strong>Two-phase limitation</strong>: Complex computations require chaining multiple MapReduce jobs,
-each with full disk I/O overhead.</p>
-</li>
-<li>
-<p><strong>No data sharing</strong>: Each job starts from scratch.
-No way to cache intermediate results in memory across jobs.</p>
-</li>
-<li>
-<p><strong>Batch-only</strong>: MapReduce is designed for batch processing.
-Real-time stream processing requires different systems.</p>
-</li>
-</ul>
-<p>Spark addresses these limitations with in-memory processing,
-lazy evaluation,
-and a more flexible computational model.
-But MapReduce's core ideas remain fundamental:
-functional transformations,
-partition-based parallelism,
-and fault tolerance through re-execution.</p>
-<h2>Real-World Considerations</h2>
-<p>Production MapReduce systems need:</p>
-<ul>
-<li>
-<p><strong>Locality-aware scheduling</strong>:
-Schedule tasks on nodes that already have the input data (data locality) to minimize network transfer.</p>
-</li>
-<li>
-<p><strong>Dynamic task assignment</strong>:
-Don't pre-assign all tasks; let fast workers take more work than slow ones.</p>
-</li>
-<li>
-<p><strong>Compression</strong>:
-Compress intermediate data to reduce disk and network usage.</p>
-</li>
-<li>
-<p><strong>Counters and monitoring</strong>:
-Track progress, identify bottlenecks, report statistics.</p>
-</li>
-<li>
-<p><strong>Job prioritization</strong>:
-Schedule important jobs before less important ones.</p>
-</li>
-<li>
-<p><strong>Resource management</strong>:
-Integrate with cluster resource managers (YARN, Mesos).</p>
-</li>
-<li>
-<p><strong>Security</strong>:
-Authentication, authorization, data encryption.</p>
-</li>
-</ul>
-<h2>Conclusion</h2>
-<p>MapReduce demonstrates how to build scalable distributed computation through simple abstractions.
+<h2 id="mapreduce-real">In the Real World</h2>
+<p>MapReduce's limitations led to the next-generation systems described in the introduction.
+First, MapReduce writes intermediate data to disk between phases.
+This is expensive for iterative algorithms of the kind used in machine learning,
+and becomes more so when complex computation require multiple MapReduce jobs to be chained together.</p>
+<p>Second, MapReduce has no data sharing:
+there is no way to cache intermediate results in memory across jobs,
+which can lead to redundant computation.
+Finally, MapReduce is designed for batch processing:
+real-time stream processing requires a different approach.</p>
+<p>Even with these shortcomings,
+MapReduce demonstrates how to build scalable distributed computation through simple abstractions.
 The key principles are:</p>
 <ol>
-<li><strong>Functional programming</strong>: Map and reduce are pure functions with no side effects</li>
-<li><strong>Partitioning</strong>: Data is automatically partitioned and distributed</li>
-<li><strong>Independent processing</strong>: Map tasks don't communicate; reduce tasks are independent</li>
-<li><strong>Fault tolerance</strong>: Re-execute failed tasks; idempotent operations make this safe</li>
-<li><strong>Simplicity</strong>: Programmers write two functions; framework handles everything else</li>
+<li>Partitioning: data is automatically partitioned and distributed.</li>
+<li>Independent processing: Map tasks don't communicate, and reduce tasks are independent.</li>
+<li>Fault tolerance: Idempotent operations make it safe to re-execute tasks.</li>
+<li>Simplicity: Programmers write two functions, and the framework handles everything else.</li>
 </ol>
-<p>These patterns appear throughout distributed computing: Spark uses similar transformations, Flink extends the model to streams, and data warehouse systems like BigQuery use map-reduce-style execution plans.</p>
-<p>Our simulation demonstrates the core mechanics: splitting input, distributing tasks, shuffling data, and handling failures.
-While real implementations require sophisticated optimizations—network protocols, disk management, resource scheduling—the fundamental pattern we've built captures the essence of distributed batch processing.</p>
 <h2 id="mapreduce-hashing">A Note on Hashing and Reproducibility</h2>
 <p>The <code>IntermediateData.partition</code> method assigns each key to a reducer
 using a hash function.
@@ -876,7 +744,7 @@ so the examples produce the same output every time.</p>
 </div>
 <div class="col-6 center">
 <a href="../"></a>
-	  © 2025
+	  ©
 	  <a href="../#acknowledgments">the authors</a>
 </div>
 <div class="col-3 right">

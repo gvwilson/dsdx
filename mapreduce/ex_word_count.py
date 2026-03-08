@@ -34,7 +34,7 @@ class WordCountJob(Process):
 
         # Sort and display results
         results.sort(key=lambda x: x[1], reverse=True)
-        print("\n=== Word Count Results ===")
+        print("=== Word Count Results ===")
         for word, count in results:
             print(f"{word}: {count}")
 

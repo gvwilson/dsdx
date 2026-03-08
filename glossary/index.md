@@ -3,13 +3,20 @@
 ## A
 
 <span id="ap-system">AP system</span>
-:   FIXME
+:   A distributed system that prioritizes availability and partition tolerance
+    according to the CAP theorem,
+    remaining operational during network partitions
+    but potentially returning stale or inconsistent data.
 
 <span id="associativity">associativity</span>
-:   FIXME
+:   The property of an operation where grouping does not affect the result,
+    i.e., (a op b) op c = a op (b op c).
+    Required for operations to be safely split across workers and recombined.
 
 <span id="async-context-vars">async context variables</span>
-:   FIXME
+:   Variables that store context information tied to the current asynchronous execution context
+    rather than to a specific thread,
+    allowing data such as trace IDs to flow automatically through async call chains.
 
 <span id="at-least-once">at-least-once delivery</span>
 :   Message delivery guarantee ensuring every message is delivered one or more times.
@@ -23,7 +30,8 @@
 ## B
 
 <span id="backoff-multiplier">backoff multiplier</span>
-:   FIXME
+:   The factor by which the wait time is multiplied after each failed retry attempt.
+    A multiplier of 2 produces exponential backoff, doubling the delay with each retry.
 
 <span id="backpressure">backpressure</span>
 :   Mechanism to prevent overwhelming a system
@@ -31,70 +39,99 @@
     when downstream components cannot keep up.
 
 <span id="buffer">buffer</span>
-:   FIXME
+:   A temporary storage area that holds data while it is being transferred
+    between components that operate at different speeds or rates.
 
 ## C
 
 <span id="cache-miss">cache miss</span>
-:   FIXME
+:   A failure to find requested data in a cache,
+    requiring the more expensive operation of fetching it from the original source.
 
 <span id="causal-consistency">causal consistency</span>
-:   FIXME
+:   A consistency model where operations that are causally related
+    are seen by all nodes in the same order,
+    while unrelated operations may be observed in different orders on different nodes.
 
 <span id="commutativity">commutativity</span>
-:   FIXME
+:   The property of an operation where the order of operands does not affect the result,
+    i.e., a op b = b op a.
+    Together with associativity, it allows operations to be applied in any order and combined safely.
 
 <span id="concurrency">concurrency</span>
-:   FIXME
+:   The execution of multiple tasks that overlap in time,
+    which may or may not run simultaneously on different processors.
+    Concurrency is concerned with managing multiple tasks,
+    while parallelism is concerned with executing them at the same instant.
 
 <span id="crdt">conflict-free replicated data type</span> (CRDT)
-:   FIXME
+:   A data structure designed for distributed systems
+    that can be replicated across nodes and merged automatically without coordination,
+    guaranteeing that all replicas converge to the same state.
 
 <span id="consumer-group">consumer group/span>
 :   A set of message queue subscribers that share the workload.
     Messages are distributed among group members rather than duplicated to each.
 
-<span id="contention">contention/span>
-:   FIXME
+<span id="contention">contention</span>
+:   Competition between concurrent processes for access to a shared resource
+    such as a lock, memory location, or I/O device,
+    which can become a performance bottleneck.
 
 <span id="context-propagation">context propagation</span>
 :   Passing trace IDs, span IDs, and other metadata between services
     so that operations can be correlated in distributed tracing.
 
 <span id="cp-system">CP system</span>
-:   FIXME
+:   A distributed system that prioritizes consistency and partition tolerance
+    according to the CAP theorem,
+    refusing to serve requests rather than returning potentially inconsistent data
+    during network partitions.
 
 ## D
 
 <span id="dataclass">dataclass</span>
-:   FIXME
+:   A Python class whose primary purpose is to hold data,
+    created using the `@dataclass` decorator
+    which automatically generates common methods such as `__init__`, `__repr__`, and `__eq__`.
 
 <span id="decorator">decorator</span>
-:   FIXME
+:   A function that wraps another function or class
+    to modify or extend its behavior without changing its source code.
 
 <span id="decoupling">decoupling</span>
-:   FIXME
+:   The design principle of reducing dependencies between components
+    so that changes in one component do not require changes in others,
+    enabling independent development, testing, and scaling.
 
 <span id="delta">delta</span>
-:   FIXME
+:   A record of the difference or change between two states,
+    used in delta-based CRDTs to transmit only recent changes
+    rather than the full state.
 
 <span id="deque">double-ended queue</span> (deque)
-:   FIXME
+:   A data structure that supports efficient insertion and removal of elements at both ends,
+    combining the properties of a stack and a queue.
 
 <span id="divide-and-conquer">divide and conquer</span>
-:   FIXME
+:   An algorithm design strategy that breaks a problem into smaller subproblems,
+    solves each independently, and combines the results.
+    MapReduce applies this pattern to distributed data processing.
 
 ## E
 
 <span id="eventual-consistency">eventual consistency</span>
-:   FIXME
+:   A consistency model where replicas may temporarily disagree
+    but are guaranteed to converge to the same state
+    if no new updates are made for a sufficient period.
 
 <span id="exactly-once">exactly-once delivery</span>
 :   Message delivery guarantee ensuring each message is processed exactly once.
     This is difficult to achieve in practice.
 
 <span id="exponential-backoff">exponential backoff</span>
-:   FIXME
+:   A retry strategy where the wait time between attempts increases exponentially after each failure,
+    reducing load on an overloaded system and preventing retry storms.
 
 ## F
 
@@ -102,94 +139,139 @@
 :   Pattern where one message or request triggers multiple downstream operations,
     such as publishing to multiple subscribers or calling multiple services in parallel.
 
+<span id="fault-tolerance">fault tolerance</span>
+:   The ability of a system to continue operating correctly
+    in the presence of failures of some of its components.
+
 <span id="future">future</span>
-:   FIXME
+:   An object representing the result of an asynchronous computation that may not have completed yet.
+    The result can be retrieved once the computation finishes,
+    allowing the caller to do other work in the meantime.
 
 ## G
 
-<span id="granularity">granulaty</span>
-:   FIXME
+<span id="granularity">granularity</span>
+:   The size of the units into which work is divided.
+    Fine-grained tasks are small and numerous while coarse-grained tasks are large and few.
+    The right granularity balances the benefits of parallelism against the overhead of coordination.
 
 <span id="grow-only-counter">grow-only counter</span>
-:   FIXME
+:   A CRDT that supports only increment operations,
+    with each node tracking its own count
+    and the total computed as the sum across all nodes.
 
 ## H
 
 <span id="happens-before">happens-before relation</span>
-:   FIXME
+:   A partial ordering of events in a distributed system
+    where event A happens-before event B if A could have causally influenced B.
+    Used to reason about consistency and the ordering of concurrent operations.
 
 <span id="hash-code">hash code</span>
-:   FIXME
+:   A fixed-size integer derived from data by a hash function,
+    used to quickly locate data in hash tables.
+    Good hash functions distribute values uniformly and minimize collisions.
 
 <span id="http-header">HTTP header</span>
-:   FIXME
+:   A key-value pair sent at the start of an HTTP request or response
+    that provides metadata such as content type, authentication tokens, or caching directives.
 
 <span id="http-status-code">HTTP status code</span>
-:   FIXME
+:   A three-digit number in an HTTP response indicating the result of the request.
+    Codes in the 200s indicate success, 400s indicate client errors,
+    and 500s indicate server errors.
 
 ## I
 
 <span id="idempotent">idempotent</span>
-:   FIXME
+:   Describing an operation that produces the same result whether applied once or multiple times.
+    Idempotent operations are safe to retry in at-least-once delivery systems.
 
 ## J
 
 <span id="json">JSON</span>
-:   FIXME
+:   JavaScript Object Notation, a lightweight text-based format for representing structured data
+    as key-value pairs, arrays, and nested objects.
+    Widely used for data exchange between web services.
 
 ## K
 
 ## L
 
 <span id="lww-register">last-write-wins register</span>
-:   FIXME
+:   A CRDT that resolves concurrent writes by keeping the value with the highest timestamp,
+    discarding earlier writes.
+    Simple to implement but may silently lose updates.
 
 <span id="linearizability">linearizability</span>
-:   FIXME
+:   A strong consistency model where every operation appears to take effect instantaneously
+    at some point between its start and completion,
+    making the system behave as if there were a single copy of the data.
 
 <span id="livelock">livelock</span>
-:   FIXME
+:   A situation where two or more processes continually change state in response to each other
+    without making progress,
+    similar to deadlock but with processes that are not blocked, only unproductive.
 
 <span id="load-balancing">load balancing</span>
-:   FIXME
+:   The distribution of incoming requests or work across multiple servers or workers
+    to prevent any single component from becoming a bottleneck
+    and to make efficient use of available resources.
 
 <span id="logical-clock">logical clock</span>
-:   FIXME
+:   A mechanism for ordering events in a distributed system without using physical time,
+    such as a Lamport clock or vector clock,
+    by assigning monotonically increasing counters to events.
 
 ## M
 
 <span id="message-broker">message broker</span>
-:   FIXME
+:   A middleware component that receives messages from producers, stores them,
+    and routes them to consumers.
+    It decouples senders from receivers and may provide durability, ordering, and filtering.
 
 <span id="microservice">microservice</span>
-:   FIXME
+:   An architectural style where an application is built as a collection of small,
+    independently deployable services,
+    each responsible for a specific business capability and communicating over a network.
 
 ## N
 
 <span id="negative-feedback-loop">negative feedback loop</span>
-:   FIXME
+:   A control mechanism where a system's output feeds back to reduce its input,
+    stabilizing the system around a target state.
+    Backpressure in distributed systems is an example of this pattern.
 
 <span id="network-partition">network partition</span>
-:   FIXME
+:   A failure that splits a distributed system into two or more groups of nodes
+    that cannot communicate with each other,
+    forcing a choice between consistency and availability according to the CAP theorem.
 
 ## O
 
 <span id="op-based-crdt">operation-based CRDT</span>
-:   FIXME
+:   A CRDT that replicates by broadcasting individual operations to all replicas.
+    Requires operations to be commutative so they can be applied in any order.
 
 ## P
 
 <span id="partial-order">partial order</span>
-:   FIXME
+:   A relation that is reflexive, antisymmetric, and transitive,
+    but where not all pairs of elements are necessarily comparable.
+    The happens-before relation is a partial order on events in a distributed system.
 
 <span id="partition-tolerance">partition tolerance</span>
-:   FIXME
+:   The ability of a distributed system to continue operating correctly
+    even when network partitions prevent some nodes from communicating with others.
 
 <span id="pn-counter">positive-negative counter</span>
-:   FIXME
+:   A CRDT counter that supports both increment and decrement operations
+    by maintaining one grow-only counter for increments and another for decrements,
+    with the value being their difference.
 
 <span id="priority-queue">priority queue</span>
-:   FIXME
+:   A data structure where each element has an associated priority
+    and elements are removed in priority order rather than insertion order.
 
 <span id="publish-subscribe">publish-subscribe</span>
 :   Messaging pattern where publishers send messages to topics
@@ -201,10 +283,12 @@
 ## R
 
 <span id="root-span">root span</span>
-:   FIXME
+:   The first span in a trace, representing the top-level operation that initiated the request
+    and serving as the root of the trace's span tree.
 
 <span id="round-robin-polling">round-robin polling</span>
-:   FIXME
+:   A scheduling strategy that cycles through a list of items in fixed rotation,
+    giving each one a turn in order to distribute work or checks evenly.
 
 ## S
 
@@ -213,47 +297,69 @@
     to reduce overhead and storage requirements.
 
 <span id="schema">schema</span>
-:   FIXME
+:   A formal description of the structure and types of data,
+    used to validate that data conforms to an expected format.
+    Common in databases and data interchange formats such as JSON and Avro.
 
 <span id="sequential-consistency">sequential consistency</span>
-:   FIXME
+:   A consistency model where all operations appear to execute in some total order
+    that is consistent with the order seen by each individual process.
 
 <span id="singleton">singleton</span>
-:   FIXME
+:   A design pattern that restricts a class to a single instance
+    and provides a global access point to it.
 
 <span id="span">span</span>
-:   FIXME
+:   A named, timed operation representing a single unit of work within a distributed trace.
+    Spans can be nested to form a tree that represents the full execution of a request.
+
+<span id="speculative-execution">speculative execution</span>
+:   Running multiple instances of a task in parallel and using the result of whichever completes first,
+    discarding the others,
+    to reduce the impact of slow or failed workers.
 
 <span id="state-based-crdt">state-based CRDT</span>
-:   FIXME
+:   A CRDT that replicates by periodically sending the full state to other replicas,
+    which merge it using a commutative, associative, and idempotent merge function.
 
 <span id="strong-consistency">strong consistency</span>
-:   FIXME
+:   A consistency model where all reads return the most recently written value,
+    as if the system had a single authoritative copy of the data.
 
 <span id="strong-eventual-consistency">strong eventual consistency</span>
-:   FIXME
+:   A consistency model guaranteeing that any two replicas
+    that have received the same set of updates will have identical states,
+    regardless of the order in which those updates arrived.
 
 ## T
 
 <span id="thread-local-storage">thread-local storage</span>
-:   FIXME
+:   A mechanism that provides each thread with its own private copy of a variable,
+    preventing interference between threads without requiring synchronization.
 
 <span id="total-order">total order</span>
-:   FIXME
+:   A relation that is reflexive, antisymmetric, and transitive,
+    and where every pair of elements is comparable.
+    Unlike a partial order, every two elements can be ordered relative to each other.
 
 <span id="trace">trace</span>
 :   The complete journey of a request through a distributed system,
     identified by a unique trace ID and composed of multiple spans forming a tree.
 
 <span id="trace-collector">trace collector</span>
-:   FIXME
+:   A service that receives spans from instrumented applications,
+    assembles them into complete traces,
+    and stores or forwards them to a backend for analysis and visualization.
 
 ## U
 
 ## V
 
 <span id="vector-clock">vector clock</span>
-:   FIXME
+:   A data structure used to capture causality in distributed systems,
+    consisting of one counter per process.
+    Comparing two vector clocks determines whether events are causally related
+    or concurrent.
 
 ## W
 
