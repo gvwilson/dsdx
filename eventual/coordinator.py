@@ -8,6 +8,7 @@ from versioned_value import VersionedValue
 from messages import ReadRequest, WriteRequest
 
 
+# mccole: coordinator
 class Coordinator:
     """Coordinates read/write operations across replicas."""
 
@@ -127,3 +128,4 @@ class Coordinator:
                 result.append(v1)
 
         return result
+# mccole: /coordinator

@@ -88,6 +88,9 @@
     refusing to serve requests rather than returning potentially inconsistent data
     during network partitions.
 
+<span id="csrf">cross-site request forgery</span> (CSRF)
+:   FIXME
+
 ## D
 
 <span id="dataclass">dataclass</span>
@@ -249,6 +252,12 @@
 
 ## O
 
+<span id="oauth-scope">OAuth scope</span>
+:   FIXME
+
+<span id="oauth-token">OAuth token</span>
+:   FIXME
+
 <span id="op-based-crdt">operation-based CRDT</span>
 :   A CRDT that replicates by broadcasting individual operations to all replicas.
     Requires operations to be commutative so they can be applied in any order.
@@ -305,6 +314,9 @@
 :   A consistency model where all operations appear to execute in some total order
     that is consistent with the order seen by each individual process.
 
+<span id="single-sign-on">single sign-on</span>
+:   FIXME
+
 <span id="singleton">singleton</span>
 :   A design pattern that restricts a class to a single instance
     and provides a global access point to it.
@@ -350,6 +362,9 @@
 :   A service that receives spans from instrumented applications,
     assembles them into complete traces,
     and stores or forwards them to a backend for analysis and visualization.
+
+<span id="trust-anchor">trust anchor</span>
+:   FIXME
 
 ## U
 

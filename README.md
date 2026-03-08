@@ -16,12 +16,12 @@ FIXME
 1.  [A Work-Stealing Scheduler](@/worksteal/): sharing work more efficiently.
 1.  [Distributed Tracing](@/tracing/): keeping track of what's happening.
 1.  [Conflict-Free Replicated Data Types](@/crdt/): scalable data structures.
+1.  [OAuth](@/oauth/): distributed authentication.
 1.  [Conclusion](@/finale/): looking back and next steps.
 
 </div>
 
 <!--
-1.  [OAuth](@/oauth/): distributed authentication.
 1.  [Distributed Locks](@/distlock/): coordinating access to shared resources.
 1.  [BitTorrent](@/torrent/): sharing data at scale.
 1.  [Eventually Consistent Key-Value Store](@/eventual/): when availability matters more than consistency.

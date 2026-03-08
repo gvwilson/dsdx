@@ -5,6 +5,7 @@ from asimpy import Environment, Queue
 from basic_lock_server import LockServer, LockRequest
 
 
+# mccole: replicatedmanager
 class ReplicatedLockManager:
     """Manages multiple lock servers with majority voting."""
 
@@ -73,3 +74,4 @@ class ReplicatedLockManager:
             )
             await server.request_queue.put(request)
             await response_queue.get()
+# mccole: /replicatedmanager

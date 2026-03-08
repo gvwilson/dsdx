@@ -5,6 +5,7 @@ from asimpy import Process, Queue
 from basic_lock_server import LockServer, LockRequest
 
 
+# mccole: lockclient
 class LockClient(Process):
     """Client that acquires locks to access resources."""
 
@@ -78,3 +79,4 @@ class LockClient(Process):
         await self.server.request_queue.put(request)
         await response_queue.get()
         self.current_token = None
+# mccole: /lockclient

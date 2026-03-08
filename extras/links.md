@@ -12,6 +12,7 @@
 [hadoop]: https://hadoop.apache.org/
 [java-fork-join]: https://docs.oracle.com/javase/tutorial/essential/concurrency/forkjoin.html
 [kafka]: https://kafka.apache.org/
+[oauth]: https://en.wikipedia.org/wiki/OAuth
 [opentelemetry]: https://opentelemetry.io/
 [paxos]: https://en.wikipedia.org/wiki/Paxos_(computer_science)
 [rabbitmq]: https://www.rabbitmq.com/

@@ -5,6 +5,7 @@ from typing import Dict, Any
 import random
 
 
+# mccole: bookingservices
 class FlightService(Process):
     """Microservice for booking flights."""
 
@@ -183,3 +184,4 @@ class CarRentalService(Process):
             f"(available: {self.available_cars})"
         )
         return True
+# mccole: /bookingservices

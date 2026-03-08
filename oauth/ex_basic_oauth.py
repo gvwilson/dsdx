@@ -6,6 +6,7 @@ from resource_server import ResourceServer
 from oauth_client import OAuthClient
 
 
+# mccole: sim
 def run_basic_oauth_flow():
     """Demonstrate basic OAuth 2.0 authorization code flow."""
     env = Environment()
@@ -41,3 +42,4 @@ def run_basic_oauth_flow():
 
 if __name__ == "__main__":
     run_basic_oauth_flow()
+# mccole: /sim

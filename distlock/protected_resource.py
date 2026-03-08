@@ -4,6 +4,7 @@
 from asimpy import Environment
 
 
+# mccole: protectedresource
 class ProtectedResource:
     """A resource that validates fencing tokens."""
 
@@ -34,3 +35,4 @@ class ProtectedResource:
         print(f"[{self.env.now:.1f}] {self.name}: {client_id} finished")
         self.current_accessor = None
         return True
+# mccole: /protectedresource

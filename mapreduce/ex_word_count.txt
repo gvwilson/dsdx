@@ -19,7 +19,6 @@
 
 [2.5] MapReduce job complete in 2.5s
 Total results: 13
-
 === Word Count Results ===
 the: 5
 dog: 3

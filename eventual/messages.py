@@ -7,6 +7,7 @@ from vector_clock import VectorClock
 from versioned_value import VersionedValue
 
 
+# mccole: messages
 @dataclass
 class ReadRequest:
     """Request to read a key."""
@@ -42,3 +43,4 @@ class WriteResponse:
     key: str
     success: bool
     clock: VectorClock
+# mccole: /messages

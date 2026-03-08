@@ -6,6 +6,7 @@ from tcp_connection import TCPConnection
 from tcp_applications import TCPClient, TCPServer
 
 
+# mccole: basicexample
 def run_basic_tcp() -> None:
     """Demonstrate basic TCP communication over unreliable network."""
     env = Environment()
@@ -56,6 +57,7 @@ def run_basic_tcp() -> None:
     network.print_statistics()
     client_conn.print_statistics()
     server_conn.print_statistics()
+# mccole: /basicexample
 
 
 if __name__ == "__main__":

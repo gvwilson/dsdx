@@ -2,10 +2,11 @@ LESSONS = \
   crdt \
   mapreduce \
   msgque \
+  oauth \
   tracing \
   worksteal
 
-EXAMPLES_SRC = $(foreach dir,$(LESSONS),$(wildcard $(dir)/*.py))
+EXAMPLES_SRC = $(foreach dir,$(LESSONS),$(wildcard $(dir)/ex_*.py))
 EXAMPLES_OUT = $(patsubst %.py,%.txt,${EXAMPLES_SRC})
 SEED = 192837
 

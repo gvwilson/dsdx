@@ -7,6 +7,7 @@ from simplified_peer import SimplifiedPeer
 from bittorrent_types import TorrentMetadata
 
 
+# mccole: basicexample
 def run_basic_bittorrent() -> None:
     """Demonstrate basic BitTorrent operation."""
     env = Environment()
@@ -62,6 +63,7 @@ def run_basic_bittorrent() -> None:
             f"{peer.peer_id}: Downloaded={peer.downloaded_pieces}, "
             f"Uploaded={peer.uploaded_pieces}"
         )
+# mccole: /basicexample
 
 
 if __name__ == "__main__":

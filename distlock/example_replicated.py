@@ -6,6 +6,7 @@ from replicated_lock_manager import ReplicatedLockManager
 from replicated_lock_client import ReplicatedLockClient
 
 
+# mccole: replicatedexample
 def run_replicated_simulation():
     """Demonstrate replicated lock manager."""
     env = Environment()
@@ -18,6 +19,7 @@ def run_replicated_simulation():
     ReplicatedLockClient(env, "Client2", manager, "resource", 2.0, initial_delay=2.0)
 
     env.run(until=15)
+# mccole: /replicatedexample
 
 
 if __name__ == "__main__":

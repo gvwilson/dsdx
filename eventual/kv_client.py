@@ -6,6 +6,7 @@ from coordinator import Coordinator
 from vector_clock import VectorClock
 
 
+# mccole: kvclient
 class KVClient(Process):
     """Client that reads and writes to the key-value store."""
 
@@ -82,3 +83,4 @@ class KVClient(Process):
         self.context[key] = clock
 
         print(f"[{self.now:.1f}] {self.client_id}: Wrote {key} = {value}")
+# mccole: /kvclient

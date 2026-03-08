@@ -79,29 +79,7 @@ Let's examine each component.
 
 The core types represent TCP segments and connection state:
 
-```python
-class PacketType(Enum):
-    """Types of TCP packets."""
-    SYN = "SYN"          # Synchronize (connection establishment)
-    SYN_ACK = "SYN_ACK"  # Synchronize-Acknowledge
-    ACK = "ACK"          # Acknowledge
-    DATA = "DATA"        # Data packet
-    FIN = "FIN"          # Finish (connection teardown)
-
-
-@dataclass
-class Packet:
-    """A network packet (simulating IP + TCP)."""
-    src_addr: str
-    dst_addr: str
-    src_port: int
-    dst_port: int
-    seq_num: int
-    ack_num: int
-    packet_type: PacketType
-    data: bytes = b""
-    window_size: int = 65535
-```
+<div data-inc="tcp_types.py" data-filter="inc=packettypes"></div>
 
 The `Packet` structure mirrors a real TCP/IP packet header with source and destination addressing,
 sequence and acknowledgment numbers,
@@ -112,36 +90,7 @@ and payload data.
 
 Before building TCP, we need to simulate UDP's unreliable delivery:
 
-```python
-class UnreliableNetwork(Process):
-    """Simulates unreliable packet delivery (like UDP)."""
-    
-    def init(self, loss_rate: float = 0.1, 
-             reorder_rate: float = 0.05,
-             duplicate_rate: float = 0.02,
-             delay_range: tuple = (0.1, 0.5)) -> None:
-        self.loss_rate = loss_rate
-        self.reorder_rate = reorder_rate
-        self.duplicate_rate = duplicate_rate
-        self.delay_range = delay_range
-        
-        # Network endpoints (address:port -> queue)
-        self.endpoints: Dict[str, Queue] = {}
-        
-    async def send_packet(self, packet: Packet) -> None:
-        """Send packet with simulated unreliability."""
-        # Simulate packet loss
-        if random.random() < self.loss_rate:
-            print(f"[{self.now:.1f}] Network: LOST {packet}")
-            return
-        
-        # Simulate packet duplication
-        if random.random() < self.duplicate_rate:
-            await self._deliver_packet(packet)
-        
-        # Deliver the packet
-        await self._deliver_packet(packet)
-```
+<div data-inc="unreliable_network.py" data-filter="inc=network"></div>
 
 This simulates the way packets in real networks can be lost, delayed, reordered, or duplicated.
 The network maintains a registry of endpoints and routes packets accordingly.
@@ -150,30 +99,7 @@ The network maintains a registry of endpoints and routes packets accordingly.
 
 The TCP connection implements reliability over the unreliable network:
 
-```python
-class TCPConnection(Process):
-    """TCP connection with reliability over unreliable network."""
-    
-    def init(self, local_addr: str, local_port: int,
-             network: UnreliableNetwork,
-             window_size: int = 4,
-             timeout: float = 2.0) -> None:
-        self.local_addr = local_addr
-        self.local_port = local_port
-        self.network = network
-        self.window_size = window_size
-        self.rto = timeout
-        
-        # Sequence numbers
-        self.send_seq = random.randint(1000, 9999)
-        self.recv_seq = 0
-        
-        # Send buffer for unacknowledged segments
-        self.send_buffer: List[SegmentBuffer] = []
-        
-        # Receive buffer for out-of-order segments
-        self.recv_buffer = ReceiveBuffer()
-```
+<div data-inc="tcp_connection.py" data-filter="inc=tcpinit"></div>
 
 The connection maintains send and receive buffers.
 The send buffer holds unacknowledged segments for potential retransmission.
@@ -183,29 +109,7 @@ The receive buffer handles out-of-order delivery by holding segments until gaps 
 
 TCP connection establishment uses three packets to synchronize state:
 
-```python
-async def connect(self, remote_addr: str, remote_port: int) -> bool:
-    """Initiate TCP connection (3-way handshake)."""
-    # Send SYN
-    self.state = ConnectionState.SYN_SENT
-    syn = Packet(
-        src_addr=self.local_addr,
-        dst_addr=remote_addr,
-        src_port=self.local_port,
-        dst_port=remote_port,
-        seq_num=self.send_seq,
-        ack_num=0,
-        packet_type=PacketType.SYN
-    )
-    
-    await self.network.send_packet(syn)
-    
-    # Wait for SYN-ACK
-    # ... (timing logic)
-    
-    # Send final ACK
-    # Connection established
-```
+<div data-inc="tcp_connection.py" data-filter="inc=tcpconnect"></div>
 
 The handshake sequence is:
 
@@ -219,41 +123,7 @@ This synchronizes sequence numbers and establishes bidirectional communication.
 
 The sliding window allows multiple packets in flight:
 
-```python
-async def send(self, data: bytes) -> None:
-    """Send data reliably using TCP."""
-    offset = 0
-    while offset < len(data):
-        chunk = data[offset:offset + self.mtu]
-        
-        # Wait if send window is full
-        while len(self.send_buffer) >= self.window_size:
-            await self.timeout(0.1)
-        
-        # Create and send segment
-        segment = Packet(
-            src_addr=self.local_addr,
-            dst_addr=self.remote_addr,
-            seq_num=self.next_seq_num,
-            packet_type=PacketType.DATA,
-            data=chunk
-        )
-        
-        await self.network.send_packet(segment)
-        
-        # Add to send buffer
-        self.send_buffer.append(SegmentBuffer(
-            seq_num=self.next_seq_num,
-            data=chunk,
-            sent_time=self.now
-        ))
-        
-        # Start retransmission timer
-        RetransmissionTimer(self._env, self, buffer_entry)
-        
-        self.next_seq_num += len(chunk)
-        offset += len(chunk)
-```
+<div data-inc="tcp_connection.py" data-filter="inc=tcpsend"></div>
 
 The sender can have `window_size` unacknowledged packets in flight.
 This maintains throughput even with high latency:
@@ -264,40 +134,7 @@ new packets are being sent while waiting for ACKs from earlier packets.
 If an ACK doesn't arrive within the timeout period, the segment is retransmitted.
 We use a separate `Process` for each retransmission timer:
 
-```python
-class RetransmissionTimer(Process):
-    """Timer process for retransmitting unacknowledged segments."""
-    
-    def init(self, connection: 'TCPConnection', segment: SegmentBuffer) -> None:
-        self.connection = connection
-        self.segment = segment
-    
-    async def run(self) -> None:
-        """Wait for timeout, then retransmit if not acknowledged."""
-        await self.timeout(self.connection.rto)
-        
-        # Check if still in send buffer (not yet acknowledged)
-        if self.segment in self.connection.send_buffer:
-            print(f"[{self.now:.1f}] TCP: TIMEOUT - Retransmitting "
-                  f"seq={self.segment.seq_num}")
-            
-            self.connection.packets_retransmitted += 1
-            self.segment.retransmit_count += 1
-            
-            # Retransmit
-            packet = Packet(
-                src_addr=self.connection.local_addr,
-                dst_addr=self.connection.remote_addr,
-                seq_num=self.segment.seq_num,
-                packet_type=PacketType.DATA,
-                data=self.segment.data
-            )
-            
-            await self.connection.network.send_packet(packet)
-            
-            # Restart timer
-            RetransmissionTimer(self._env, self.connection, self.segment)
-```
+<div data-inc="tcp_connection.py" data-filter="inc=retransmission"></div>
 
 When sending a segment, we create a `RetransmissionTimer` `Process`:
 
@@ -321,33 +158,7 @@ it is retransmitted and a new timer starts.
 
 The receive buffer handles segments arriving out of order:
 
-```python
-@dataclass
-class ReceiveBuffer:
-    """Buffer for out-of-order received segments."""
-    segments: Dict[int, bytes] = field(default_factory=dict)
-    next_expected_seq: int = 0
-    
-    def add_segment(self, seq_num: int, data: bytes) -> None:
-        """Add a segment to the receive buffer."""
-        if seq_num >= self.next_expected_seq:
-            self.segments[seq_num] = data
-    
-    def get_continuous_data(self) -> bytes:
-        """Extract continuous data starting from next_expected_seq."""
-        result = b""
-        current_seq = self.next_expected_seq
-        
-        while current_seq in self.segments:
-            segment = self.segments.pop(current_seq)
-            result += segment
-            current_seq += len(segment)
-        
-        if result:
-            self.next_expected_seq = current_seq
-        
-        return result
-```
+<div data-inc="tcp_types.py" data-filter="inc=receivebuffer"></div>
 
 Segments are held until all gaps are filled.
 When a contiguous block of data is available, it's delivered to the application in order.
@@ -358,21 +169,7 @@ TCP uses cumulative ACKs,
 i.e.,
 each ACK indicates all data up to a sequence number has been received:
 
-```python
-async def handle_ack(self, packet: Packet) -> None:
-    """Handle ACK packet."""
-    ack_num = packet.ack_num
-    
-    # Remove acknowledged segments from send buffer
-    acknowledged = []
-    for seg in self.send_buffer[:]:
-        if seg.seq_num < ack_num:
-            acknowledged.append(seg)
-            self.send_buffer.remove(seg)
-    
-    if acknowledged:
-        self.send_base = ack_num
-```
+<div data-inc="tcp_connection.py" data-filter="inc=handleack"></div>
 
 A single ACK can acknowledge multiple segments.
 This is simpler than selective acknowledgments and works well when most data arrives in order.
@@ -381,39 +178,7 @@ This is simpler than selective acknowledgments and works well when most data arr
 
 Let's see TCP in action:
 
-```python
-def run_basic_tcp() -> None:
-    """Demonstrate basic TCP communication."""
-    env = Environment()
-    
-    # Create unreliable network
-    network = UnreliableNetwork(
-        env,
-        loss_rate=0.15,      # 15% packet loss
-        reorder_rate=0.10,   # 10% reordering
-        duplicate_rate=0.05  # 5% duplication
-    )
-    
-    # Create server connection
-    server_conn = TCPConnection(
-        env, "192.168.1.100", 8080, network
-    )
-    
-    # Create client connection
-    client_conn = TCPConnection(
-        env, "192.168.1.101", 9000, network
-    )
-    
-    # Create applications
-    server = TCPServer(env, server_conn)
-    client = TCPClient(
-        env, client_conn, "192.168.1.100", 8080,
-        "Hello from TCP! This will arrive reliably despite packet loss."
-    )
-    
-    # Run simulation
-    env.run(until=20)
-```
+<div data-inc="example_basic_tcp.py" data-filter="inc=basicexample"></div>
 
 Despite 15% packet loss and reordering,
 TCP successfully delivers the complete message in order.
@@ -422,43 +187,7 @@ TCP successfully delivers the complete message in order.
 
 Let's test TCP under extreme conditions:
 
-```python
-def run_high_loss_scenario() -> None:
-    """Demonstrate TCP under high packet loss."""
-    env = Environment()
-    
-    # Extremely unreliable network
-    network = UnreliableNetwork(
-        env,
-        loss_rate=0.40,      # 40% packet loss!
-        reorder_rate=0.20,   # 20% reordering
-        duplicate_rate=0.10  # 10% duplication
-    )
-    
-    # TCP with aggressive retransmission
-    server_conn = TCPConnection(
-        env, "10.0.0.1", 5000, network,
-        window_size=3,
-        timeout=1.0  # Faster retransmit
-    )
-    
-    client_conn = TCPConnection(
-        env, "10.0.0.2", 6000, network,
-        window_size=3,
-        timeout=1.0
-    )
-    
-    # Transfer larger message
-    server = TCPServer(env, server_conn)
-    client = TCPClient(
-        env, client_conn, "10.0.0.1", 5000,
-        "This is a much longer message that will be split into multiple "
-        "segments. Despite 40% packet loss, TCP will successfully deliver "
-        "every byte through retransmission. " * 5
-    )
-    
-    env.run(until=40)
-```
+<div data-inc="example_loss_recovery.py" data-filter="inc=highlossexample"></div>
 
 Even with 40% loss, TCP delivers the complete message.
 You'll see many retransmissions but eventual success.

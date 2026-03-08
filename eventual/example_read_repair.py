@@ -6,6 +6,7 @@ from coordinator_with_read_repair import CoordinatorWithReadRepair
 from kv_client import KVClient
 
 
+# mccole: readrepairexample
 def run_read_repair_simulation():
     """Demonstrate read repair bringing replicas into sync."""
     env = Environment()
@@ -48,6 +49,7 @@ def run_read_repair_simulation():
     )
 
     env.run(until=10)
+# mccole: /readrepairexample
 
 
 if __name__ == "__main__":

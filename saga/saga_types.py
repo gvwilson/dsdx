@@ -5,6 +5,7 @@ from typing import List, Dict, Optional, Any, Callable
 from enum import Enum
 
 
+# mccole: sagatypes
 class SagaStatus(Enum):
     """Status of a saga execution."""
 
@@ -77,3 +78,4 @@ class SagaEvent:
 
     def __str__(self) -> str:
         return f"Event({self.event_type})"
+# mccole: /sagatypes

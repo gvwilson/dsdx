@@ -6,6 +6,7 @@ from tcp_connection import TCPConnection
 from tcp_applications import TCPClient, TCPServer
 
 
+# mccole: highlossexample
 def run_high_loss_scenario() -> None:
     """Demonstrate TCP under high packet loss conditions."""
     env = Environment()
@@ -74,6 +75,7 @@ def run_high_loss_scenario() -> None:
         print(f"✓ SUCCESS: All {expected_bytes} bytes delivered correctly!")
     else:
         print(f"✗ INCOMPLETE: {server_conn.bytes_received}/{expected_bytes} bytes")
+# mccole: /highlossexample
 
 
 if __name__ == "__main__":

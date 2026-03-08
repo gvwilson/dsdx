@@ -7,6 +7,7 @@ from lock_client import LockClient
 from failing_client import FailingClient
 
 
+# mccole: failureexample
 def run_failure_simulation():
     """Demonstrate lease expiration after client failure."""
     env = Environment()
@@ -22,6 +23,7 @@ def run_failure_simulation():
     LockClient(env, "Client2", server, "database", work_duration=2.0, initial_delay=5.0)
 
     env.run(until=15)
+# mccole: /failureexample
 
 
 if __name__ == "__main__":

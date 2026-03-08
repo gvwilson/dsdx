@@ -6,6 +6,7 @@ from bittorrent_types import TrackerRequest, TrackerResponse, PeerInfo
 import random
 
 
+# mccole: tracker
 class Tracker(Process):
     """BitTorrent tracker coordinating peers."""
 
@@ -76,3 +77,4 @@ class Tracker(Process):
             f"[{self.now:.1f}] Tracker: Sent {len(other_peers)} peers to "
             f"{request.peer_id}"
         )
+# mccole: /tracker

@@ -7,6 +7,7 @@ from protected_resource import ProtectedResource
 from fenced_client import FencedClient
 
 
+# mccole: fencingexample
 def run_fencing_simulation():
     """Demonstrate fencing tokens preventing split-brain."""
     env = Environment()
@@ -38,6 +39,7 @@ def run_fencing_simulation():
     )
 
     env.run(until=15)
+# mccole: /fencingexample
 
 
 if __name__ == "__main__":

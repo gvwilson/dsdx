@@ -6,6 +6,7 @@ from basic_lock_server import LockServer
 from lock_client import LockClient
 
 
+# mccole: basicexample
 def run_basic_simulation():
     """Simulate multiple clients competing for a lock."""
     env = Environment()
@@ -19,6 +20,7 @@ def run_basic_simulation():
     LockClient(env, "Client3", server, "database", work_duration=4.0)
 
     env.run(until=20)
+# mccole: /basicexample
 
 
 if __name__ == "__main__":

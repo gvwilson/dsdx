@@ -6,6 +6,7 @@ from coordinator import Coordinator
 from kv_client import KVClient
 
 
+# mccole: basicexample
 def run_basic_simulation():
     """Demonstrate basic operations and conflict resolution."""
     env = Environment()
@@ -45,6 +46,7 @@ def run_basic_simulation():
     )
 
     env.run(until=10)
+# mccole: /basicexample
 
 
 if __name__ == "__main__":

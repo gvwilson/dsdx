@@ -6,6 +6,7 @@ from tcp_types import Packet
 import random
 
 
+# mccole: network
 class UnreliableNetwork(Process):
     """Simulates unreliable packet delivery (like UDP)."""
 
@@ -96,3 +97,4 @@ class UnreliableNetwork(Process):
         )
         print(f"Packets reordered: {self.packets_reordered}")
         print(f"Packets duplicated: {self.packets_duplicated}")
+# mccole: /network

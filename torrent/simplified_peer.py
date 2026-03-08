@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from tracker import Tracker
 
 
+# mccole: simplifiedpeer
 class SimplifiedPeer(Process):
     """Simplified peer for simulation purposes."""
 
@@ -104,3 +105,4 @@ class SimplifiedPeer(Process):
             f"from {peer.peer_id} ({len(self.have_pieces)}/"
             f"{self.metadata.total_pieces})"
         )
+# mccole: /simplifiedpeer

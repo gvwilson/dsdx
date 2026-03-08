@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 
+# mccole: packettypes
 class PacketType(Enum):
     """Types of TCP packets."""
 
@@ -47,6 +48,7 @@ class Packet:
             f"Packet({self.packet_type.value}, seq={self.seq_num}, "
             f"ack={self.ack_num}, len={data_len})"
         )
+# mccole: /packettypes
 
 
 @dataclass
@@ -62,6 +64,7 @@ class SegmentBuffer:
         return f"Segment(seq={self.seq_num}, len={len(self.data)})"
 
 
+# mccole: receivebuffer
 @dataclass
 class ReceiveBuffer:
     """Buffer for out-of-order received segments."""
@@ -92,3 +95,4 @@ class ReceiveBuffer:
     def has_data(self) -> bool:
         """Check if buffer has any segments."""
         return len(self.segments) > 0
+# mccole: /receivebuffer

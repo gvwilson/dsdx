@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from unreliable_network import UnreliableNetwork
 
 
+# mccole: retransmission
 class RetransmissionTimer(Process):
     """Timer process for retransmitting unacknowledged segments."""
 
@@ -47,8 +48,10 @@ class RetransmissionTimer(Process):
 
             # Restart timer
             RetransmissionTimer(self._env, self.connection, self.segment)
+# mccole: /retransmission
 
 
+# mccole: tcpinit
 class TCPConnection(Process):
     """TCP connection with reliability over unreliable network."""
 
@@ -101,6 +104,7 @@ class TCPConnection(Process):
             f"[{self.now:.1f}] TCP {self.local_addr}:{self.local_port}: "
             f"Created (ISN={self.send_seq})"
         )
+# mccole: /tcpinit
 
     async def run(self) -> None:
         """Main TCP loop: handle incoming packets."""
@@ -108,6 +112,7 @@ class TCPConnection(Process):
             packet = await self.recv_queue.get()
             await self.handle_packet(packet)
 
+    # mccole: tcpconnect
     async def connect(self, remote_addr: str, remote_port: int) -> bool:
         """Initiate TCP connection (3-way handshake)."""
         self.remote_addr = remote_addr
@@ -145,6 +150,7 @@ class TCPConnection(Process):
             print(f"[{self.now:.1f}] TCP: Connection FAILED (timeout)\n")
             self.state = ConnectionState.CLOSED
             return False
+    # mccole: /tcpconnect
 
     async def listen_and_accept(self) -> bool:
         """Listen for incoming connection (server side)."""
@@ -236,6 +242,7 @@ class TCPConnection(Process):
         elif packet.packet_type == PacketType.DATA:
             await self.handle_data(packet)
 
+    # mccole: handleack
     async def handle_ack(self, packet: Packet) -> None:
         """Handle ACK packet."""
         ack_num = packet.ack_num
@@ -253,6 +260,7 @@ class TCPConnection(Process):
                 f"[{self.now:.1f}] TCP: ACK {ack_num} "
                 f"(acknowledged {len(acknowledged)} segments)"
             )
+    # mccole: /handleack
 
     async def handle_data(self, packet: Packet) -> None:
         """Handle DATA packet."""
@@ -290,6 +298,7 @@ class TCPConnection(Process):
             f"[{self.now:.1f}] TCP: Sent ACK (ack={self.recv_buffer.next_expected_seq})"
         )
 
+    # mccole: tcpsend
     async def send(self, data: bytes) -> None:
         """Send data reliably using TCP."""
         if self.state != ConnectionState.ESTABLISHED:
@@ -335,6 +344,7 @@ class TCPConnection(Process):
             RetransmissionTimer(self._env, self, buffer_entry)
 
             offset += len(chunk)
+    # mccole: /tcpsend
 
     async def receive(self) -> bytes:
         """Receive data from connection."""

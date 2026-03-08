@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 
 
+# mccole: vectorclock
 @dataclass
 class VectorClock:
     """Vector clock for tracking causality."""
@@ -49,3 +50,4 @@ class VectorClock:
     def __str__(self):
         items = sorted(self.clocks.items())
         return "{" + ", ".join(f"{k}:{v}" for k, v in items) + "}"
+# mccole: /vectorclock

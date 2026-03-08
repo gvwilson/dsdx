@@ -6,6 +6,7 @@ from booking_services import FlightService, HotelService, CarRentalService
 from saga_types import BookingRequest
 
 
+# mccole: orchestratedexample
 def run_orchestrated_saga() -> None:
     """Demonstrate orchestration-based saga."""
     env = Environment()
@@ -50,6 +51,7 @@ def run_orchestrated_saga() -> None:
     print(f"Cars available: {car_service.available_cars}/3")
     print(f"\nCompleted sagas: {orchestrator.sagas_completed}")
     print(f"Failed sagas: {orchestrator.sagas_failed}")
+# mccole: /orchestratedexample
 
 
 if __name__ == "__main__":

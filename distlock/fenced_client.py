@@ -6,6 +6,7 @@ from basic_lock_server import LockServer, LockRequest
 from protected_resource import ProtectedResource
 
 
+# mccole: fencedclient
 class FencedClient(Process):
     """Client that uses fencing tokens when accessing resources."""
 
@@ -89,3 +90,4 @@ class FencedClient(Process):
 
         await self.server.request_queue.put(request)
         await response_queue.get()
+# mccole: /fencedclient

@@ -9,6 +9,7 @@ from versioned_value import VersionedValue
 from messages import ReadRequest, WriteRequest
 
 
+# mccole: partitionedcoordinator
 class PartitionedCoordinator(Coordinator):
     """Coordinator that can simulate network partitions."""
 
@@ -97,3 +98,4 @@ class PartitionedCoordinator(Coordinator):
             merged_clock.merge(clock)
 
         return merged_clock
+# mccole: /partitionedcoordinator

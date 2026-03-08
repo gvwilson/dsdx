@@ -6,6 +6,7 @@ from saga_types import SagaExecution, SagaStatus, SagaStep, BookingRequest
 from booking_services import FlightService, HotelService, CarRentalService
 
 
+# mccole: sagaorchestrator
 class SagaOrchestrator(Process):
     """Centralized saga coordinator (orchestration pattern)."""
 
@@ -142,3 +143,4 @@ class SagaOrchestrator(Process):
                         f"[{self.now:.1f}] Orchestrator: WARNING - "
                         f"Compensation {step_name} failed! Manual intervention needed."
                     )
+# mccole: /sagaorchestrator

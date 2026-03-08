@@ -7,6 +7,7 @@ from versioned_value import VersionedValue
 from messages import ReadRequest, WriteRequest, ReadResponse, WriteResponse
 
 
+# mccole: storagenode
 class StorageNode(Process):
     """A storage node that maintains replicas of keys."""
 
@@ -79,3 +80,4 @@ class StorageNode(Process):
         )
 
         return WriteResponse(key=request.key, success=True, clock=new_clock)
+# mccole: /storagenode

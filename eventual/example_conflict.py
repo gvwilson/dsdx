@@ -6,6 +6,7 @@ from coordinator import Coordinator
 from kv_client import KVClient
 
 
+# mccole: conflictexample
 def run_conflict_simulation():
     """Demonstrate concurrent writes creating conflicts."""
     env = Environment()
@@ -54,6 +55,7 @@ def run_conflict_simulation():
     )
 
     env.run(until=10)
+# mccole: /conflictexample
 
 
 if __name__ == "__main__":

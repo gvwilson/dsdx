@@ -6,6 +6,7 @@ from asimpy import Queue
 import hashlib
 
 
+# mccole: torrenttypes
 @dataclass
 class Piece:
     """A piece of the file being shared."""
@@ -115,3 +116,4 @@ class BitfieldMessage:
     def __str__(self) -> str:
         count = sum(1 for b in self.bitfield if b)
         return f"Bitfield({count}/{len(self.bitfield)} pieces)"
+# mccole: /torrenttypes

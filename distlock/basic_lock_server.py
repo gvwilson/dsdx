@@ -5,6 +5,7 @@ from asimpy import Process, Queue
 from dataclasses import dataclass, field
 
 
+# mccole: lockclasses
 @dataclass
 class LockRequest:
     """Request to acquire or release a lock."""
@@ -32,8 +33,10 @@ class LockState:
     token: int = 0
     lease_expiry: float = 0
     waiters: list = field(default_factory=list)
+# mccole: /lockclasses
 
 
+# mccole: lockserver
 class LockServer(Process):
     """A single lock server managing multiple resources."""
 
@@ -121,3 +124,4 @@ class LockServer(Process):
             return LockResponse(True)
         else:
             return LockResponse(False, message=f"Lock not held by {request.client_id}")
+# mccole: /lockserver
