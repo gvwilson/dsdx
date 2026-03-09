@@ -88,9 +88,14 @@ and payload data.
 
 ## Unreliable Network Layer
 
-Before building TCP, we need to simulate UDP's unreliable delivery:
+Before building TCP, we need to simulate UDP's unreliable delivery.
+`UnreliableNetwork` tracks per-packet statistics and maintains a registry mapping address:port pairs to their receive queues:
 
-<div data-inc="unreliable_network.py" data-filter="inc=network"></div>
+<div data-inc="unreliable_network.py" data-filter="inc=network_init"></div>
+
+`send_packet` applies the configured loss and duplication rates before calling `_deliver_packet`, which adds a random delay and optionally increases it to simulate reordering:
+
+<div data-inc="unreliable_network.py" data-filter="inc=network_send"></div>
 
 This simulates the way packets in real networks can be lost, delayed, reordered, or duplicated.
 The network maintains a registry of endpoints and routes packets accordingly.
@@ -105,6 +110,10 @@ The connection maintains send and receive buffers.
 The send buffer holds unacknowledged segments for potential retransmission.
 The receive buffer handles out-of-order delivery by holding segments until gaps are filled.
 
+The `run` loop reads packets from the receive queue and dispatches each one through `handle_packet`, which routes SYN, SYN-ACK, ACK, and DATA packets to the appropriate handler:
+
+<div data-inc="tcp_connection.py" data-filter="inc=tcp_run"></div>
+
 ## Three-Way Handshake
 
 TCP connection establishment uses three packets to synchronize state:
@@ -118,6 +127,10 @@ The handshake sequence is:
 1.  Client → Server: ACK (ack=y+1)
 
 This synchronizes sequence numbers and establishes bidirectional communication.
+
+The server side of the handshake is handled by `listen_and_accept`, which waits for a SYN packet and then delegates the response to `handle_syn`:
+
+<div data-inc="tcp_connection.py" data-filter="inc=server_accept"></div>
 
 ## Sliding Window Protocol
 
@@ -153,6 +166,10 @@ Each segment has its own timer `Process`.
 If the segment hasn't been acknowledged (i.e., is still in the send buffer)
 when the timer expires,
 it is retransmitted and a new timer starts.
+
+When a DATA packet arrives, `handle_data` adds it to the receive buffer, extracts any newly contiguous data to deliver to the application, and sends a cumulative ACK:
+
+<div data-inc="tcp_connection.py" data-filter="inc=handle_data"></div>
 
 ## Handling Out-of-Order Delivery
 

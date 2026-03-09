@@ -47,18 +47,40 @@ Each step has a forward transaction and a backward compensation.
 ## Service Implementations
 
 Let's implement the microservices that participate in the Saga.
-Each service manages its own local state and provides both forward (book) and backward (cancel) operations:
+Each service manages its own local state and provides both forward (book) and backward (cancel) operations.
 
-<div data-inc="booking_services.py" data-filter="inc=bookingservices"></div>
+The flight service manages seat availability and implements a 10% random failure rate to simulate real-world unreliability:
+
+<div data-inc="booking_services.py" data-filter="inc=flight_service"></div>
+
+The hotel service follows the same pattern with a 15% failure rate and room inventory:
+
+<div data-inc="booking_services.py" data-filter="inc=hotel_service"></div>
+
+The car rental service has a 30% failure rate to demonstrate more frequent compensation:
+
+<div data-inc="booking_services.py" data-filter="inc=car_service"></div>
 
 Each service is autonomous—it manages its own database and can succeed or fail independently.
 
 ## Orchestration-Based Saga
 
 The orchestrator coordinates the sequence of transactions.
-It executes steps sequentially and handles compensation if any step fails:
+It stores references to each service and processes requests from a queue:
 
-<div data-inc="saga_orchestrator.py" data-filter="inc=sagaorchestrator"></div>
+<div data-inc="saga_orchestrator.py" data-filter="inc=orch_init"></div>
+
+When a booking request arrives, `execute_saga` builds the list of steps and drives them forward, triggering compensation if any step fails:
+
+<div data-inc="saga_orchestrator.py" data-filter="inc=orch_execute"></div>
+
+The forward pass runs each step in sequence, stopping immediately on the first failure:
+
+<div data-inc="saga_orchestrator.py" data-filter="inc=orch_forward"></div>
+
+The compensation pass runs in reverse, undoing each completed step:
+
+<div data-inc="saga_orchestrator.py" data-filter="inc=orch_compensate"></div>
 
 The orchestrator provides a clear, centralized view of the workflow.
 It's easy to monitor and debug.

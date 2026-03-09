@@ -106,11 +106,55 @@ class TCPConnection(Process):
         )
 # mccole: /tcpinit
 
+    # mccole: tcp_run
     async def run(self) -> None:
         """Main TCP loop: handle incoming packets."""
         while True:
             packet = await self.recv_queue.get()
             await self.handle_packet(packet)
+
+    async def handle_packet(self, packet: Packet) -> None:
+        """Process incoming packet based on type."""
+        if packet.packet_type == PacketType.SYN:
+            await self.handle_syn(packet)
+
+        elif packet.packet_type == PacketType.SYN_ACK:
+            print(
+                f"[{self.now:.1f}] TCP: Received SYN-ACK "
+                f"(seq={packet.seq_num}, ack={packet.ack_num})"
+            )
+
+            self.recv_seq = packet.seq_num + 1
+            self.recv_buffer.next_expected_seq = self.recv_seq
+            self.send_base = packet.ack_num
+
+            # Send final ACK
+            ack = Packet(
+                src_addr=self.local_addr,
+                dst_addr=packet.src_addr,
+                src_port=self.local_port,
+                dst_port=packet.src_port,
+                seq_num=self.send_base,
+                ack_num=self.recv_seq,
+                packet_type=PacketType.ACK,
+            )
+
+            await self.network.send_packet(ack)
+            self.state = ConnectionState.ESTABLISHED
+            print(f"[{self.now:.1f}] TCP: Sent ACK, connection established")
+
+        elif packet.packet_type == PacketType.ACK:
+            if self.state == ConnectionState.SYN_RECEIVED:
+                print(
+                    f"[{self.now:.1f}] TCP: Received final ACK, connection established"
+                )
+                self.state = ConnectionState.ESTABLISHED
+            else:
+                await self.handle_ack(packet)
+
+        elif packet.packet_type == PacketType.DATA:
+            await self.handle_data(packet)
+    # mccole: /tcp_run
 
     # mccole: tcpconnect
     async def connect(self, remote_addr: str, remote_port: int) -> bool:
@@ -152,6 +196,7 @@ class TCPConnection(Process):
             return False
     # mccole: /tcpconnect
 
+    # mccole: server_accept
     async def listen_and_accept(self) -> bool:
         """Listen for incoming connection (server side)."""
         print(f"[{self.now:.1f}] TCP {self.local_addr}:{self.local_port}: Listening...")
@@ -199,48 +244,7 @@ class TCPConnection(Process):
             f"[{self.now:.1f}] TCP: Sent SYN-ACK (seq={self.send_seq}, "
             f"ack={self.recv_seq})"
         )
-
-    async def handle_packet(self, packet: Packet) -> None:
-        """Process incoming packet based on type."""
-        if packet.packet_type == PacketType.SYN:
-            await self.handle_syn(packet)
-
-        elif packet.packet_type == PacketType.SYN_ACK:
-            print(
-                f"[{self.now:.1f}] TCP: Received SYN-ACK "
-                f"(seq={packet.seq_num}, ack={packet.ack_num})"
-            )
-
-            self.recv_seq = packet.seq_num + 1
-            self.recv_buffer.next_expected_seq = self.recv_seq
-            self.send_base = packet.ack_num
-
-            # Send final ACK
-            ack = Packet(
-                src_addr=self.local_addr,
-                dst_addr=packet.src_addr,
-                src_port=self.local_port,
-                dst_port=packet.src_port,
-                seq_num=self.send_base,
-                ack_num=self.recv_seq,
-                packet_type=PacketType.ACK,
-            )
-
-            await self.network.send_packet(ack)
-            self.state = ConnectionState.ESTABLISHED
-            print(f"[{self.now:.1f}] TCP: Sent ACK, connection established")
-
-        elif packet.packet_type == PacketType.ACK:
-            if self.state == ConnectionState.SYN_RECEIVED:
-                print(
-                    f"[{self.now:.1f}] TCP: Received final ACK, connection established"
-                )
-                self.state = ConnectionState.ESTABLISHED
-            else:
-                await self.handle_ack(packet)
-
-        elif packet.packet_type == PacketType.DATA:
-            await self.handle_data(packet)
+    # mccole: /server_accept
 
     # mccole: handleack
     async def handle_ack(self, packet: Packet) -> None:
@@ -262,6 +266,7 @@ class TCPConnection(Process):
             )
     # mccole: /handleack
 
+    # mccole: handle_data
     async def handle_data(self, packet: Packet) -> None:
         """Handle DATA packet."""
         seq_num = packet.seq_num
@@ -297,6 +302,7 @@ class TCPConnection(Process):
         print(
             f"[{self.now:.1f}] TCP: Sent ACK (ack={self.recv_buffer.next_expected_seq})"
         )
+    # mccole: /handle_data
 
     # mccole: tcpsend
     async def send(self, data: bytes) -> None:

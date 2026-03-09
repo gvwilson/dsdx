@@ -59,9 +59,19 @@ The server receives requests, records timestamps t2 and t3, and sends responses 
 In our simulation, the server's clock is accurate (it uses `self.now` which is the simulation's true time).
 The `stratum` field indicates this server's level in the time hierarchy.
 
-The NTP client is more complex because it must adjust its own clock:
+The NTP client is more complex because it must adjust its own clock.
+The constructor stores the server queue, sync interval, simulated network delay, and an initial clock offset that represents how far off the client starts:
 
-<div data-inc="ntp_client.py" data-filter="inc=ntpclient"></div>
+<div data-inc="ntp_client.py" data-filter="inc=client_init"></div>
+
+The `run` method simply waits for each sync interval before calling `_sync_with_server`:
+
+<div data-inc="ntp_client.py" data-filter="inc=client_run"></div>
+
+`_sync_with_server` executes one full NTP exchange.
+It records the send time t1, waits for the server's response containing t2 and t3, records the receive time t4, and then applies the calculated offset:
+
+<div data-inc="ntp_client.py" data-filter="inc=client_sync"></div>
 
 The client maintains a `clock_offset` representing how far its local clock differs from true time.
 When it syncs, it calculates the offset using the NTP algorithm and adjusts its clock accordingly.

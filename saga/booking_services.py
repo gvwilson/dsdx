@@ -5,7 +5,7 @@ from typing import Dict, Any
 import random
 
 
-# mccole: bookingservices
+# mccole: flight_service
 class FlightService(Process):
     """Microservice for booking flights."""
 
@@ -64,8 +64,10 @@ class FlightService(Process):
             f"(available: {self.available_seats})"
         )
         return True
+# mccole: /flight_service
 
 
+# mccole: hotel_service
 class HotelService(Process):
     """Microservice for booking hotels."""
 
@@ -124,8 +126,10 @@ class HotelService(Process):
             f"(available: {self.available_rooms})"
         )
         return True
+# mccole: /hotel_service
 
 
+# mccole: car_service
 class CarRentalService(Process):
     """Microservice for renting cars."""
 
@@ -184,4 +188,4 @@ class CarRentalService(Process):
             f"(available: {self.available_cars})"
         )
         return True
-# mccole: /bookingservices
+# mccole: /car_service

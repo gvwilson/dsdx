@@ -6,7 +6,7 @@ from tcp_types import Packet
 import random
 
 
-# mccole: network
+# mccole: network_init
 class UnreliableNetwork(Process):
     """Simulates unreliable packet delivery (like UDP)."""
 
@@ -46,7 +46,9 @@ class UnreliableNetwork(Process):
         endpoint_id = f"{address}:{port}"
         self.endpoints[endpoint_id] = queue
         print(f"[{self.now:.1f}] Network: Registered {endpoint_id}")
+# mccole: /network_init
 
+    # mccole: network_send
     async def send_packet(self, packet: Packet) -> None:
         """Send packet with simulated unreliability."""
         self.packets_sent += 1
@@ -84,6 +86,7 @@ class UnreliableNetwork(Process):
             await self.endpoints[endpoint_id].put(packet)
         else:
             print(f"[{self.now:.1f}] Network: No endpoint for {endpoint_id}")
+    # mccole: /network_send
 
     def print_statistics(self) -> None:
         """Print network statistics."""
@@ -97,4 +100,3 @@ class UnreliableNetwork(Process):
         )
         print(f"Packets reordered: {self.packets_reordered}")
         print(f"Packets duplicated: {self.packets_duplicated}")
-# mccole: /network

@@ -36,7 +36,7 @@ class LockState:
 # mccole: /lockclasses
 
 
-# mccole: lockserver
+# mccole: server_init
 class LockServer(Process):
     """A single lock server managing multiple resources."""
 
@@ -60,7 +60,9 @@ class LockServer(Process):
                 response = LockResponse(False, message="Unknown operation")
 
             await request.response_queue.put(response)
+    # mccole: /server_init
 
+    # mccole: handle_acquire
     async def _handle_acquire(self, request: LockRequest) -> LockResponse:
         """Try to acquire a lock."""
         resource = request.resource
@@ -105,7 +107,9 @@ class LockServer(Process):
         else:
             # Lock is held by someone else
             return LockResponse(False, message=f"Lock held by {lock.holder}")
+    # mccole: /handle_acquire
 
+    # mccole: handle_release
     async def _handle_release(self, request: LockRequest) -> LockResponse:
         """Release a lock."""
         resource = request.resource
@@ -124,4 +128,4 @@ class LockServer(Process):
             return LockResponse(True)
         else:
             return LockResponse(False, message=f"Lock not held by {request.client_id}")
-# mccole: /lockserver
+    # mccole: /handle_release

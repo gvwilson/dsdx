@@ -68,9 +68,21 @@ Each storage node maintains a replica of a subset of keys:
 
 <div data-inc="messages.py" data-filter="inc=messages"></div>
 
-<div data-inc="storage_node.py" data-filter="inc=storagenode"></div>
+Each storage node maintains a replica of a subset of keys.
+The node's constructor sets up its data store and creates the queue it uses to receive requests:
 
-The `_handle_write` method is crucial.
+<div data-inc="storage_node.py" data-filter="inc=storage_init"></div>
+
+The `run` method dispatches reads and writes to dedicated handlers.
+`_handle_read` returns all stored versions of a key:
+
+<div data-inc="storage_node.py" data-filter="inc=storage_read"></div>
+
+The write handler is where causality is maintained.
+It increments the local clock, merges the client's causal context, and discards any stored versions that the new value supersedes:
+
+<div data-inc="storage_node.py" data-filter="inc=storage_write"></div>
+
 When writing a new version:
 
 1.  We increment our local clock
@@ -83,7 +95,21 @@ When writing a new version:
 The coordinator manages replication across storage nodes.
 It implements quorum reads and writes: for N replicas, we wait for R replicas to respond to a read and W replicas to respond to a write, where R + W > N guarantees we see the latest write.
 
-<div data-inc="coordinator.py" data-filter="inc=coordinator"></div>
+The constructor takes the list of storage nodes and quorum parameters, and `_get_replicas` uses consistent hashing to choose which nodes store a given key:
+
+<div data-inc="coordinator.py" data-filter="inc=coord_init"></div>
+
+A read sends requests to R replicas in parallel and merges their responses:
+
+<div data-inc="coordinator.py" data-filter="inc=coord_read"></div>
+
+A write sends the new value to W replicas, each of which updates its local clock, and the coordinator merges those clocks to return a causal context to the client:
+
+<div data-inc="coordinator.py" data-filter="inc=coord_write"></div>
+
+`_merge_versions` resolves the list of all versions returned by replicas, discarding any version whose clock is dominated by another:
+
+<div data-inc="coordinator.py" data-filter="inc=coord_merge"></div>
 
 The quorum protocol is the heart of tunable consistency.
 With N=3, R=2, W=2:
@@ -94,9 +120,19 @@ With N=3, R=2, W=2:
 
 ## Client Implementation
 
-Clients read values, resolve conflicts, and write back:
+Clients read values, resolve conflicts, and write back.
+The client stores a causal context per key and works through a list of operations:
 
-<div data-inc="kv_client.py" data-filter="inc=kvclient"></div>
+<div data-inc="kv_client.py" data-filter="inc=kv_init"></div>
+
+When reading, the client checks for conflicts.
+If a single version is returned there is no conflict; if multiple concurrent versions are returned, the client resolves them using last-write-wins and merges all their clocks:
+
+<div data-inc="kv_client.py" data-filter="inc=kv_read"></div>
+
+When writing, the client passes its current causal context so the coordinator can detect whether the write is concurrent with or follows previous writes:
+
+<div data-inc="kv_client.py" data-filter="inc=kv_write"></div>
 
 The client maintains a context (vector clock) for each key.
 When writing, it passes this context to preserve causality.
@@ -114,19 +150,34 @@ Now let's create a more interesting scenario with concurrent conflicting writes:
 
 ## Handling Network Partitions
 
-Let's simulate a network partition to see how the system maintains availability:
+Let's simulate a network partition to see how the system maintains availability.
+`PartitionedCoordinator` extends the base coordinator with the ability to mark nodes as unreachable:
 
-<div data-inc="partitioned_coordinator.py" data-filter="inc=partitionedcoordinator"></div>
+<div data-inc="partitioned_coordinator.py" data-filter="inc=partition_init"></div>
+
+Reads skip any partitioned nodes.
+If fewer than R nodes are available the read fails; otherwise it proceeds with only the reachable replicas:
+
+<div data-inc="partitioned_coordinator.py" data-filter="inc=partition_read"></div>
+
+Writes follow the same pattern, requiring W reachable replicas before proceeding:
+
+<div data-inc="partitioned_coordinator.py" data-filter="inc=partition_write"></div>
 
 <div data-inc="example_partition.py" data-filter="inc=partitionexample"></div>
 
 ## Anti-Entropy and Read Repair
 
 In a real system, we need mechanisms to ensure all replicas eventually converge.
-Read repair happens during reads:
-if we detect replicas are out of sync, we push the latest version to lagging replicas.
+Read repair happens during reads: if we detect replicas are out of sync, we push the latest version to lagging replicas.
 
-<div data-inc="coordinator_with_read_repair.py" data-filter="inc=readrepair"></div>
+`CoordinatorWithReadRepair` overrides `read` to query all replicas rather than just a quorum, so it can identify which ones are behind:
+
+<div data-inc="coordinator_with_read_repair.py" data-filter="inc=repair_read"></div>
+
+After collecting all responses, `_perform_read_repair` compares each replica's set of versions against the merged result and writes missing versions back to any replica that is out of date:
+
+<div data-inc="coordinator_with_read_repair.py" data-filter="inc=repair_perform"></div>
 
 Read repair ensures that whenever we read a key, we fix any inconsistencies we discover.
 Over time, this brings all replicas into sync.

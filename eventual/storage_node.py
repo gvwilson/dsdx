@@ -7,7 +7,7 @@ from versioned_value import VersionedValue
 from messages import ReadRequest, WriteRequest, ReadResponse, WriteResponse
 
 
-# mccole: storagenode
+# mccole: storage_init
 class StorageNode(Process):
     """A storage node that maintains replicas of keys."""
 
@@ -29,7 +29,9 @@ class StorageNode(Process):
             elif isinstance(request, WriteRequest):
                 response = self._handle_write(request)
                 await request.response_queue.put(response)
+    # mccole: /storage_init
 
+    # mccole: storage_read
     def _handle_read(self, request: ReadRequest) -> ReadResponse:
         """Read all concurrent versions of a key."""
         versions = self.data.get(request.key, [])
@@ -40,7 +42,9 @@ class StorageNode(Process):
         )
 
         return ReadResponse(key=request.key, versions=versions.copy())
+    # mccole: /storage_read
 
+    # mccole: storage_write
     def _handle_write(self, request: WriteRequest) -> WriteResponse:
         """Write a value, handling concurrent versions."""
         # Increment our clock
@@ -80,4 +84,4 @@ class StorageNode(Process):
         )
 
         return WriteResponse(key=request.key, success=True, clock=new_clock)
-# mccole: /storagenode
+    # mccole: /storage_write

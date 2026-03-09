@@ -69,27 +69,55 @@ First, the message structures:
 
 These classes represent DNS queries and responses. The `DNSRecord` includes a TTL (time to live) for caching.
 
-Now the authoritative DNS server:
+Now the authoritative DNS server.
+The constructor registers the zone this server is authoritative for and creates its record store.
+`add_record` lets callers populate the zone before the simulation starts:
 
-<div data-inc="authoritative_server.py" data-filter="inc=authserver"></div>
+<div data-inc="authoritative_server.py" data-filter="inc=auth_init"></div>
+
+The `run` loop receives queries and builds responses.
+If the query domain ends in this server's zone, the server looks up the record directly; it also follows CNAME chains to resolve aliases to their target A records:
+
+<div data-inc="authoritative_server.py" data-filter="inc=auth_run"></div>
 
 An authoritative server is responsible for a specific zone (like `example.com`).
 It stores the actual DNS records and answers queries authoritatively.
 Notice how it handles CNAME records by following the alias to find the final A record.
 
-The recursive resolver is more complex because it must cache and coordinate with authoritative servers:
+The recursive resolver is more complex because it must cache and coordinate with authoritative servers.
+A `CacheEntry` wraps a record with its expiry time:
 
 <div data-inc="recursive_resolver.py" data-filter="inc=cacheentry"></div>
-<div data-inc="recursive_resolver.py" data-filter="inc=recursive"></div>
 
-The resolver checks its cache first (saving network round-trips), and only queries authoritative servers on cache misses.
+The resolver's constructor sets up the cache and tracks hit and miss statistics:
+
+<div data-inc="recursive_resolver.py" data-filter="inc=resolver_init"></div>
+
+The `run` loop checks the cache before forwarding to an authoritative server.
+On a cache miss it calls `_resolve_recursive`, then stores the results:
+
+<div data-inc="recursive_resolver.py" data-filter="inc=resolver_run"></div>
+
+`_check_cache` filters out expired entries and returns `None` on a complete miss.
+`_cache_records` stores records with expiry times computed from each record's TTL:
+
+<div data-inc="recursive_resolver.py" data-filter="inc=resolver_cache"></div>
+
+`_resolve_recursive` finds the authoritative server whose zone suffix matches the query domain most specifically, then forwards the query and returns the response:
+
+<div data-inc="recursive_resolver.py" data-filter="inc=resolver_resolve"></div>
+
 Each cached entry has an expiration time based on the record's TTL.
 
 Our simplified resolver directly contacts authoritative servers. Real DNS resolvers walk the hierarchy starting from root servers, but the principle is the same: cache aggressively, query only when necessary.
 
-Finally, the DNS client:
+The DNS client wraps a response queue and a query counter:
 
-<div data-inc="dns_client.py" data-filter="inc=dnsclient"></div>
+<div data-inc="dns_client.py" data-filter="inc=client_init"></div>
+
+`lookup` constructs a query, sends it to the resolver, and prints the response:
+
+<div data-inc="dns_client.py" data-filter="inc=client_lookup"></div>
 
 Clients send queries to recursive resolvers and wait for responses. In real systems, clients also cache locally and can query multiple resolvers for redundancy.
 

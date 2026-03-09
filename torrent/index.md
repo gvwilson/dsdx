@@ -31,279 +31,48 @@ The key insight is **tit-for-tat**: peers upload to those who upload to them. Th
 
 ## Core Data Structures
 
-Let's start with the fundamental types:
+Let's start with the fundamental types.
+The file types describe pieces and torrent metadata:
 
-<div data-inc="bittorrent_types.py" data-filter="inc=torrenttypes"></div>
+<div data-inc="bittorrent_types.py" data-filter="inc=file_types"></div>
+
+The message types describe the protocol exchanges between peers and tracker:
+
+<div data-inc="bittorrent_types.py" data-filter="inc=message_types"></div>
 
 These structures represent the protocol's messages and state. The bitfield is particularly important—it compactly represents which pieces a peer has.
 
 ## Tracker Implementation
 
-The tracker coordinates the swarm by maintaining a list of active peers:
+The tracker coordinates the swarm by maintaining a list of active peers.
+The class and its constructor set up the request queue and swarm registry:
 
-<div data-inc="tracker.py" data-filter="inc=tracker"></div>
+<div data-inc="tracker.py" data-filter="inc=tracker_init"></div>
+
+When a peer announces itself, `handle_request` updates the swarm and returns a list of known peers:
+
+<div data-inc="tracker.py" data-filter="inc=tracker_handle"></div>
 
 The tracker is stateless—it just maintains the current list of peers. In production, trackers often use UDP for efficiency and can handle millions of peers.
 
-## Peer Implementation
+## Simplified Peer
 
-The peer is the heart of BitTorrent—it downloads pieces, uploads to others, and manages connections:
+The peer is the heart of BitTorrent—it downloads pieces, uploads to others, and manages connections.
+The constructor stores the peer's identity, piece inventory, and connections to other peers:
 
-```python
-class BitTorrentPeer(Process):
-    """BitTorrent peer (leecher or seeder)."""
-    
-    def init(self, peer_id: str, metadata: TorrentMetadata, 
-             tracker: Tracker, initial_pieces: Optional[List[Piece]] = None) -> None:
-        self.peer_id = peer_id
-        self.metadata = metadata
-        self.tracker = tracker
-        
-        # Piece storage
-        self.pieces: Dict[int, Piece] = {}
-        if initial_pieces:
-            for piece in initial_pieces:
-                self.pieces[piece.index] = piece
-        
-        # Track which pieces we have
-        self.bitfield = [i in self.pieces for i in range(metadata.total_pieces)]
-        
-        # Connection management
-        self.peers: Dict[str, PeerInfo] = {}  # Known peers
-        self.peer_bitfields: Dict[str, List[bool]] = {}  # What each peer has
-        self.peer_queues: Dict[str, Queue] = {}  # Message queues to peers
-        
-        # Download state
-        self.interested_peers: Set[str] = set()  # Peers interested in us
-        self.choked_by: Set[str] = set()  # Peers choking us
-        self.pending_requests: Dict[int, str] = {}  # piece_index -> peer_id
-        
-        # Statistics
-        self.downloaded_bytes = sum(len(p.data) for p in self.pieces.values())
-        self.uploaded_bytes = 0
-        
-        # Upload/download tracking for tit-for-tat
-        self.upload_to_peer: Dict[str, int] = {}  # bytes uploaded to each peer
-        self.download_from_peer: Dict[str, int] = {}  # bytes downloaded from each peer
-        
-        print(f"[{self.now:.1f}] Peer {self.peer_id}: Started with "
-              f"{len(self.pieces)}/{metadata.total_pieces} pieces")
-    
-    async def run(self) -> None:
-        """Main peer loop."""
-        # Contact tracker
-        await self.announce_to_tracker("started")
-        
-        # Connect to peers
-        await self.timeout(0.5)
-        await self.connect_to_peers()
-        
-        # Main download loop
-        while not self.is_complete():
-            await self.download_pieces()
-            await self.timeout(1.0)
-        
-        print(f"[{self.now:.1f}] Peer {self.peer_id}: Download complete!")
-        
-        # Announce completion
-        await self.announce_to_tracker("completed")
-        
-        # Continue seeding for a while
-        await self.timeout(5.0)
-        await self.announce_to_tracker("stopped")
-    
-    def is_complete(self) -> bool:
-        """Check if we have all pieces."""
-        return len(self.pieces) == self.metadata.total_pieces
-    
-    async def announce_to_tracker(self, event: str) -> None:
-        """Announce to tracker and get peer list."""
-        response_queue: Queue = Queue(self._env)
-        
-        bytes_left = (self.metadata.total_pieces - len(self.pieces)) * self.metadata.piece_length
-        
-        request = TrackerRequest(
-            info_hash=self.metadata.info_hash,
-            peer_id=self.peer_id,
-            port=6881,
-            uploaded=self.uploaded_bytes,
-            downloaded=self.downloaded_bytes,
-            left=bytes_left,
-            event=event,
-            response_queue=response_queue
-        )
-        
-        await self.tracker.request_queue.put(request)
-        response = await response_queue.get()
-        
-        # Add new peers
-        for peer_info in response.peers:
-            if peer_info.peer_id not in self.peers:
-                self.peers[peer_info.peer_id] = peer_info
-    
-    async def connect_to_peers(self) -> None:
-        """Initiate connections with known peers."""
-        for peer_id, peer_info in self.peers.items():
-            if peer_id not in self.peer_queues:
-                # Create message queue for this peer
-                self.peer_queues[peer_id] = Queue(self._env)
-                
-                # Send bitfield
-                await self.send_bitfield_to_peer(peer_id)
-                
-                # Express interest if they have something we need
-                await self.evaluate_interest(peer_id)
-    
-    async def send_bitfield_to_peer(self, peer_id: str) -> None:
-        """Send our bitfield to a peer."""
-        # In real implementation, would send over network
-        # For simulation, we'll just record it
-        print(f"[{self.now:.1f}] Peer {self.peer_id}: Sent bitfield to {peer_id}")
-    
-    async def evaluate_interest(self, peer_id: str) -> None:
-        """Determine if we're interested in a peer."""
-        if peer_id not in self.peer_bitfields:
-            return
-        
-        peer_bitfield = self.peer_bitfields[peer_id]
-        
-        # Check if peer has pieces we need
-        for i, has_piece in enumerate(peer_bitfield):
-            if has_piece and i not in self.pieces:
-                # We're interested!
-                await self.send_message(peer_id, PeerMessage("interested"))
-                return
-    
-    async def send_message(self, peer_id: str, message: PeerMessage) -> None:
-        """Send message to peer."""
-        if peer_id in self.peer_queues:
-            await self.peer_queues[peer_id].put(message)
-    
-    async def download_pieces(self) -> None:
-        """Download pieces from peers."""
-        # Find pieces we need
-        needed_pieces = [i for i in range(self.metadata.total_pieces) 
-                        if i not in self.pieces]
-        
-        if not needed_pieces:
-            return
-        
-        # Rarest first: prioritize pieces that few peers have
-        piece_rarity = self.calculate_piece_rarity()
-        needed_pieces.sort(key=lambda idx: piece_rarity.get(idx, 999))
-        
-        # Request pieces from unchoked peers
-        for piece_idx in needed_pieces[:5]:  # Limit concurrent requests
-            if piece_idx in self.pending_requests:
-                continue
-            
-            # Find peer who has this piece and isn't choking us
-            peer_id = self.find_peer_with_piece(piece_idx)
-            if peer_id:
-                await self.request_piece(peer_id, piece_idx)
-                break
-    
-    def calculate_piece_rarity(self) -> Dict[int, int]:
-        """Calculate how many peers have each piece (for rarest-first)."""
-        rarity: Dict[int, int] = {}
-        
-        for peer_bitfield in self.peer_bitfields.values():
-            for idx, has_piece in enumerate(peer_bitfield):
-                if has_piece:
-                    rarity[idx] = rarity.get(idx, 0) + 1
-        
-        return rarity
-    
-    def find_peer_with_piece(self, piece_idx: int) -> Optional[str]:
-        """Find a peer who has a piece and isn't choking us."""
-        candidates = []
-        
-        for peer_id, bitfield in self.peer_bitfields.items():
-            if (peer_id not in self.choked_by and 
-                piece_idx < len(bitfield) and 
-                bitfield[piece_idx]):
-                candidates.append(peer_id)
-        
-        return random.choice(candidates) if candidates else None
-    
-    async def request_piece(self, peer_id: str, piece_idx: int) -> None:
-        """Request a piece from a peer."""
-        print(f"[{self.now:.1f}] Peer {self.peer_id}: Requesting piece {piece_idx} "
-              f"from {peer_id}")
-        
-        self.pending_requests[piece_idx] = peer_id
-        await self.send_message(peer_id, PeerMessage("request", piece_idx))
-    
-    async def receive_piece(self, peer_id: str, piece: Piece) -> None:
-        """Receive and verify a piece."""
-        if not piece.verify():
-            print(f"[{self.now:.1f}] Peer {self.peer_id}: Piece {piece.index} "
-                  f"failed verification!")
-            # In real implementation, would re-request
-            return
-        
-        # Store piece
-        self.pieces[piece.index] = piece
-        self.bitfield[piece.index] = True
-        self.downloaded_bytes += len(piece.data)
-        
-        # Track download from this peer
-        self.download_from_peer[peer_id] = self.download_from_peer.get(peer_id, 0) + len(piece.data)
-        
-        # Remove from pending
-        if piece.index in self.pending_requests:
-            del self.pending_requests[piece.index]
-        
-        print(f"[{self.now:.1f}] Peer {self.peer_id}: Received piece {piece.index} "
-              f"({len(self.pieces)}/{self.metadata.total_pieces})")
-        
-        # Notify other peers we have this piece
-        await self.broadcast_have(piece.index)
-    
-    async def broadcast_have(self, piece_idx: int) -> None:
-        """Tell all peers we have a new piece."""
-        for peer_id in self.peer_queues:
-            await self.send_message(peer_id, PeerMessage("have", piece_idx))
-    
-    async def handle_peer_request(self, peer_id: str, piece_idx: int) -> None:
-        """Handle request for a piece from another peer."""
-        if piece_idx not in self.pieces:
-            return
-        
-        # Implement tit-for-tat: only upload to peers who upload to us
-        if not self.should_upload_to(peer_id):
-            print(f"[{self.now:.1f}] Peer {self.peer_id}: Choking {peer_id}")
-            return
-        
-        piece = self.pieces[piece_idx]
-        
-        # Send piece
-        await self.send_message(peer_id, PeerMessage("piece", piece))
-        
-        self.uploaded_bytes += len(piece.data)
-        self.upload_to_peer[peer_id] = self.upload_to_peer.get(peer_id, 0) + len(piece.data)
-        
-        print(f"[{self.now:.1f}] Peer {self.peer_id}: Uploaded piece {piece_idx} "
-              f"to {peer_id}")
-    
-    def should_upload_to(self, peer_id: str) -> bool:
-        """Tit-for-tat: upload to peers who upload to us."""
-        # Optimistic unchoking: occasionally upload to new peers
-        if random.random() < 0.1:
-            return True
-        
-        # Upload to top uploaders to us
-        downloaded_from_peer = self.download_from_peer.get(peer_id, 0)
-        return downloaded_from_peer > 0
-```
+<div data-inc="simplified_peer.py" data-filter="inc=peer_init"></div>
 
-The peer implements several key BitTorrent features: rarest-first piece selection, tit-for-tat uploads, and piece verification.
+The `run` method announces to the tracker, then loops through download rounds until all pieces are obtained:
 
-## Simplified Peer for Simulation
+<div data-inc="simplified_peer.py" data-filter="inc=peer_run"></div>
 
-For our simulation, let's create a simplified peer interaction model:
+Each download round selects pieces to request using rarest-first ordering, then attempts to download from available peers:
 
-<div data-inc="simplified_peer.py" data-filter="inc=simplifiedpeer"></div>
+<div data-inc="simplified_peer.py" data-filter="inc=peer_download_round"></div>
+
+`_download_from_peer` applies the tit-for-tat rule—only downloading from a peer if it has uploaded to us recently—and on success updates piece state and broadcasts a HAVE message:
+
+<div data-inc="simplified_peer.py" data-filter="inc=peer_download_from"></div>
 
 This simplified version captures the essence of BitTorrent without all the protocol complexity.
 

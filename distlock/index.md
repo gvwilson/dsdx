@@ -59,15 +59,37 @@ Let's start with a single lock server that manages locks for multiple resources:
 
 <div data-inc="basic_lock_server.py" data-filter="inc=lockclasses"></div>
 
-The `LockServer` maintains state for each resource and processes lock requests:
+The `LockServer` class and its constructor set up the request queue and a dictionary of per-resource lock states.
+Its `run` loop dispatches each incoming request by operation type:
 
-<div data-inc="basic_lock_server.py" data-filter="inc=lockserver"></div>
+<div data-inc="basic_lock_server.py" data-filter="inc=server_init"></div>
+
+When a client tries to acquire a lock, the server first checks whether the current lease has expired, then grants the lock or renews it if the same client is asking again:
+
+<div data-inc="basic_lock_server.py" data-filter="inc=handle_acquire"></div>
+
+Releasing a lock simply clears the holder if the request comes from the current holder:
+
+<div data-inc="basic_lock_server.py" data-filter="inc=handle_release"></div>
 
 ## Lock Clients
 
-Clients acquire locks, do work in critical sections, and release locks:
+Clients acquire locks, do work in critical sections, and release locks.
+The client class and its constructor store connection details and track the current fencing token:
 
-<div data-inc="lock_client.py" data-filter="inc=lockclient"></div>
+<div data-inc="lock_client.py" data-filter="inc=client_init"></div>
+
+The `run` method schedules repeated attempts to acquire the lock and do work:
+
+<div data-inc="lock_client.py" data-filter="inc=client_run"></div>
+
+`acquire` sends a request to the lock server and waits for a response:
+
+<div data-inc="lock_client.py" data-filter="inc=client_acquire"></div>
+
+`release` sends a release request when the client is done with the resource:
+
+<div data-inc="lock_client.py" data-filter="inc=client_release"></div>
 
 Let's run a simple simulation where multiple clients compete for the same lock:
 
@@ -110,9 +132,22 @@ Here's a protected resource that checks tokens:
 
 <div data-inc="protected_resource.py" data-filter="inc=protectedresource"></div>
 
-Now let's create a client that uses fencing tokens:
+Now let's create a client that uses fencing tokens.
+The fenced client stores the token it received when acquiring the lock and passes it with every resource access:
 
-<div data-inc="fenced_client.py" data-filter="inc=fencedclient"></div>
+<div data-inc="fenced_client.py" data-filter="inc=fenced_init"></div>
+
+Its `run` method follows the same lifecycle as the basic client:
+
+<div data-inc="fenced_client.py" data-filter="inc=fenced_run"></div>
+
+The acquire step is identical to the basic client but stores the token:
+
+<div data-inc="fenced_client.py" data-filter="inc=fenced_acquire"></div>
+
+When accessing the resource, the client passes the fencing token so the resource can reject stale requests:
+
+<div data-inc="fenced_client.py" data-filter="inc=fenced_release"></div>
 
 Now we can demonstrate split-brain prevention:
 
@@ -136,9 +171,18 @@ A single lock server is a single point of failure.
 Real distributed lock managers replicate state across multiple servers.
 When implementing full consensus (Raft or Paxos), a client must get agreement from a majority of servers before considering the lock acquired.
 
-Here's a simplified version with replicated lock servers:
+Here's a simplified version with replicated lock servers.
+The replicated manager holds references to all lock server replicas and a configurable majority threshold:
 
-<div data-inc="replicated_lock_manager.py" data-filter="inc=replicatedmanager"></div>
+<div data-inc="replicated_lock_manager.py" data-filter="inc=replicated_init"></div>
+
+To acquire a lock, the manager sends requests to all replicas and waits until a majority grant it:
+
+<div data-inc="replicated_lock_manager.py" data-filter="inc=replicated_acquire"></div>
+
+Releasing a lock sends release requests to all replicas that acknowledged the acquire:
+
+<div data-inc="replicated_lock_manager.py" data-filter="inc=replicated_release"></div>
 
 A client using the replicated manager:
 

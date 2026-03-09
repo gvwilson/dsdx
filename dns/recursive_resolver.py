@@ -19,7 +19,7 @@ class CacheEntry:
 # mccole: /cacheentry
 
 
-# mccole: recursive
+# mccole: resolver_init
 class RecursiveDNSResolver(Process):
     """A recursive DNS resolver with caching."""
 
@@ -37,7 +37,9 @@ class RecursiveDNSResolver(Process):
         self.queries_received = 0
         self.cache_hits = 0
         self.cache_misses = 0
+# mccole: /resolver_init
 
+    # mccole: resolver_run
     async def run(self):
         """Process client DNS queries."""
         while True:
@@ -76,7 +78,9 @@ class RecursiveDNSResolver(Process):
 
             # Send response to client
             await client_queue.put(response)
+    # mccole: /resolver_run
 
+    # mccole: resolver_cache
     def _check_cache(
         self, domain: str, record_type: RecordType
     ) -> Optional[list[DNSRecord]]:
@@ -106,7 +110,9 @@ class RecursiveDNSResolver(Process):
 
             expire_time = self.now + record.ttl
             self.cache[key].append(CacheEntry(record, expire_time))
+    # mccole: /resolver_cache
 
+    # mccole: resolver_resolve
     async def _resolve_recursive(self, query: DNSQuery) -> DNSResponse:
         """Recursively resolve a query by querying authoritative servers."""
         # Find the appropriate authoritative server
@@ -136,6 +142,4 @@ class RecursiveDNSResolver(Process):
         # Wait for response
         response = await self.response_queue.get()
         return response
-
-
-# mccole: /recursive
+    # mccole: /resolver_resolve

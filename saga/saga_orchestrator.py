@@ -6,7 +6,7 @@ from saga_types import SagaExecution, SagaStatus, SagaStep, BookingRequest
 from booking_services import FlightService, HotelService, CarRentalService
 
 
-# mccole: sagaorchestrator
+# mccole: orch_init
 class SagaOrchestrator(Process):
     """Centralized saga coordinator (orchestration pattern)."""
 
@@ -34,7 +34,9 @@ class SagaOrchestrator(Process):
         while True:
             request = await self.request_queue.get()
             await self.execute_saga(request)
+    # mccole: /orch_init
 
+    # mccole: orch_execute
     async def execute_saga(self, booking: BookingRequest) -> None:
         """Execute travel booking saga."""
         print(f"[{self.now:.1f}] {'=' * 60}")
@@ -95,7 +97,9 @@ class SagaOrchestrator(Process):
             print(
                 f"\n[{self.now:.1f}] ✗✗✗ Saga {saga.saga_id} FAILED - compensated ✗✗✗\n"
             )
+    # mccole: /orch_execute
 
+    # mccole: orch_forward
     async def execute_forward(self, saga: SagaExecution) -> bool:
         """Execute forward transactions in sequence."""
         for i, step in enumerate(saga.steps):
@@ -120,7 +124,9 @@ class SagaOrchestrator(Process):
                 return False
 
         return True
+    # mccole: /orch_forward
 
+    # mccole: orch_compensate
     async def execute_compensation(self, saga: SagaExecution) -> None:
         """Execute compensating transactions in reverse order."""
         print(f"\n[{self.now:.1f}] Orchestrator: Starting compensation...")
@@ -143,4 +149,4 @@ class SagaOrchestrator(Process):
                         f"[{self.now:.1f}] Orchestrator: WARNING - "
                         f"Compensation {step_name} failed! Manual intervention needed."
                     )
-# mccole: /sagaorchestrator
+    # mccole: /orch_compensate
