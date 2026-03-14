@@ -55,8 +55,6 @@ class Replica(Process):
             )
 
             await self.timeout(self.sync_interval)
-
-
 # mccole: /replica
 
 
@@ -75,8 +73,6 @@ def main():
     print("\n--- Final State")
     for r in replicas:
         print(f"{r.name}: {sorted(r.orset.value())}")
-
-
 # mccole: /sim
 
 

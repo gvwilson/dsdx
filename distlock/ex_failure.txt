@@ -1,0 +1,4 @@
+[0.0] Server1: Granted lock on database to FailClient (token 1)
+[0.0] FailClient: Starting work
+[0.0] Client2: Failed to acquire lock
+[1.0] FailClient: CRASHED!

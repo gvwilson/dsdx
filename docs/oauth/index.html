@@ -706,7 +706,7 @@ it only ever handles codes and tokens:</p>
 <p>Putting it all together, the simulation creates an authorization server and resource server,
 registers a client application called <code>photo_app</code>,
 and then runs the complete three-step flow:</p>
-<div data-filter="inc=sim" data-inc="ex_basic_oauth.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">run_basic_oauth_flow</span><span class="p">():</span>
+<div data-filter="inc=sim" data-inc="ex_basic_oauth.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">"""Demonstrate basic OAuth 2.0 authorization code flow."""</span>
     <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
 
@@ -737,10 +737,6 @@ and then runs the complete three-step flow:</p>
 
     <span class="c1"># Run simulation</span>
     <span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
-
-
-<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
-    <span class="n">run_basic_oauth_flow</span><span class="p">()</span>
 </code></pre></div>
 </div>
 <p>The output shows the servers processing requests in sequence,

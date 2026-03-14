@@ -1,6 +1,3 @@
-# replicated_lock_manager.py
-"""Replicated lock manager with majority voting."""
-
 from asimpy import Environment, Queue
 from basic_lock_server import LockServer, LockRequest
 

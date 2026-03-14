@@ -1,6 +1,3 @@
-# replicated_lock_client.py
-"""Client for replicated lock manager."""
-
 from asimpy import Process
 from replicated_lock_manager import ReplicatedLockManager
 

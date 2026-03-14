@@ -1,15 +1,14 @@
-# example_fencing.py
-"""Demonstration of fencing tokens preventing split-brain."""
+"""Demonstrate fencing tokens preventing split-brain."""
 
 from asimpy import Environment
 from basic_lock_server import LockServer
 from protected_resource import ProtectedResource
 from fenced_client import FencedClient
+from dsdx import dsdx
 
 
 # mccole: fencingexample
-def run_fencing_simulation():
-    """Demonstrate fencing tokens preventing split-brain."""
+def main():
     env = Environment()
 
     server = LockServer(env, "Server1", lease_duration=3.0)
@@ -43,4 +42,4 @@ def run_fencing_simulation():
 
 
 if __name__ == "__main__":
-    run_fencing_simulation()
+    dsdx(main)

@@ -1,0 +1,10 @@
+[0.0] Server1: Granted lock on resource to Client1 (token 1)
+[0.0] Server2: Granted lock on resource to Client1 (token 1)
+[0.0] Server3: Granted lock on resource to Client1 (token 1)
+[0.0] Lock acquired by Client1 (3/3 servers, token 1)
+[0.0] Client1: Working with lock
+[0.0] Lock acquisition failed for Client2 (0/3 servers)
+[3.0] Client1: Work complete
+[3.0] Server1: Released lock on resource by Client1
+[3.0] Server2: Released lock on resource by Client1
+[3.0] Server3: Released lock on resource by Client1

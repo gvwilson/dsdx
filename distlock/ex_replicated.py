@@ -1,14 +1,13 @@
-# example_replicated.py
-"""Demonstration of replicated lock manager."""
+"""Demonstrate replicated lock manager."""
 
 from asimpy import Environment
 from replicated_lock_manager import ReplicatedLockManager
 from replicated_lock_client import ReplicatedLockClient
+from dsdx import dsdx
 
 
 # mccole: replicatedexample
-def run_replicated_simulation():
-    """Demonstrate replicated lock manager."""
+def main():
     env = Environment()
 
     # Create manager with 3 servers
@@ -23,4 +22,4 @@ def run_replicated_simulation():
 
 
 if __name__ == "__main__":
-    run_replicated_simulation()
+    dsdx(main)

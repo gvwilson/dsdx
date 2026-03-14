@@ -49,8 +49,6 @@ class PriorityPublisher(Process):
             )
 
             await self.timeout(self.interval)
-
-
 # mccole: /prioritypublisher
 
 
@@ -88,8 +86,6 @@ class PrioritySubscriber(Process):
             )
 
             await self.timeout(self.processing_time)
-
-
 # mccole: /prioritysubscriber
 
 
@@ -118,8 +114,6 @@ def main():
     print("\nReceived by priority:")
     for priority in sorted(subscriber.priority_counts.keys()):
         print(f"  Priority {priority}: {subscriber.priority_counts[priority]}")
-
-
 # mccole: /simulate
 
 

@@ -595,8 +595,6 @@ we create a simple dataclass to represent peers in the network:</p>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">counter</span><span class="p">:</span> <span class="n">GCounter</span>
     <span class="n">partitioned_from</span><span class="p">:</span> <span class="nb">set</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">set</span><span class="p">)</span>
-
-
 <span class="c1"># mccole</span>
 
 
@@ -629,8 +627,6 @@ we create a simple dataclass to represent peers in the network:</p>
                     <span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: synced with </span><span class="si">{</span><span class="n">peer</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">counter</span><span class="o">.</span><span class="n">value</span><span class="p">()</span><span class="si">}</span><span class="s2">"</span>
                 <span class="p">)</span>
             <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">interval</span><span class="p">)</span>
-
-
 <span class="c1"># mccole: /replica</span>
 
 
@@ -656,8 +652,6 @@ we create a simple dataclass to represent peers in the network:</p>
         <span class="bp">self</span><span class="o">.</span><span class="n">peer_a</span><span class="o">.</span><span class="n">partitioned_from</span><span class="o">.</span><span class="n">discard</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">peer_b</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">peer_b</span><span class="o">.</span><span class="n">partitioned_from</span><span class="o">.</span><span class="n">discard</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">peer_a</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">}</span><span class="s2">] *** healed: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">peer_a</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> &lt;---&gt; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">peer_b</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-
-
 <span class="c1"># mccole: /partition</span>
 
 
@@ -679,8 +673,6 @@ we create a simple dataclass to represent peers in the network:</p>
     <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">--- Final State"</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">peers</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">counter</span><span class="p">)</span>
-
-
 <span class="c1"># mccole: /sim</span>
 
 

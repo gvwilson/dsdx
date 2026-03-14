@@ -1,15 +1,14 @@
-# example_failure.py
-"""Demonstration of lease expiration after client failure."""
+"""Demonstrate lease expiration after client failure."""
 
 from asimpy import Environment
 from basic_lock_server import LockServer
 from lock_client import LockClient
 from failing_client import FailingClient
+from dsdx import dsdx
 
 
 # mccole: failureexample
-def run_failure_simulation():
-    """Demonstrate lease expiration after client failure."""
+def main():
     env = Environment()
 
     server = LockServer(env, "Server1", lease_duration=3.0)
@@ -27,4 +26,4 @@ def run_failure_simulation():
 
 
 if __name__ == "__main__":
-    run_failure_simulation()
+    dsdx(main)

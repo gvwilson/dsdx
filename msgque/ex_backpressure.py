@@ -35,8 +35,6 @@ def main():
     print(f"Backpressure events: {fast_publisher.backpressure_events}")
     print(f"Final interval: {fast_publisher.current_interval:.1f}s")
     print(f"Messages received: {slow_subscriber.num_received}")
-
-
 # mccole: /sim
 
 

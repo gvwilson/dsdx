@@ -1,6 +1,3 @@
-# failing_client.py
-"""Client that simulates failure scenarios."""
-
 from lock_client import LockClient
 from basic_lock_server import LockServer
 
@@ -26,7 +23,6 @@ class FailingClient(LockClient):
     async def run(self):
         """Acquire lock, work, then crash."""
         acquired = await self.acquire_lock()
-
         if not acquired:
             return
 

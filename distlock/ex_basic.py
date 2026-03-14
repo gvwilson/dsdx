@@ -1,14 +1,12 @@
-# example_basic.py
-"""Basic lock server simulation example."""
-
+"""Simulate multiple clients competing for a lock."""
 from asimpy import Environment
 from basic_lock_server import LockServer
 from lock_client import LockClient
+from dsdx import dsdx
 
 
 # mccole: basicexample
-def run_basic_simulation():
-    """Simulate multiple clients competing for a lock."""
+def main():
     env = Environment()
 
     # Create lock server
@@ -24,4 +22,4 @@ def run_basic_simulation():
 
 
 if __name__ == "__main__":
-    run_basic_simulation()
+    dsdx(main)

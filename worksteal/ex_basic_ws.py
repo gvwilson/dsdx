@@ -19,8 +19,6 @@ def main():
     env.run(until=20)
 
     scheduler.get_statistics()
-
-
 # mccole: /sim
 
 

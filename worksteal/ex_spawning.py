@@ -22,8 +22,6 @@ def main():
 
     # Print statistics
     scheduler.get_statistics()
-
-
 # mccole: /sim
 
 

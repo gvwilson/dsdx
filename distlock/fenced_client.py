@@ -1,6 +1,3 @@
-# fenced_client.py
-"""Client implementation with fencing token support."""
-
 from asimpy import Process, Queue
 from basic_lock_server import LockServer, LockRequest
 from protected_resource import ProtectedResource

@@ -1,5 +1,6 @@
 LESSONS = \
   crdt \
+  distlock \
   mapreduce \
   msgque \
   oauth \

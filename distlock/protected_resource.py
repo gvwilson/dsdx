@@ -1,6 +1,3 @@
-# protected_resource.py
-"""Protected resource that validates fencing tokens."""
-
 from asimpy import Environment
 
 

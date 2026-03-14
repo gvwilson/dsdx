@@ -1,0 +1,7 @@
+[0.0] Server1: Granted lock on db_lock to Client1 (token 1)
+[0.0] Client1: Acquired lock (token 1)
+[0.0] Client1: Pausing for 5.0s
+[5.0] Client1: Resuming
+[5.0] Database: Client1 accessing (token 1)
+[7.0] Database: Client1 finished
+[7.0] Server1: Released lock on db_lock by Client1

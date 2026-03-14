@@ -1,0 +1,6 @@
+[0.0] Server1: Granted lock on database to Client1 (token 1)
+[0.0] Client1: Starting critical section (token 1)
+[0.0] Client2: Failed to acquire lock
+[0.0] Client3: Failed to acquire lock
+[3.0] Client1: Finished critical section
+[3.0] Server1: Released lock on database by Client1

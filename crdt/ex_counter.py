@@ -51,8 +51,6 @@ class Replica(Process):
             )
 
             await self.timeout(self.sync_interval)
-
-
 # mccole: /replica
 
 
@@ -73,8 +71,6 @@ def run_simulation(counter_cls):
     print("\n--- Final State")
     for r in replicas:
         print(r.counter)
-
-
 # mccole: /sim
 
 

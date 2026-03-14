@@ -1,6 +1,3 @@
-# lock_client.py
-"""Basic lock client implementation."""
-
 from asimpy import Process, Queue
 from basic_lock_server import LockServer, LockRequest
 
@@ -30,11 +27,10 @@ class LockClient(Process):
         """Acquire lock, do work, release lock."""
         # Possibly delay start
         if self.initial_delay is not None:
-            self.timeout(self.initial_delay)
+            await self.timeout(self.initial_delay)
 
         # Try to acquire lock
         acquired = await self.acquire_lock()
-
         if not acquired:
             print(f"[{self.now:.1f}] {self.client_id}: Failed to acquire lock")
             return

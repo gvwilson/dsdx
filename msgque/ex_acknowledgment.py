@@ -52,8 +52,6 @@ class AckSubscriber(Process):
                     f"[{self.now:.1f}] {self.name}: FAILED to process "
                     f"{message.content} (will be redelivered)"
                 )
-
-
 # mccole: /acksubscriber
 
 
@@ -83,8 +81,6 @@ class AckPublisher(Process):
             await self.broker.publish(message)
 
             await self.timeout(self.interval)
-
-
 # mccole: /ackpublisher
 
 
@@ -112,8 +108,6 @@ def main():
     print(f"Messages received: {subscriber.num_received}")
     print(f"Messages acknowledged: {subscriber.num_acked}")
     print(f"Pending acks: {len(broker.pending_acks)}")
-
-
 # mccole: /simulate
 
 
