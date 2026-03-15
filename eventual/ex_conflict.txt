@@ -1,0 +1,26 @@
+[0.0] Node5: Wrote cart = ['item1'] with clock {Node5:1}
+[0.0] Node1: Wrote cart = ['item1'] with clock {Node1:1}
+[0.0] Node2: Wrote cart = ['item1'] with clock {Node2:1}
+[0.0] Client1: Wrote cart = ['item1']
+[0.2] Node5: Wrote cart = ['item2'] with clock {Node5:2}
+[0.2] Node1: Wrote cart = ['item2'] with clock {Node1:2}
+[0.2] Node2: Wrote cart = ['item2'] with clock {Node2:2}
+[0.2] Client2: Wrote cart = ['item2']
+[0.5] Node5: Read cart -> 1 version(s)
+[0.5] Node1: Read cart -> 1 version(s)
+[0.5] Node2: Read cart -> 1 version(s)
+[0.5] Client1: Read cart -> CONFLICT: 2 versions
+  - ['item2'] (clock: {Node5:2}, ts: 0.2)
+  - ['item2'] (clock: {Node1:2}, ts: 0.2)
+[0.5] Client1: Resolved to ['item2']
+[3.0] Node5: Read cart -> 1 version(s)
+[3.0] Node1: Read cart -> 1 version(s)
+[3.0] Node2: Read cart -> 1 version(s)
+[3.0] Client3: Read cart -> CONFLICT: 2 versions
+  - ['item2'] (clock: {Node5:2}, ts: 0.2)
+  - ['item2'] (clock: {Node1:2}, ts: 0.2)
+[3.0] Client3: Resolved to ['item2']
+[3.5] Node5: Wrote cart = ['item1', 'item2'] with clock {Node1:2, Node5:4}
+[3.5] Node1: Wrote cart = ['item1', 'item2'] with clock {Node1:4, Node5:2}
+[3.5] Node2: Wrote cart = ['item1', 'item2'] with clock {Node1:2, Node2:4, Node5:2}
+[3.5] Client3: Wrote cart = ['item1', 'item2']

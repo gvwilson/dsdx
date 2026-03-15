@@ -13,7 +13,7 @@ class VersionedValue:
     value: Any
     clock: VectorClock
     timestamp: float  # For last-write-wins conflict resolution
+# mccole: /versionedvalue
 
     def __str__(self):
         return f"Value({self.value}, {self.clock})"
-# mccole: /versionedvalue

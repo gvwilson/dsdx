@@ -49,40 +49,41 @@
 </nav>
 <main>
 <h1>Eventually Consistent Key-Value Store</h1>
-<p>Modern distributed systems often face an impossible choice known as the <a href="https://en.wikipedia.org/wiki/CAP_theorem">CAP theorem</a>:
-when network partitions occur, you must choose between consistency (all nodes see the same data) and availability (the system continues to respond).
-Traditional databases choose consistency—they stop accepting writes during a partition to avoid conflicts.
-But for many applications, availability is more valuable than immediate consistency.</p>
-<p>Amazon's <a href="https://en.wikipedia.org/wiki/Amazon_DynamoDB">DynamoDB</a>,
+<p>The <a href="https://en.wikipedia.org/wiki/CAP_theorem">CAP theorem</a> says that when network partitions occur,
+systems must choose between consistency (all nodes see the same data)
+and availability (the system continues to respond).
+Traditional databases choose consistency:
+they stop accepting writes during a partition to avoid conflicts.
+But for many applications,
+availability is more valuable than immediate consistency.</p>
+<p><a href="https://en.wikipedia.org/wiki/Amazon_DynamoDB">DynamoDB</a>,
 <a href="https://cassandra.apache.org/">Apache Cassandra</a>,
-and <a href="https://riak.com/">Riak</a> take a different approach:
+and <a href="https://riak.com/">Riak</a> therefore take a different approach:
 they remain available during partitions and accept that replicas might temporarily disagree.
-They use techniques like vector clocks to track causality,
-quorum protocols to balance consistency and availability,
-and anti-entropy mechanisms to eventually converge all replicas to the same state.</p>
-<p>This chapter builds a simplified eventually consistent key-value store that demonstrates these core concepts.
-You'll see how the system handles concurrent writes,
-detects conflicts using vector clocks,
-and uses read repair to synchronize replicas.
-We'll implement tunable consistency with quorum reads and writes,
-and show how the gossip protocol spreads knowledge of failures throughout the cluster.</p>
-<h2>The CAP Theorem in Practice</h2>
-<p>Before we dive into code, let's understand what we're building.
-Imagine a key-value store with three replicas of each key:</p>
+They use techniques like vector clocks to track causality
+and quorum protocols to balance consistency and availability.</p>
+<p>This chapter builds a simplified eventually consistent key-value store to demonstrate these concepts.
+It shows how systems handle concurrent writes,
+detect conflicts using vector clocks,
+and use read repair to synchronize replicas.</p>
+<h2 id="eventual-cap">The CAP Theorem in Practice</h2>
+<p>Imagine a key-value store with three replicas of each key:</p>
 <ol>
-<li>Client A writes "X = 1" to replicas {1, 2}</li>
-<li>Network partition separates replica 3</li>
-<li>Client B writes "X = 2" to replicas {2, 3}</li>
-<li>Partition heals</li>
-<li>What is the value of X?</li>
+<li>Client A writes "X = 1" to replicas 1 and 2.</li>
+<li>A network partition separates replica 3.</li>
+<li>Client B writes "X = 2" to replicas 2 and 3.</li>
+<li>The partition heals.</li>
 </ol>
-<p>Replica 1 has "X = 1", replica 2 saw both writes, replica 3 has "X = 2".
-We have a conflict.
-Traditional databases would have prevented this by requiring all replicas to agree before accepting a write.
+<p>What is the value of X?
+Replica 1 has "X = 1", replica 2 saw both writes, and replica 3 has "X = 2",
+so there is a conflict.
+Traditional databases would have prevented this by requiring all replicas to agree before accepting a write,
 But that makes the system unavailable during the partition.</p>
 <p>Our system accepts both writes and uses version vectors to track that X has two concurrent versions.
-When a client reads X, we return both versions and let the application decide how to resolve the conflict—or we use a simple rule like "last write wins" based on timestamps.</p>
-<h2>Vector Clocks for Causality</h2>
+When a client reads X,
+we can either return both versions and let the application decide how to resolve the conflict,
+or use a simple rule like "last write wins" based on timestamps.</p>
+<h2 id="eventual-clock">Vector Clocks for Causality</h2>
 <p>Vector clocks let us determine if two events are causally related or concurrent.
 Each replica maintains a counter for every replica in the system:</p>
 <div data-filter="inc=vectorclock" data-inc="vector_clock.py"><div class="codehilite"><pre class=""><span></span><code><span class="nd">@dataclass</span>
@@ -127,18 +128,18 @@ Each replica maintains a counter for every replica in the system:</p>
     <span class="k">def</span><span class="w"> </span><span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">"VectorClock"</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Create a copy of this vector clock."""</span>
         <span class="k">return</span> <span class="n">VectorClock</span><span class="p">(</span><span class="n">clocks</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">clocks</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="n">items</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">clocks</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
-        <span class="k">return</span> <span class="s2">"{"</span> <span class="o">+</span> <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">v</span><span class="si">}</span><span class="s2">"</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">items</span><span class="p">)</span> <span class="o">+</span> <span class="s2">"}"</span>
 </code></pre></div>
 </div>
-<p>A vector clock is a dictionary mapping replica IDs to integers.
-When replica R performs an operation, it increments its own counter.
-When receiving a message with a vector clock, a replica merges it (takes the maximum of each component) with its local clock.</p>
-<p>The key insight: if clock A happens-before clock B, then A's event causally precedes B's.
-If neither happens-before the other, the events are concurrent.</p>
-<h2>Versioned Values</h2>
+<p>In our implementation,
+the vector clock is a dictionary mapping replica IDs to integers.
+When a replica performs an operation, it increments its own counter.
+When a recplica receives a message with a vector clock,
+it takes the maximum of each component with its local clock.
+The key insight is that if clock A happens-before clock B,
+then A's event causally precedes B's.
+If neither happens-before the other,
+the events are concurrent.</p>
+<h2 id="eventual-version">Versioned Values</h2>
 <p>Each value is stored with its vector clock:</p>
 <div data-filter="inc=versionedvalue" data-inc="versioned_value.py"><div class="codehilite"><pre class=""><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">VersionedValue</span><span class="p">:</span>
@@ -147,15 +148,14 @@ If neither happens-before the other, the events are concurrent.</p>
     <span class="n">value</span><span class="p">:</span> <span class="n">Any</span>
     <span class="n">clock</span><span class="p">:</span> <span class="n">VectorClock</span>
     <span class="n">timestamp</span><span class="p">:</span> <span class="nb">float</span>  <span class="c1"># For last-write-wins conflict resolution</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="sa">f</span><span class="s2">"Value(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">clock</span><span class="si">}</span><span class="s2">)"</span>
 </code></pre></div>
 </div>
-<p>When storing multiple versions of a key, we keep only the ones that are concurrent (neither happens-before the other).
-If a new version happens-after an existing version, we can discard the old one.</p>
-<h2>Storage Node</h2>
-<p>Each storage node maintains a replica of a subset of keys:</p>
+<p>When storing multiple versions of a key,
+we keep only the ones that are concurrent (neither happens-before the other).
+If a new version happens-after an existing version,
+we can discard the old one.</p>
+<h2 id="eventual-storage">Storage Node</h2>
+<p>Storage nodes can exchange four kinds of messages:</p>
 <div data-filter="inc=messages" data-inc="messages.py"><div class="codehilite"><pre class=""><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ReadRequest</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Request to read a key."""</span>
@@ -233,7 +233,9 @@ The node's constructor sets up its data store and creates the queue it uses to r
 </code></pre></div>
 </div>
 <p>The write handler is where causality is maintained.
-It increments the local clock, merges the client's causal context, and discards any stored versions that the new value supersedes:</p>
+It increments the local clock,
+merges the client's causal context,
+and discards any stored versions superseded by the new value:</p>
 <div data-filter="inc=storage_write" data-inc="storage_node.py"><div class="codehilite"><pre class=""><span></span><code>    <span class="k">def</span><span class="w"> </span><span class="nf">_handle_write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">WriteRequest</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">WriteResponse</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Write a value, handling concurrent versions."""</span>
         <span class="c1"># Increment our clock</span>
@@ -275,17 +277,21 @@ It increments the local clock, merges the client's causal context, and discards 
         <span class="k">return</span> <span class="n">WriteResponse</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">key</span><span class="p">,</span> <span class="n">success</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">clock</span><span class="o">=</span><span class="n">new_clock</span><span class="p">)</span>
 </code></pre></div>
 </div>
-<p>When writing a new version:</p>
+<p>When writing a new version, we:</p>
 <ol>
-<li>We increment our local clock</li>
-<li>We merge the client's context (if provided) to preserve causality</li>
-<li>We remove any existing versions that are superseded by the new version</li>
-<li>We keep concurrent versions, creating a conflict</li>
+<li>increment our local clock,</li>
+<li>merge the client's context (if provided) to preserve causality,</li>
+<li>remove any existing versions that are superseded by the new version, and</li>
+<li>keep concurrent versions, creating a conflict.</li>
 </ol>
-<h2>Coordinator with Quorum Protocol</h2>
+<h2 id="eventual-coord">Coordinator with Quorum Protocol</h2>
 <p>The coordinator manages replication across storage nodes.
-It implements quorum reads and writes: for N replicas, we wait for R replicas to respond to a read and W replicas to respond to a write, where R + W &gt; N guarantees we see the latest write.</p>
-<p>The constructor takes the list of storage nodes and quorum parameters, and <code>_get_replicas</code> uses consistent hashing to choose which nodes store a given key:</p>
+It implements quorum reads and writes:
+for N replicas,
+we wait for R replicas to respond to a read and W replicas to respond to a write.
+R + W &gt; N guarantees that we see the latest write.</p>
+<p>The constructor takes the list of storage nodes and quorum parameters,
+and <code>_get_replicas</code> uses consistent hashing to choose which nodes store a given key:</p>
 <div data-filter="inc=coord_init" data-inc="coordinator.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Coordinator</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Coordinates read/write operations across replicas."""</span>
 
@@ -353,7 +359,9 @@ It implements quorum reads and writes: for N replicas, we wait for R replicas to
         <span class="k">return</span> <span class="n">merged_versions</span>
 </code></pre></div>
 </div>
-<p>A write sends the new value to W replicas, each of which updates its local clock, and the coordinator merges those clocks to return a causal context to the client:</p>
+<p>A write sends the new value to W replicas,
+each of which updates its local clock.
+The coordinator merges those clocks to return a causal context to the client:</p>
 <div data-filter="inc=coord_write" data-inc="coordinator.py"><div class="codehilite"><pre class=""><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">write</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="n">VectorClock</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">client_id</span><span class="p">:</span> <span class="nb">str</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">VectorClock</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
@@ -384,7 +392,8 @@ It implements quorum reads and writes: for N replicas, we wait for R replicas to
         <span class="k">return</span> <span class="n">merged_clock</span>
 </code></pre></div>
 </div>
-<p><code>_merge_versions</code> resolves the list of all versions returned by replicas, discarding any version whose clock is dominated by another:</p>
+<p><code>_merge_versions</code> resolves the list of all versions returned by replicas,
+discarding any version whose clock is dominated by another:</p>
 <div data-filter="inc=coord_merge" data-inc="coordinator.py"><div class="codehilite"><pre class=""><span></span><code>    <span class="k">def</span><span class="w"> </span><span class="nf">_merge_versions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">versions</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">VersionedValue</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">VersionedValue</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">"""Merge versions, keeping only concurrent ones."""</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">versions</span><span class="p">:</span>
@@ -416,11 +425,11 @@ It implements quorum reads and writes: for N replicas, we wait for R replicas to
 <p>The quorum protocol is the heart of tunable consistency.
 With N=3, R=2, W=2:</p>
 <ul>
-<li>Writes succeed after 2 nodes acknowledge (available even if 1 node is down)</li>
-<li>Reads query 2 nodes (at least one will have the latest write)</li>
-<li>R + W = 4 &gt; N = 3, ensuring reads see the latest writes</li>
+<li>Writes succeed after 2 nodes acknowledge (available even if 1 node is down).</li>
+<li>Reads query 2 nodes (at least one will have the latest write).</li>
+<li>R + W = 4 &gt; N = 3, ensuring reads see the latest writes.</li>
 </ul>
-<h2>Client Implementation</h2>
+<h2 id="eventual-client">Client Implementation</h2>
 <p>Clients read values, resolve conflicts, and write back.
 The client stores a causal context per key and works through a list of operations:</p>
 <div data-filter="inc=kv_init" data-inc="kv_client.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">KVClient</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
@@ -455,7 +464,9 @@ The client stores a causal context per key and works through a list of operation
 </code></pre></div>
 </div>
 <p>When reading, the client checks for conflicts.
-If a single version is returned there is no conflict; if multiple concurrent versions are returned, the client resolves them using last-write-wins and merges all their clocks:</p>
+If a single version is returned there is no conflict.
+If multiple concurrent versions are returned,
+the client resolves them using last-write-wins and merges all their clocks:</p>
 <div data-filter="inc=kv_read" data-inc="kv_client.py"><div class="codehilite"><pre class=""><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Read a key and handle conflicts."""</span>
         <span class="n">versions</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">client_id</span><span class="p">)</span>
@@ -495,7 +506,9 @@ If a single version is returned there is no conflict; if multiple concurrent ver
             <span class="k">return</span> <span class="n">latest</span><span class="o">.</span><span class="n">value</span>
 </code></pre></div>
 </div>
-<p>When writing, the client passes its current causal context so the coordinator can detect whether the write is concurrent with or follows previous writes:</p>
+<p>When writing,
+the client passes its current causal context so that
+the coordinator can detect whether the write is concurrent with or follows previous writes:</p>
 <div data-filter="inc=kv_write" data-inc="kv_client.py"><div class="codehilite"><pre class=""><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">"""Write a key with causal context."""</span>
         <span class="n">context</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
@@ -508,11 +521,11 @@ If a single version is returned there is no conflict; if multiple concurrent ver
 </div>
 <p>The client maintains a context (vector clock) for each key.
 When writing, it passes this context to preserve causality.
-When reading multiple versions (a conflict), it resolves using last-write-wins but merges all clocks to capture the complete causality.</p>
-<h2>Running a Simulation</h2>
+When reading multiple versions (a conflict),
+it resolves using last-write-wins but merges all clocks to capture the complete causality.</p>
+<h2 id="eventual-sim">Running a Simulation</h2>
 <p>Let's create a scenario showing concurrent writes and conflict resolution:</p>
-<div data-filter="inc=basicexample" data-inc="example_basic.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">run_basic_simulation</span><span class="p">():</span>
-<span class="w">    </span><span class="sd">"""Demonstrate basic operations and conflict resolution."""</span>
+<div data-filter="inc=basicexample" data-inc="ex_basic.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
     <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
 
     <span class="c1"># Create 3 storage nodes</span>
@@ -552,9 +565,25 @@ When reading multiple versions (a conflict), it resolves using last-write-wins b
     <span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
 </code></pre></div>
 </div>
+<div data-inc="ex_basic.txt"><div class="codehilite"><pre class=""><span></span><code>[0.0] Node2: Wrote X = 1 with clock {Node2:1}
+[0.0] Node3: Wrote X = 1 with clock {Node3:1}
+[0.0] Node1: Wrote X = 1 with clock {Node1:1}
+[0.0] Client1: Wrote X = 1
+[0.5] Node2: Wrote X = 2 with clock {Node2:3, Node3:1}
+[0.5] Node3: Wrote X = 2 with clock {Node2:1, Node3:3}
+[0.5] Node1: Wrote X = 2 with clock {Node1:3, Node2:1, Node3:1}
+[0.5] Client1: Wrote X = 2
+[3.0] Node2: Read X -&gt; 1 version(s)
+[3.0] Node3: Read X -&gt; 1 version(s)
+[3.0] Node1: Read X -&gt; 1 version(s)
+[3.0] Client2: Read X -&gt; CONFLICT: 2 versions
+  - 2 (clock: {Node2:3, Node3:1}, ts: 0.5)
+  - 2 (clock: {Node2:1, Node3:3}, ts: 0.5)
+[3.0] Client2: Resolved to 2
+</code></pre></div>
+</div>
 <p>Now let's create a more interesting scenario with concurrent conflicting writes:</p>
-<div data-filter="inc=conflictexample" data-inc="example_conflict.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">run_conflict_simulation</span><span class="p">():</span>
-<span class="w">    </span><span class="sd">"""Demonstrate concurrent writes creating conflicts."""</span>
+<div data-filter="inc=conflictexample" data-inc="ex_conflict.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
     <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
 
     <span class="c1"># Create 5 storage nodes</span>
@@ -603,7 +632,35 @@ When reading multiple versions (a conflict), it resolves using last-write-wins b
     <span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
 </code></pre></div>
 </div>
-<h2>Handling Network Partitions</h2>
+<div data-inc="ex_conflict.txt"><div class="codehilite"><pre class=""><span></span><code>[0.0] Node5: Wrote cart = ['item1'] with clock {Node5:1}
+[0.0] Node1: Wrote cart = ['item1'] with clock {Node1:1}
+[0.0] Node2: Wrote cart = ['item1'] with clock {Node2:1}
+[0.0] Client1: Wrote cart = ['item1']
+[0.2] Node5: Wrote cart = ['item2'] with clock {Node5:2}
+[0.2] Node1: Wrote cart = ['item2'] with clock {Node1:2}
+[0.2] Node2: Wrote cart = ['item2'] with clock {Node2:2}
+[0.2] Client2: Wrote cart = ['item2']
+[0.5] Node5: Read cart -&gt; 1 version(s)
+[0.5] Node1: Read cart -&gt; 1 version(s)
+[0.5] Node2: Read cart -&gt; 1 version(s)
+[0.5] Client1: Read cart -&gt; CONFLICT: 2 versions
+  - ['item2'] (clock: {Node5:2}, ts: 0.2)
+  - ['item2'] (clock: {Node1:2}, ts: 0.2)
+[0.5] Client1: Resolved to ['item2']
+[3.0] Node5: Read cart -&gt; 1 version(s)
+[3.0] Node1: Read cart -&gt; 1 version(s)
+[3.0] Node2: Read cart -&gt; 1 version(s)
+[3.0] Client3: Read cart -&gt; CONFLICT: 2 versions
+  - ['item2'] (clock: {Node5:2}, ts: 0.2)
+  - ['item2'] (clock: {Node1:2}, ts: 0.2)
+[3.0] Client3: Resolved to ['item2']
+[3.5] Node5: Wrote cart = ['item1', 'item2'] with clock {Node1:2, Node5:4}
+[3.5] Node1: Wrote cart = ['item1', 'item2'] with clock {Node1:4, Node5:2}
+[3.5] Node2: Wrote cart = ['item1', 'item2'] with clock {Node1:2, Node2:4, Node5:2}
+[3.5] Client3: Wrote cart = ['item1', 'item2']
+</code></pre></div>
+</div>
+<h2 id="eventual-partition">Handling Network Partitions</h2>
 <p>Let's simulate a network partition to see how the system maintains availability.
 <code>PartitionedCoordinator</code> extends the base coordinator with the ability to mark nodes as unreachable:</p>
 <div data-filter="inc=partition_init" data-inc="partitioned_coordinator.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">PartitionedCoordinator</span><span class="p">(</span><span class="n">Coordinator</span><span class="p">):</span>
@@ -632,7 +689,8 @@ When reading multiple versions (a conflict), it resolves using last-write-wins b
 </code></pre></div>
 </div>
 <p>Reads skip any partitioned nodes.
-If fewer than R nodes are available the read fails; otherwise it proceeds with only the reachable replicas:</p>
+If fewer than R nodes are available the read fails;
+otherwise it proceeds with only the reachable replicas:</p>
 <div data-filter="inc=partition_read" data-inc="partitioned_coordinator.py"><div class="codehilite"><pre class=""><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">client_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">VersionedValue</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">"""Read, skipping partitioned nodes."""</span>
         <span class="n">replicas</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_replicas</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
@@ -701,7 +759,8 @@ If fewer than R nodes are available the read fails; otherwise it proceeds with o
         <span class="k">return</span> <span class="n">merged_clock</span>
 </code></pre></div>
 </div>
-<div data-filter="inc=partitionexample" data-inc="example_partition.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">run_partition_simulation</span><span class="p">():</span>
+<p>Let's try it out:</p>
+<div data-filter="inc=partitionexample" data-inc="ex_partition.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">"""Demonstrate behavior during network partition."""</span>
     <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
 
@@ -739,10 +798,13 @@ If fewer than R nodes are available the read fails; otherwise it proceeds with o
     <span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
 </code></pre></div>
 </div>
-<h2>Anti-Entropy and Read Repair</h2>
-<p>In a real system, we need mechanisms to ensure all replicas eventually converge.
-Read repair happens during reads: if we detect replicas are out of sync, we push the latest version to lagging replicas.</p>
-<p><code>CoordinatorWithReadRepair</code> overrides <code>read</code> to query all replicas rather than just a quorum, so it can identify which ones are behind:</p>
+<h2 id="eventual-repair">Read Repair</h2>
+<p>A real system needs mechanisms to ensure all replicas eventually converge.
+Read repair happens during reads:
+if we detect replicas are out of sync,
+we push the latest version to lagging replicas.
+<code>CoordinatorWithReadRepair</code> overrides <code>read</code> to query all replicas rather than just a quorum
+so that it can identify which ones are behind:</p>
 <div data-filter="inc=repair_read" data-inc="coordinator_with_read_repair.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">CoordinatorWithReadRepair</span><span class="p">(</span><span class="n">Coordinator</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""Coordinator that performs read repair."""</span>
 
@@ -794,7 +856,9 @@ Read repair happens during reads: if we detect replicas are out of sync, we push
         <span class="k">return</span> <span class="n">merged_versions</span>
 </code></pre></div>
 </div>
-<p>After collecting all responses, <code>_perform_read_repair</code> compares each replica's set of versions against the merged result and writes missing versions back to any replica that is out of date:</p>
+<p>After collecting all responses,
+<code>_perform_read_repair</code> compares each replica's set of versions against the merged result
+and writes missing versions back to any replica that is out of date:</p>
 <div data-filter="inc=repair_perform" data-inc="coordinator_with_read_repair.py"><div class="codehilite"><pre class=""><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_perform_read_repair</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
@@ -832,45 +896,26 @@ Read repair happens during reads: if we detect replicas are out of sync, we push
                         <span class="k">await</span> <span class="n">response_queue</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
 </code></pre></div>
 </div>
-<p>Read repair ensures that whenever we read a key, we fix any inconsistencies we discover.
+<p>Read repair ensures that whenever we read a key,
+we fix any inconsistencies we discover.
 Over time, this brings all replicas into sync.</p>
-<h2>Real-World Considerations</h2>
+<h2 id="eventual-real">Real-World Considerations</h2>
 <p>Our implementation demonstrates core concepts, but production systems need additional features:</p>
 <ol>
 <li>
-<p><strong>Hinted handoff</strong>: When a node is temporarily down, writes intended for it are stored on another node with a hint.
-When the node recovers, the hints are replayed.</p>
+<p>Hinted handoff:
+    when a node is temporarily down, writes intended for it are stored on another node with a hint.
+    When the node recovers, the hints are replayed.</p>
 </li>
 <li>
-<p><strong>Merkle trees</strong>: For anti-entropy, nodes periodically exchange Merkle tree hashes to efficiently identify which keys differ and need synchronization.</p>
+<p>Gossip protocol:
+    nodes exchange information about cluster membership and failure detection through epidemic-style gossip.</p>
 </li>
 <li>
-<p><strong>Gossip protocol</strong>: Nodes exchange information about cluster membership and failure detection through epidemic-style gossip.</p>
-</li>
-<li>
-<p><strong>Sloppy quorums</strong>: Instead of requiring specific replicas, accept writes from any N healthy nodes.</p>
-</li>
-<li>
-<p><strong>Multi-datacenter replication</strong>: Replicate across geographic regions with different consistency guarantees.</p>
-</li>
-<li>
-<p><strong>Compaction</strong>: Merge version history periodically to avoid unbounded growth.</p>
+<p>Compaction:
+    Nodes merge version history periodically to avoid unbounded growth.</p>
 </li>
 </ol>
-<h2>Conclusion</h2>
-<p>Eventually consistent systems trade immediate consistency for availability and partition tolerance.
-The key techniques are:</p>
-<ol>
-<li><strong>Vector clocks</strong> track causality and detect concurrent writes</li>
-<li><strong>Quorum protocols</strong> (R + W &gt; N) balance consistency and availability</li>
-<li><strong>Conflict resolution</strong> handles concurrent writes through application logic or simple rules</li>
-<li><strong>Read repair</strong> and <strong>anti-entropy</strong> ensure replicas eventually converge</li>
-<li><strong>Partitioning</strong> is handled gracefully—the system stays available</li>
-</ol>
-<p>These patterns appear throughout distributed systems.
-Shopping carts use vector clocks to merge concurrent updates.
-Collaborative editing uses CRDTs (a more sophisticated form of conflict-free merging).
-Distributed databases use quorums to tune consistency vs. availability.</p>
 </main>
 <footer>
 <div class="row">

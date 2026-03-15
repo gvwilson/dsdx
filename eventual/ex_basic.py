@@ -4,11 +4,11 @@ from asimpy import Environment
 from storage_node import StorageNode
 from coordinator import Coordinator
 from kv_client import KVClient
+from dsdx import dsdx
 
 
 # mccole: basicexample
-def run_basic_simulation():
-    """Demonstrate basic operations and conflict resolution."""
+def main():
     env = Environment()
 
     # Create 3 storage nodes
@@ -50,4 +50,4 @@ def run_basic_simulation():
 
 
 if __name__ == "__main__":
-    run_basic_simulation()
+    dsdx(main)

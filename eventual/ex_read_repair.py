@@ -4,11 +4,11 @@ from asimpy import Environment
 from storage_node import StorageNode
 from coordinator_with_read_repair import CoordinatorWithReadRepair
 from kv_client import KVClient
+from dsdx import dsdx
 
 
 # mccole: readrepairexample
-def run_read_repair_simulation():
-    """Demonstrate read repair bringing replicas into sync."""
+def main():
     env = Environment()
 
     nodes = [StorageNode(env, f"Node{i + 1}") for i in range(3)]
@@ -53,4 +53,4 @@ def run_read_repair_simulation():
 
 
 if __name__ == "__main__":
-    run_read_repair_simulation()
+    dsdx(main)

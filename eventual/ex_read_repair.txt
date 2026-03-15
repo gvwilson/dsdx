@@ -1,0 +1,47 @@
+[0.0] Node2: Wrote data = initial with clock {Node2:1}
+[0.0] Node3: Wrote data = initial with clock {Node3:1}
+[0.0] Node1: Wrote data = initial with clock {Node1:1}
+[0.0] Client1: Wrote data = initial
+[2.0] Node2: Read data -> 1 version(s)
+[2.0] Node3: Read data -> 1 version(s)
+[2.0] Node1: Read data -> 1 version(s)
+[2.0] READ REPAIR: Updating Node2 for key data
+[2.0] Node2: Wrote data = initial with clock {Node2:3, Node3:1}
+[2.0] Node2: Wrote data = initial with clock {Node1:1, Node2:4}
+[2.0] READ REPAIR: Updating Node3 for key data
+[2.0] Node3: Wrote data = initial with clock {Node2:1, Node3:3}
+[2.0] Node3: Wrote data = initial with clock {Node1:1, Node3:4}
+[2.0] READ REPAIR: Updating Node1 for key data
+[2.0] Node1: Wrote data = initial with clock {Node1:3, Node2:1}
+[2.0] Node1: Wrote data = initial with clock {Node1:4, Node3:1}
+[2.0] Client2: Read data -> CONFLICT: 3 versions
+  - initial (clock: {Node2:1}, ts: 0)
+  - initial (clock: {Node3:1}, ts: 0)
+  - initial (clock: {Node1:1}, ts: 0)
+[2.0] Client2: Resolved to initial
+[4.0] Node2: Read data -> 2 version(s)
+[4.0] Node3: Read data -> 2 version(s)
+[4.0] Node1: Read data -> 2 version(s)
+[4.0] READ REPAIR: Updating Node2 for key data
+[4.0] Node2: Wrote data = initial with clock {Node2:5, Node3:3}
+[4.0] Node2: Wrote data = initial with clock {Node1:1, Node2:6, Node3:4}
+[4.0] Node2: Wrote data = initial with clock {Node1:3, Node2:7}
+[4.0] Node2: Wrote data = initial with clock {Node1:4, Node2:8, Node3:1}
+[4.0] READ REPAIR: Updating Node3 for key data
+[4.0] Node3: Wrote data = initial with clock {Node2:3, Node3:5}
+[4.0] Node3: Wrote data = initial with clock {Node1:1, Node2:4, Node3:6}
+[4.0] Node3: Wrote data = initial with clock {Node1:3, Node2:1, Node3:7}
+[4.0] Node3: Wrote data = initial with clock {Node1:4, Node3:8}
+[4.0] READ REPAIR: Updating Node1 for key data
+[4.0] Node1: Wrote data = initial with clock {Node1:5, Node2:3, Node3:1}
+[4.0] Node1: Wrote data = initial with clock {Node1:6, Node2:4}
+[4.0] Node1: Wrote data = initial with clock {Node1:7, Node2:1, Node3:3}
+[4.0] Node1: Wrote data = initial with clock {Node1:8, Node3:4}
+[4.0] Client3: Read data -> CONFLICT: 6 versions
+  - initial (clock: {Node2:3, Node3:1}, ts: 2.0)
+  - initial (clock: {Node1:1, Node2:4}, ts: 2.0)
+  - initial (clock: {Node2:1, Node3:3}, ts: 2.0)
+  - initial (clock: {Node1:1, Node3:4}, ts: 2.0)
+  - initial (clock: {Node1:3, Node2:1}, ts: 2.0)
+  - initial (clock: {Node1:4, Node3:1}, ts: 2.0)
+[4.0] Client3: Resolved to initial

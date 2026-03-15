@@ -4,11 +4,11 @@ from asimpy import Environment
 from storage_node import StorageNode
 from coordinator import Coordinator
 from kv_client import KVClient
+from dsdx import dsdx
 
 
 # mccole: conflictexample
-def run_conflict_simulation():
-    """Demonstrate concurrent writes creating conflicts."""
+def main():
     env = Environment()
 
     # Create 5 storage nodes
@@ -59,4 +59,4 @@ def run_conflict_simulation():
 
 
 if __name__ == "__main__":
-    run_conflict_simulation()
+    dsdx(main)

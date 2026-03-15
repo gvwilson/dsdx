@@ -46,8 +46,8 @@ class VectorClock:
     def copy(self) -> "VectorClock":
         """Create a copy of this vector clock."""
         return VectorClock(clocks=self.clocks.copy())
+# mccole: /vectorclock
 
     def __str__(self):
         items = sorted(self.clocks.items())
         return "{" + ", ".join(f"{k}:{v}" for k, v in items) + "}"
-# mccole: /vectorclock

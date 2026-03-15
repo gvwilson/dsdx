@@ -4,6 +4,7 @@ from asimpy import Environment, Process
 from storage_node import StorageNode
 from partitioned_coordinator import PartitionedCoordinator
 from kv_client import KVClient
+from dsdx import dsdx
 
 
 class PartitionManager(Process):
@@ -23,7 +24,7 @@ class PartitionManager(Process):
 
 
 # mccole: partitionexample
-def run_partition_simulation():
+def main():
     """Demonstrate behavior during network partition."""
     env = Environment()
 
@@ -63,4 +64,4 @@ def run_partition_simulation():
 
 
 if __name__ == "__main__":
-    run_partition_simulation()
+    dsdx(main)
