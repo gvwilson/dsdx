@@ -5,6 +5,7 @@ LESSONS = \
   eventual \
   mapreduce \
   msgque \
+  ntp \
   oauth \
   saga \
   tcp \

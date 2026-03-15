@@ -302,6 +302,17 @@
     that cannot communicate with each other,
     forcing a choice between consistency and availability according to the CAP theorem.
 
+<span id="ntp">Network Time Protocol</span> (NTP)
+:   A networking protocol for synchronizing clocks across computers on a network.
+    NTP uses a hierarchy of time sources and adjusts for network delays
+    to keep clocks accurate to within milliseconds.
+
+<span id="ntp-stratum">NTP stratum</span>
+:   A level in the NTP hierarchy indicating how many hops a clock is from a reference time source.
+    Stratum 0 devices are high-precision clocks such as atomic clocks or GPS receivers;
+    stratum 1 servers synchronize directly from them,
+    and each subsequent stratum synchronizes from the level above.
+
 ## O
 
 <span id="oauth-scope">OAuth scope</span>

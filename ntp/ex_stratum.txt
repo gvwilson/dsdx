@@ -1,0 +1,57 @@
+[5.000] client_a: Sending sync request (local_time=8.000, offset=3.000)
+[5.000] client_b: Sending sync request (local_time=3.000, offset=-2.000)
+[5.201] client_a: Received response (offset=-3.000, delay=0.200)
+[5.201] client_a: Clock adjusted, new offset from true time: 6.000
+[5.201] client_b: Received response (offset=2.000, delay=0.200)
+[5.201] client_b: Clock adjusted, new offset from true time: -4.000
+[10.101] stratum1.time.gov (stratum 1): Responding to request (t2=10.100, t3=10.101)
+[10.201] stratum2a.org (stratum 2): Synced with upstream, offset=0.000
+[10.201] client_a: Sending sync request (local_time=16.201, offset=6.000)
+[10.201] client_b: Sending sync request (local_time=6.201, offset=-4.000)
+[10.202] stratum1.time.gov (stratum 1): Responding to request (t2=10.201, t3=10.202)
+[10.302] stratum2b.org (stratum 2): Synced with upstream, offset=0.050
+[10.402] client_a: Received response (offset=-6.000, delay=0.200)
+[10.402] client_a: Clock adjusted, new offset from true time: 12.000
+[10.402] client_b: Received response (offset=3.975, delay=0.250)
+[10.402] client_b: Clock adjusted, new offset from true time: -7.975
+[15.402] client_a: Sending sync request (local_time=27.402, offset=12.000)
+[15.402] client_b: Sending sync request (local_time=7.427, offset=-7.975)
+[15.603] client_a: Received response (offset=-12.000, delay=0.200)
+[15.603] client_a: Clock adjusted, new offset from true time: 24.000
+[15.603] client_b: Received response (offset=7.924, delay=0.200)
+[15.603] client_b: Clock adjusted, new offset from true time: -15.899
+[20.302] stratum1.time.gov (stratum 1): Responding to request (t2=20.301, t3=20.302)
+[20.402] stratum2a.org (stratum 2): Synced with upstream, offset=0.000
+[20.403] stratum1.time.gov (stratum 1): Responding to request (t2=20.402, t3=20.403)
+[20.503] stratum2b.org (stratum 2): Synced with upstream, offset=0.051
+[20.603] client_a: Sending sync request (local_time=44.603, offset=24.000)
+[20.603] client_b: Sending sync request (local_time=4.704, offset=-15.899)
+[20.804] client_a: Received response (offset=-24.000, delay=0.200)
+[20.804] client_a: Clock adjusted, new offset from true time: 48.000
+[20.804] client_b: Received response (offset=15.798, delay=0.200)
+[20.804] client_b: Clock adjusted, new offset from true time: -31.697
+[25.804] client_a: Sending sync request (local_time=73.804, offset=48.000)
+[25.804] client_b: Sending sync request (local_time=-5.893, offset=-31.697)
+[26.005] client_a: Received response (offset=-48.000, delay=0.200)
+[26.005] client_a: Clock adjusted, new offset from true time: 96.000
+[26.005] client_b: Received response (offset=31.596, delay=0.200)
+[26.005] client_b: Clock adjusted, new offset from true time: -63.293
+[30.503] stratum1.time.gov (stratum 1): Responding to request (t2=30.502, t3=30.503)
+[30.603] stratum2a.org (stratum 2): Synced with upstream, offset=0.000
+[30.604] stratum1.time.gov (stratum 1): Responding to request (t2=30.603, t3=30.604)
+[30.704] stratum2b.org (stratum 2): Synced with upstream, offset=0.101
+[31.005] client_a: Sending sync request (local_time=127.005, offset=96.000)
+[31.005] client_b: Sending sync request (local_time=-32.288, offset=-63.293)
+[31.206] client_a: Received response (offset=-96.000, delay=0.200)
+[31.206] client_a: Clock adjusted, new offset from true time: 192.000
+[31.206] client_b: Received response (offset=63.091, delay=0.200)
+[31.206] client_b: Clock adjusted, new offset from true time: -126.384
+
+=== Stratum Hierarchy Results ===
+Stratum 1 server requests: 6
+
+Stratum 2a clock offset: 0.000000s
+Stratum 2b clock offset: -0.202000s
+
+Client A final offset: 192.000000s
+Client B final offset: -126.384000s

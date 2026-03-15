@@ -44,6 +44,4 @@ class NTPServer(Process):
             await client_queue.put(message)
 
             self.requests_served += 1
-
-
 # mccole: /ntpserver

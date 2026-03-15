@@ -1,10 +1,11 @@
 from asimpy import Environment, Queue
 from ntp_server import NTPServer
 from ntp_client import NTPClient
+from dsdx import dsdx
 
 
 # mccole: simulate
-def run_ntp_simulation():
+def main():
     """Simulate NTP clock synchronization."""
     env = Environment()
 
@@ -54,10 +55,8 @@ def run_ntp_simulation():
             print(
                 f"  Average correction: {sum(client.offset_history) / len(client.offset_history):.6f}s"
             )
-
-
 # mccole: /simulate
 
 
 if __name__ == "__main__":
-    run_ntp_simulation()
+    dsdx(main)

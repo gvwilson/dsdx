@@ -305,6 +305,15 @@ Backpressure in distributed systems is an example of this pattern.</dd>
 <dd>A failure that splits a distributed system into two or more groups of nodes
 that cannot communicate with each other,
 forcing a choice between consistency and availability according to the CAP theorem.</dd>
+<dt><span id="ntp">Network Time Protocol</span> (NTP)</dt>
+<dd>A networking protocol for synchronizing clocks across computers on a network.
+NTP uses a hierarchy of time sources and adjusts for network delays
+to keep clocks accurate to within milliseconds.</dd>
+<dt><span id="ntp-stratum">NTP stratum</span></dt>
+<dd>A level in the NTP hierarchy indicating how many hops a clock is from a reference time source.
+Stratum 0 devices are high-precision clocks such as atomic clocks or GPS receivers;
+stratum 1 servers synchronize directly from them,
+and each subsequent stratum synchronizes from the level above.</dd>
 </dl>
 <h2>O</h2>
 <dl>
