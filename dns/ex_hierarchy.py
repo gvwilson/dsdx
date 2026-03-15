@@ -3,6 +3,7 @@ from authoritative_server import AuthoritativeDNSServer
 from recursive_resolver import RecursiveDNSResolver
 from dns_client import DNSClient
 from dns_message import DNSRecord, RecordType
+from dsdx import dsdx
 
 
 # mccole: loadclient
@@ -23,13 +24,11 @@ class LoadTestClient(DNSClient):
 
             # Wait before next round
             await self.timeout(2.0)
-
-
 # mccole: /loadclient
 
 
 # mccole: hierarchy
-def run_dns_hierarchy():
+def main():
     """Demonstrate DNS hierarchy and caching benefits."""
     env = Environment()
 
@@ -155,10 +154,8 @@ def run_dns_hierarchy():
     print(
         f"Query reduction from caching: {(1 - (example_server.queries_served + another_server.queries_served) / (resolver1.queries_received + resolver2.queries_received)) * 100:.1f}%"
     )
-
-
 # mccole: /hierarchy
 
 
 if __name__ == "__main__":
-    run_dns_hierarchy()
+    dsdx(main)

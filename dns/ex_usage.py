@@ -3,6 +3,7 @@ from authoritative_server import AuthoritativeDNSServer
 from recursive_resolver import RecursiveDNSResolver
 from dns_client import DNSClient
 from dns_message import DNSRecord, RecordType
+from dsdx import dsdx
 
 
 # mccole: testclient
@@ -25,13 +26,11 @@ class TestClient(DNSClient):
 
         # Lookup from different zone
         await self.lookup("www.another.org")
-
-
 # mccole: /testclient
 
 
 # mccole: simulate
-def run_dns_simulation():
+def main():
     """Simulate DNS resolution with caching."""
     env = Environment()
 
@@ -87,10 +86,8 @@ def run_dns_simulation():
     if resolver.queries_received > 0:
         hit_rate = (resolver.cache_hits / resolver.queries_received) * 100
         print(f"  Cache hit rate: {hit_rate:.1f}%")
-
-
 # mccole: /simulate
 
 
 if __name__ == "__main__":
-    run_dns_simulation()
+    dsdx(main)

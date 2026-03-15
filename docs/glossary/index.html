@@ -159,6 +159,15 @@ combining the properties of a stack and a queue.</dd>
 <dd>An algorithm design strategy that breaks a problem into smaller subproblems,
 solves each independently, and combines the results.
 MapReduce applies this pattern to distributed data processing.</dd>
+<dt><span id="dns">Domain Name System</span> (DNS)</dt>
+<dd>A hierarchical, distributed database that translates human-readable domain names
+such as "www.example.com" into IP addresses.
+DNS is a critical internet infrastructure component
+that enables service mobility and scales by distributing authority across millions of servers.</dd>
+<dt><span id="dnssec">DNSSEC</span></dt>
+<dd>DNS Security Extensions, a suite of protocols that add cryptographic signatures to DNS records,
+allowing resolvers to verify that responses are authentic and have not been tampered with,
+thereby preventing spoofing and cache poisoning attacks.</dd>
 </dl>
 <h2>E</h2>
 <dl>
@@ -283,6 +292,11 @@ preventing race conditions and data corruption in concurrent systems.</dd>
 </dl>
 <h2>N</h2>
 <dl>
+<dt><span id="negative-cache">negative cache</span></dt>
+<dd>A cache that stores records indicating that a lookup returned no result,
+such as a non-existent domain name,
+so that repeated queries for the same missing resource are answered locally
+rather than forwarded to authoritative servers.</dd>
 <dt><span id="negative-feedback-loop">negative feedback loop</span></dt>
 <dd>A control mechanism where a system's output feeds back to reduce its input,
 stabilizing the system around a target state.
@@ -329,6 +343,15 @@ This pattern decouples senders from receivers.</dd>
 <h2>Q</h2>
 <h2>R</h2>
 <dl>
+<dt><span id="recursive-resolver">recursive resolver</span></dt>
+<dd>A DNS server that accepts queries from clients and resolves them on the client's behalf
+by walking the DNS hierarchy from root servers down to authoritative name servers,
+caching responses to answer future queries more quickly.</dd>
+<dt><span id="root-server">root server</span></dt>
+<dd>One of the thirteen logical DNS servers at the top of the DNS hierarchy
+that know the authoritative name servers for each top-level domain.
+In practice, root servers are implemented as many physical servers
+distributed worldwide using anycast addressing.</dd>
 <dt><span id="root-span">root span</span></dt>
 <dd>The first span in a trace, representing the top-level operation that initiated the request
 and serving as the root of the trace's span tree.</dd>
@@ -389,6 +412,15 @@ regardless of the order in which those updates arrived.</dd>
 <dt><span id="thread-local-storage">thread-local storage</span></dt>
 <dd>A mechanism that provides each thread with its own private copy of a variable,
 preventing interference between threads without requiring synchronization.</dd>
+<dt><span id="ttl">time to live</span> (TTL)</dt>
+<dd>A value attached to a DNS record or cached entry that specifies
+how long it may be stored before it must be discarded and re-fetched.
+Low TTLs allow changes to propagate quickly but increase query load;
+high TTLs reduce load but slow propagation of updates.</dd>
+<dt><span id="tld">top-level domain</span></dt>
+<dd>The rightmost label in a domain name, such as <code>.com</code>, <code>.org</code>, or <code>.net</code>,
+managed by a dedicated set of DNS servers that know the authoritative name servers
+for every domain registered under that suffix.</dd>
 <dt><span id="total-order">total order</span></dt>
 <dd>A relation that is reflexive, antisymmetric, and transitive,
 and where every pair of elements is comparable.
@@ -400,6 +432,11 @@ identified by a unique trace ID and composed of multiple spans forming a tree.</
 <dd>A service that receives spans from instrumented applications,
 assembles them into complete traces,
 and stores or forwards them to a backend for analysis and visualization.</dd>
+<dt><span id="tcp">Transmission Control Protocol</span> (TCP)</dt>
+<dd>A network protocol that provides reliable, ordered delivery of data over the internet,
+built on top of the unreliable UDP protocol.
+TCP uses sequence numbers, acknowledgments, retransmission, and sliding windows
+to handle packet loss, reordering, and congestion automatically.</dd>
 <dt><span id="trust-anchor">trust anchor</span></dt>
 <dd>A certificate or public key that is trusted unconditionally
 and serves as the root from which the validity of other certificates in a chain is established.</dd>

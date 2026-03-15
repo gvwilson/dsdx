@@ -1,6 +1,7 @@
 LESSONS = \
   crdt \
   distlock \
+  dns \
   eventual \
   mapreduce \
   msgque \

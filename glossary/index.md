@@ -133,6 +133,17 @@
     solves each independently, and combines the results.
     MapReduce applies this pattern to distributed data processing.
 
+<span id="dns">Domain Name System</span> (DNS)
+:   A hierarchical, distributed database that translates human-readable domain names
+    such as "www.example.com" into IP addresses.
+    DNS is a critical internet infrastructure component
+    that enables service mobility and scales by distributing authority across millions of servers.
+
+<span id="dnssec">DNSSEC</span>
+:   DNS Security Extensions, a suite of protocols that add cryptographic signatures to DNS records,
+    allowing resolvers to verify that responses are authentic and have not been tampered with,
+    thereby preventing spoofing and cache poisoning attacks.
+
 ## E
 
 <span id="eventual-consistency">eventual consistency</span>
@@ -275,6 +286,12 @@
 
 ## N
 
+<span id="negative-cache">negative cache</span>
+:   A cache that stores records indicating that a lookup returned no result,
+    such as a non-existent domain name,
+    so that repeated queries for the same missing resource are answered locally
+    rather than forwarded to authoritative servers.
+
 <span id="negative-feedback-loop">negative feedback loop</span>
 :   A control mechanism where a system's output feeds back to reduce its input,
     stabilizing the system around a target state.
@@ -328,6 +345,17 @@
 ## Q
 
 ## R
+
+<span id="recursive-resolver">recursive resolver</span>
+:   A DNS server that accepts queries from clients and resolves them on the client's behalf
+    by walking the DNS hierarchy from root servers down to authoritative name servers,
+    caching responses to answer future queries more quickly.
+
+<span id="root-server">root server</span>
+:   One of the thirteen logical DNS servers at the top of the DNS hierarchy
+    that know the authoritative name servers for each top-level domain.
+    In practice, root servers are implemented as many physical servers
+    distributed worldwide using anycast addressing.
 
 <span id="root-span">root span</span>
 :   The first span in a trace, representing the top-level operation that initiated the request
@@ -403,6 +431,17 @@
 :   A mechanism that provides each thread with its own private copy of a variable,
     preventing interference between threads without requiring synchronization.
 
+<span id="ttl">time to live</span> (TTL)
+:   A value attached to a DNS record or cached entry that specifies
+    how long it may be stored before it must be discarded and re-fetched.
+    Low TTLs allow changes to propagate quickly but increase query load;
+    high TTLs reduce load but slow propagation of updates.
+
+<span id="tld">top-level domain</span>
+:   The rightmost label in a domain name, such as `.com`, `.org`, or `.net`,
+    managed by a dedicated set of DNS servers that know the authoritative name servers
+    for every domain registered under that suffix.
+
 <span id="total-order">total order</span>
 :   A relation that is reflexive, antisymmetric, and transitive,
     and where every pair of elements is comparable.
@@ -416,6 +455,12 @@
 :   A service that receives spans from instrumented applications,
     assembles them into complete traces,
     and stores or forwards them to a backend for analysis and visualization.
+
+<span id="tcp">Transmission Control Protocol</span> (TCP)
+:   A network protocol that provides reliable, ordered delivery of data over the internet,
+    built on top of the unreliable UDP protocol.
+    TCP uses sequence numbers, acknowledgments, retransmission, and sliding windows
+    to handle packet loss, reordering, and congestion automatically.
 
 <span id="trust-anchor">trust anchor</span>
 :   A certificate or public key that is trusted unconditionally

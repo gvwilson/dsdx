@@ -14,8 +14,6 @@ class CacheEntry:
     def is_expired(self, current_time: float) -> bool:
         """Check if this cache entry has expired."""
         return current_time >= self.expire_time
-
-
 # mccole: /cacheentry
 
 

@@ -1,0 +1,30 @@
+[0.000] client1.local: Looking up www.example.com (A)
+[0.000] resolver.isp.net: Received query for www.example.com (A)
+[0.000] resolver.isp.net: Cache MISS for www.example.com
+[0.000] ns1.example.com: Query for www.example.com (A) -> 0 record(s)
+[0.010] client1.local: No records found for www.example.com
+[1.010] client1.local: Looking up www.example.com (A)
+[1.010] resolver.isp.net: Received query for www.example.com (A)
+[1.010] resolver.isp.net: Cache MISS for www.example.com
+[1.010] ns1.example.com: Query for www.example.com (A) -> 0 record(s)
+[1.020] client1.local: No records found for www.example.com
+[2.020] client1.local: Looking up mail.example.com (A)
+[2.020] resolver.isp.net: Received query for mail.example.com (A)
+[2.020] resolver.isp.net: Cache MISS for mail.example.com
+[2.020] ns1.example.com: Query for mail.example.com (A) -> 0 record(s)
+[2.030] client1.local: No records found for mail.example.com
+[3.030] client1.local: Looking up www.another.org (A)
+[3.030] resolver.isp.net: Received query for www.another.org (A)
+[3.030] resolver.isp.net: Cache MISS for www.another.org
+[3.030] ns1.another.org: Query for www.another.org (A) -> 0 record(s)
+[3.040] client1.local: No records found for www.another.org
+
+=== DNS Resolution Statistics ===
+Example.com server: 3 queries
+Another.org server: 1 queries
+
+Resolver:
+  Total queries: 4
+  Cache hits: 0
+  Cache misses: 4
+  Cache hit rate: 0.0%

@@ -11,8 +11,6 @@ class RecordType(Enum):
     CNAME = "CNAME"  # Canonical name (alias)
     NS = "NS"  # Name server
     MX = "MX"  # Mail exchange
-
-
 # mccole: /recordtype
 
 
@@ -22,11 +20,9 @@ class DNSRecord:
     """A DNS resource record."""
 
     name: str  # Domain name
-    record_type: RecordType
     value: str  # IP address, domain name, etc.
+    record_type: RecordType
     ttl: int = 3600  # Time to live in seconds
-
-
 # mccole: /dnsrecord
 
 
@@ -38,8 +34,6 @@ class DNSQuery:
     query_id: int
     domain: str
     record_type: RecordType
-
-
 # mccole: /dnsquery
 
 
@@ -54,6 +48,4 @@ class DNSResponse:
     records: list[DNSRecord]
     authoritative: bool = False
     from_cache: bool = False
-
-
 # mccole: /dnsresponse

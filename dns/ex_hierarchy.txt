@@ -1,0 +1,272 @@
+[0.000] client1: Looking up www.example.com (A)
+[0.000] client2: Looking up www.example.com (A)
+[0.000] client3: Looking up www.another.org (A)
+[0.000] resolver1.isp.net: Received query for www.example.com (A)
+[0.000] resolver1.isp.net: Cache MISS for www.example.com
+[0.000] resolver2.isp.net: Received query for www.another.org (A)
+[0.000] resolver2.isp.net: Cache MISS for www.another.org
+[0.000] ns1.example.com: Query for www.example.com (A) -> 0 record(s)
+[0.000] ns1.another.org: Query for www.another.org (A) -> 0 record(s)
+[0.010] client1: No records found for www.example.com
+[0.010] resolver1.isp.net: Received query for www.example.com (A)
+[0.010] resolver1.isp.net: Cache MISS for www.example.com
+[0.010] client3: No records found for www.another.org
+[0.010] ns1.example.com: Query for www.example.com (A) -> 0 record(s)
+[0.020] client2: No records found for www.example.com
+[0.510] client1: Looking up api.example.com (A)
+[0.510] resolver1.isp.net: Received query for api.example.com (A)
+[0.510] resolver1.isp.net: Cache MISS for api.example.com
+[0.510] ns1.example.com: Query for api.example.com (A) -> 0 record(s)
+[0.520] client2: Looking up cdn.example.com (A)
+[0.520] client1: No records found for api.example.com
+[0.520] resolver1.isp.net: Received query for cdn.example.com (A)
+[0.520] resolver1.isp.net: Cache MISS for cdn.example.com
+[0.520] ns1.example.com: Query for cdn.example.com (A) -> 0 record(s)
+[0.530] client2: No records found for cdn.example.com
+[2.510] client3: Looking up www.another.org (A)
+[2.510] resolver2.isp.net: Received query for www.another.org (A)
+[2.510] resolver2.isp.net: Cache MISS for www.another.org
+[2.510] ns1.another.org: Query for www.another.org (A) -> 0 record(s)
+[2.520] client3: No records found for www.another.org
+[3.020] client1: Looking up www.example.com (A)
+[3.020] resolver1.isp.net: Received query for www.example.com (A)
+[3.020] resolver1.isp.net: Cache MISS for www.example.com
+[3.020] ns1.example.com: Query for www.example.com (A) -> 0 record(s)
+[3.030] client1: No records found for www.example.com
+[3.030] client2: Looking up www.example.com (A)
+[3.030] resolver1.isp.net: Received query for www.example.com (A)
+[3.030] resolver1.isp.net: Cache MISS for www.example.com
+[3.030] ns1.example.com: Query for www.example.com (A) -> 0 record(s)
+[3.040] client2: No records found for www.example.com
+[3.530] client1: Looking up api.example.com (A)
+[3.530] resolver1.isp.net: Received query for api.example.com (A)
+[3.530] resolver1.isp.net: Cache MISS for api.example.com
+[3.530] ns1.example.com: Query for api.example.com (A) -> 0 record(s)
+[3.540] client1: No records found for api.example.com
+[3.540] client2: Looking up cdn.example.com (A)
+[3.540] resolver1.isp.net: Received query for cdn.example.com (A)
+[3.540] resolver1.isp.net: Cache MISS for cdn.example.com
+[3.540] ns1.example.com: Query for cdn.example.com (A) -> 0 record(s)
+[3.550] client2: No records found for cdn.example.com
+[5.020] client3: Looking up www.another.org (A)
+[5.020] resolver2.isp.net: Received query for www.another.org (A)
+[5.020] resolver2.isp.net: Cache MISS for www.another.org
+[5.020] ns1.another.org: Query for www.another.org (A) -> 0 record(s)
+[5.030] client3: No records found for www.another.org
+[6.040] client1: Looking up www.example.com (A)
+[6.040] resolver1.isp.net: Received query for www.example.com (A)
+[6.040] resolver1.isp.net: Cache MISS for www.example.com
+[6.040] ns1.example.com: Query for www.example.com (A) -> 0 record(s)
+[6.050] client1: No records found for www.example.com
+[6.050] client2: Looking up www.example.com (A)
+[6.050] resolver1.isp.net: Received query for www.example.com (A)
+[6.050] resolver1.isp.net: Cache MISS for www.example.com
+[6.050] ns1.example.com: Query for www.example.com (A) -> 0 record(s)
+[6.060] client2: No records found for www.example.com
+[6.550] client1: Looking up api.example.com (A)
+[6.550] resolver1.isp.net: Received query for api.example.com (A)
+[6.550] resolver1.isp.net: Cache MISS for api.example.com
+[6.550] ns1.example.com: Query for api.example.com (A) -> 0 record(s)
+[6.560] client1: No records found for api.example.com
+[6.560] client2: Looking up cdn.example.com (A)
+[6.560] resolver1.isp.net: Received query for cdn.example.com (A)
+[6.560] resolver1.isp.net: Cache MISS for cdn.example.com
+[6.560] ns1.example.com: Query for cdn.example.com (A) -> 0 record(s)
+[6.570] client2: No records found for cdn.example.com
+[7.530] client3: Looking up www.another.org (A)
+[7.530] resolver2.isp.net: Received query for www.another.org (A)
+[7.530] resolver2.isp.net: Cache MISS for www.another.org
+[7.530] ns1.another.org: Query for www.another.org (A) -> 0 record(s)
+[7.540] client3: No records found for www.another.org
+[9.060] client1: Looking up www.example.com (A)
+[9.060] resolver1.isp.net: Received query for www.example.com (A)
+[9.060] resolver1.isp.net: Cache MISS for www.example.com
+[9.060] ns1.example.com: Query for www.example.com (A) -> 0 record(s)
+[9.070] client1: No records found for www.example.com
+[9.070] client2: Looking up www.example.com (A)
+[9.070] resolver1.isp.net: Received query for www.example.com (A)
+[9.070] resolver1.isp.net: Cache MISS for www.example.com
+[9.070] ns1.example.com: Query for www.example.com (A) -> 0 record(s)
+[9.080] client2: No records found for www.example.com
+[9.570] client1: Looking up api.example.com (A)
+[9.570] resolver1.isp.net: Received query for api.example.com (A)
+[9.570] resolver1.isp.net: Cache MISS for api.example.com
+[9.570] ns1.example.com: Query for api.example.com (A) -> 0 record(s)
+[9.580] client1: No records found for api.example.com
+[9.580] client2: Looking up cdn.example.com (A)
+[9.580] resolver1.isp.net: Received query for cdn.example.com (A)
+[9.580] resolver1.isp.net: Cache MISS for cdn.example.com
+[9.580] ns1.example.com: Query for cdn.example.com (A) -> 0 record(s)
+[9.590] client2: No records found for cdn.example.com
+[10.040] client3: Looking up www.another.org (A)
+[10.040] resolver2.isp.net: Received query for www.another.org (A)
+[10.040] resolver2.isp.net: Cache MISS for www.another.org
+[10.040] ns1.another.org: Query for www.another.org (A) -> 0 record(s)
+[10.050] client3: No records found for www.another.org
+[12.080] client1: Looking up www.example.com (A)
+[12.080] resolver1.isp.net: Received query for www.example.com (A)
+[12.080] resolver1.isp.net: Cache MISS for www.example.com
+[12.080] ns1.example.com: Query for www.example.com (A) -> 0 record(s)
+[12.090] client1: No records found for www.example.com
+[12.090] client2: Looking up www.example.com (A)
+[12.090] resolver1.isp.net: Received query for www.example.com (A)
+[12.090] resolver1.isp.net: Cache MISS for www.example.com
+[12.090] ns1.example.com: Query for www.example.com (A) -> 0 record(s)
+[12.100] client2: No records found for www.example.com
+[12.550] client3: Looking up www.another.org (A)
+[12.550] resolver2.isp.net: Received query for www.another.org (A)
+[12.550] resolver2.isp.net: Cache MISS for www.another.org
+[12.550] ns1.another.org: Query for www.another.org (A) -> 0 record(s)
+[12.560] client3: No records found for www.another.org
+[12.590] client1: Looking up api.example.com (A)
+[12.590] resolver1.isp.net: Received query for api.example.com (A)
+[12.590] resolver1.isp.net: Cache MISS for api.example.com
+[12.590] ns1.example.com: Query for api.example.com (A) -> 0 record(s)
+[12.600] client1: No records found for api.example.com
+[12.600] client2: Looking up cdn.example.com (A)
+[12.600] resolver1.isp.net: Received query for cdn.example.com (A)
+[12.600] resolver1.isp.net: Cache MISS for cdn.example.com
+[12.600] ns1.example.com: Query for cdn.example.com (A) -> 0 record(s)
+[12.610] client2: No records found for cdn.example.com
+[15.060] client3: Looking up www.another.org (A)
+[15.060] resolver2.isp.net: Received query for www.another.org (A)
+[15.060] resolver2.isp.net: Cache MISS for www.another.org
+[15.060] ns1.another.org: Query for www.another.org (A) -> 0 record(s)
+[15.070] client3: No records found for www.another.org
+[15.100] client1: Looking up www.example.com (A)
+[15.100] resolver1.isp.net: Received query for www.example.com (A)
+[15.100] resolver1.isp.net: Cache MISS for www.example.com
+[15.100] ns1.example.com: Query for www.example.com (A) -> 0 record(s)
+[15.110] client1: No records found for www.example.com
+[15.110] client2: Looking up www.example.com (A)
+[15.110] resolver1.isp.net: Received query for www.example.com (A)
+[15.110] resolver1.isp.net: Cache MISS for www.example.com
+[15.110] ns1.example.com: Query for www.example.com (A) -> 0 record(s)
+[15.120] client2: No records found for www.example.com
+[15.610] client1: Looking up api.example.com (A)
+[15.610] resolver1.isp.net: Received query for api.example.com (A)
+[15.610] resolver1.isp.net: Cache MISS for api.example.com
+[15.610] ns1.example.com: Query for api.example.com (A) -> 0 record(s)
+[15.620] client1: No records found for api.example.com
+[15.620] client2: Looking up cdn.example.com (A)
+[15.620] resolver1.isp.net: Received query for cdn.example.com (A)
+[15.620] resolver1.isp.net: Cache MISS for cdn.example.com
+[15.620] ns1.example.com: Query for cdn.example.com (A) -> 0 record(s)
+[15.630] client2: No records found for cdn.example.com
+[17.570] client3: Looking up www.another.org (A)
+[17.570] resolver2.isp.net: Received query for www.another.org (A)
+[17.570] resolver2.isp.net: Cache MISS for www.another.org
+[17.570] ns1.another.org: Query for www.another.org (A) -> 0 record(s)
+[17.580] client3: No records found for www.another.org
+[18.120] client1: Looking up www.example.com (A)
+[18.120] resolver1.isp.net: Received query for www.example.com (A)
+[18.120] resolver1.isp.net: Cache MISS for www.example.com
+[18.120] ns1.example.com: Query for www.example.com (A) -> 0 record(s)
+[18.130] client2: Looking up www.example.com (A)
+[18.130] client1: No records found for www.example.com
+[18.130] resolver1.isp.net: Received query for www.example.com (A)
+[18.130] resolver1.isp.net: Cache MISS for www.example.com
+[18.130] ns1.example.com: Query for www.example.com (A) -> 0 record(s)
+[18.140] client2: No records found for www.example.com
+[18.630] client1: Looking up api.example.com (A)
+[18.630] resolver1.isp.net: Received query for api.example.com (A)
+[18.630] resolver1.isp.net: Cache MISS for api.example.com
+[18.630] ns1.example.com: Query for api.example.com (A) -> 0 record(s)
+[18.640] client2: Looking up cdn.example.com (A)
+[18.640] client1: No records found for api.example.com
+[18.640] resolver1.isp.net: Received query for cdn.example.com (A)
+[18.640] resolver1.isp.net: Cache MISS for cdn.example.com
+[18.640] ns1.example.com: Query for cdn.example.com (A) -> 0 record(s)
+[18.650] client2: No records found for cdn.example.com
+[20.080] client3: Looking up www.another.org (A)
+[20.080] resolver2.isp.net: Received query for www.another.org (A)
+[20.080] resolver2.isp.net: Cache MISS for www.another.org
+[20.080] ns1.another.org: Query for www.another.org (A) -> 0 record(s)
+[20.090] client3: No records found for www.another.org
+[21.140] client1: Looking up www.example.com (A)
+[21.140] resolver1.isp.net: Received query for www.example.com (A)
+[21.140] resolver1.isp.net: Cache MISS for www.example.com
+[21.140] ns1.example.com: Query for www.example.com (A) -> 0 record(s)
+[21.150] client2: Looking up www.example.com (A)
+[21.150] client1: No records found for www.example.com
+[21.150] resolver1.isp.net: Received query for www.example.com (A)
+[21.150] resolver1.isp.net: Cache MISS for www.example.com
+[21.150] ns1.example.com: Query for www.example.com (A) -> 0 record(s)
+[21.160] client2: No records found for www.example.com
+[21.650] client1: Looking up api.example.com (A)
+[21.650] resolver1.isp.net: Received query for api.example.com (A)
+[21.650] resolver1.isp.net: Cache MISS for api.example.com
+[21.650] ns1.example.com: Query for api.example.com (A) -> 0 record(s)
+[21.660] client2: Looking up cdn.example.com (A)
+[21.660] client1: No records found for api.example.com
+[21.660] resolver1.isp.net: Received query for cdn.example.com (A)
+[21.660] resolver1.isp.net: Cache MISS for cdn.example.com
+[21.660] ns1.example.com: Query for cdn.example.com (A) -> 0 record(s)
+[21.670] client2: No records found for cdn.example.com
+[22.590] client3: Looking up www.another.org (A)
+[22.590] resolver2.isp.net: Received query for www.another.org (A)
+[22.590] resolver2.isp.net: Cache MISS for www.another.org
+[22.590] ns1.another.org: Query for www.another.org (A) -> 0 record(s)
+[22.600] client3: No records found for www.another.org
+[24.160] client1: Looking up www.example.com (A)
+[24.160] resolver1.isp.net: Received query for www.example.com (A)
+[24.160] resolver1.isp.net: Cache MISS for www.example.com
+[24.160] ns1.example.com: Query for www.example.com (A) -> 0 record(s)
+[24.170] client2: Looking up www.example.com (A)
+[24.170] client1: No records found for www.example.com
+[24.170] resolver1.isp.net: Received query for www.example.com (A)
+[24.170] resolver1.isp.net: Cache MISS for www.example.com
+[24.170] ns1.example.com: Query for www.example.com (A) -> 0 record(s)
+[24.180] client2: No records found for www.example.com
+[24.670] client1: Looking up api.example.com (A)
+[24.670] resolver1.isp.net: Received query for api.example.com (A)
+[24.670] resolver1.isp.net: Cache MISS for api.example.com
+[24.670] ns1.example.com: Query for api.example.com (A) -> 0 record(s)
+[24.680] client2: Looking up cdn.example.com (A)
+[24.680] client1: No records found for api.example.com
+[24.680] resolver1.isp.net: Received query for cdn.example.com (A)
+[24.680] resolver1.isp.net: Cache MISS for cdn.example.com
+[24.680] ns1.example.com: Query for cdn.example.com (A) -> 0 record(s)
+[24.690] client2: No records found for cdn.example.com
+[27.180] client1: Looking up www.example.com (A)
+[27.180] resolver1.isp.net: Received query for www.example.com (A)
+[27.180] resolver1.isp.net: Cache MISS for www.example.com
+[27.180] ns1.example.com: Query for www.example.com (A) -> 0 record(s)
+[27.190] client2: Looking up www.example.com (A)
+[27.190] client1: No records found for www.example.com
+[27.190] resolver1.isp.net: Received query for www.example.com (A)
+[27.190] resolver1.isp.net: Cache MISS for www.example.com
+[27.190] ns1.example.com: Query for www.example.com (A) -> 0 record(s)
+[27.200] client2: No records found for www.example.com
+[27.690] client1: Looking up api.example.com (A)
+[27.690] resolver1.isp.net: Received query for api.example.com (A)
+[27.690] resolver1.isp.net: Cache MISS for api.example.com
+[27.690] ns1.example.com: Query for api.example.com (A) -> 0 record(s)
+[27.700] client2: Looking up cdn.example.com (A)
+[27.700] client1: No records found for api.example.com
+[27.700] resolver1.isp.net: Received query for cdn.example.com (A)
+[27.700] resolver1.isp.net: Cache MISS for cdn.example.com
+[27.700] ns1.example.com: Query for cdn.example.com (A) -> 0 record(s)
+[27.710] client2: No records found for cdn.example.com
+
+=== DNS Hierarchy Statistics ===
+
+Authoritative Servers:
+  example.com: 40 queries
+  another.org: 10 queries
+
+Resolver 1:
+  Total queries: 40
+  Cache hits: 0
+  Cache misses: 40
+  Cache hit rate: 0.0%
+
+Resolver 2:
+  Total queries: 10
+  Cache hits: 0
+  Cache misses: 10
+  Cache hit rate: 0.0%
+
+Total authoritative queries: 50
+Total client queries: 50
+Query reduction from caching: 0.0%
