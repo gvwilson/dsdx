@@ -1,0 +1,119 @@
+## High Loss TCP Scenario
+Testing TCP robustness with extreme conditions:
+  - 40% packet loss (!!)
+  - 20% packet reordering
+  - 10% packet duplication
+  - Larger message requiring multiple segments
+[0.0] Network: Started (loss=40%, reorder=20%)
+[0.0] Network: Registered 10.0.0.1:5000
+[0.0] TCP 10.0.0.1:5000: Created (ISN=7830)
+[0.0] Network: Registered 10.0.0.2:6000
+[0.0] TCP 10.0.0.2:6000: Created (ISN=8964)
+[0.0] TCP 10.0.0.1:5000: Listening...
+
+[0.0] TCP: Starting connection to 10.0.0.1:5000
+[0.9] TCP: Sent SYN (seq=8964)
+[0.9] TCP: Received SYN from 10.0.0.2:6000
+[1.1] TCP: Sent SYN-ACK (seq=7830, ack=8965)
+[1.1] TCP: Received SYN-ACK (seq=7830, ack=8965)
+[1.1] Network: LOST Packet(ACK, seq=8965, ack=7831, len=0)
+[1.1] TCP: Sent ACK, connection established
+[1.2] TCP: Connection ESTABLISHED
+
+
+[1.2] Client: Sending message (1510 bytes)
+  Message: 'This is a much longer message that will be split i...'
+[1.2] Network: LOST Packet(DATA, seq=8964, ack=7831, len=1400)
+[1.2] TCP: Sent DATA (seq=8964, len=1400)
+[1.2] Network: LOST Packet(DATA, seq=10364, ack=7831, len=110)
+[1.2] TCP: Sent DATA (seq=10364, len=110)
+[2.2] TCP: TIMEOUT - Retransmitting seq=8964
+[2.2] TCP: TIMEOUT - Retransmitting seq=10364
+[2.7] TCP: Received DATA (seq=8964, len=1400)
+[2.7] Network: LOST Packet(ACK, seq=7830, ack=8965, len=0)
+[2.7] TCP: Sent ACK (ack=8965)
+[3.2] Client: Done sending
+[3.6] TCP: TIMEOUT - Retransmitting seq=10364
+[3.6] Network: LOST Packet(DATA, seq=10364, ack=7831, len=110)
+[3.7] TCP: TIMEOUT - Retransmitting seq=8964
+[3.7] Network: LOST Packet(DATA, seq=8964, ack=7831, len=1400)
+[4.6] TCP: TIMEOUT - Retransmitting seq=10364
+[4.6] Network: LOST Packet(DATA, seq=10364, ack=7831, len=110)
+[4.7] TCP: TIMEOUT - Retransmitting seq=8964
+[5.6] TCP: TIMEOUT - Retransmitting seq=10364
+[5.6] Network: LOST Packet(DATA, seq=10364, ack=7831, len=110)
+[6.5] TCP: TIMEOUT - Retransmitting seq=8964
+[6.6] TCP: TIMEOUT - Retransmitting seq=10364
+[7.0] TCP: Received DATA (seq=8964, len=1400)
+[7.0] Network: LOST Packet(ACK, seq=7830, ack=8965, len=0)
+[7.0] TCP: Sent ACK (ack=8965)
+[8.0] TCP: TIMEOUT - Retransmitting seq=8964
+[8.3] TCP: Received DATA (seq=8964, len=1400)
+[8.5] TCP: TIMEOUT - Retransmitting seq=10364
+[8.5] Network: LOST Packet(DATA, seq=10364, ack=7831, len=110)
+[9.1] TCP: Sent ACK (ack=8965)
+[9.1] TCP: ACK 8965 (acknowledged 1 segments)
+[9.5] TCP: TIMEOUT - Retransmitting seq=10364
+[11.3] TCP: TIMEOUT - Retransmitting seq=10364
+[11.3] Network: LOST Packet(DATA, seq=10364, ack=7831, len=110)
+[12.3] TCP: TIMEOUT - Retransmitting seq=10364
+[13.1] TCP: Received DATA (seq=10364, len=110)
+[13.5] TCP: Sent ACK (ack=8965)
+[14.1] TCP: TIMEOUT - Retransmitting seq=10364
+[14.1] Network: LOST Packet(DATA, seq=10364, ack=7831, len=110)
+[15.1] TCP: TIMEOUT - Retransmitting seq=10364
+[15.1] Network: LOST Packet(DATA, seq=10364, ack=7831, len=110)
+[16.1] TCP: TIMEOUT - Retransmitting seq=10364
+[16.1] Network: LOST Packet(DATA, seq=10364, ack=7831, len=110)
+[17.1] TCP: TIMEOUT - Retransmitting seq=10364
+[18.5] TCP: TIMEOUT - Retransmitting seq=10364
+[19.1] TCP: Received DATA (seq=10364, len=110)
+[19.1] Network: LOST Packet(ACK, seq=7830, ack=8965, len=0)
+[19.1] TCP: Sent ACK (ack=8965)
+[20.1] TCP: TIMEOUT - Retransmitting seq=10364
+[21.6] TCP: TIMEOUT - Retransmitting seq=10364
+[22.2] TCP: Received DATA (seq=10364, len=110)
+[22.5] TCP: Sent ACK (ack=8965)
+[23.2] TCP: TIMEOUT - Retransmitting seq=10364
+[24.8] TCP: TIMEOUT - Retransmitting seq=10364
+[24.8] Network: LOST Packet(DATA, seq=10364, ack=7831, len=110)
+[25.8] TCP: TIMEOUT - Retransmitting seq=10364
+[25.8] Network: LOST Packet(DATA, seq=10364, ack=7831, len=110)
+[26.8] TCP: TIMEOUT - Retransmitting seq=10364
+[26.8] Network: LOST Packet(DATA, seq=10364, ack=7831, len=110)
+[27.8] TCP: TIMEOUT - Retransmitting seq=10364
+[28.9] TCP: Received DATA (seq=10364, len=110)
+[29.2] TCP: Sent ACK (ack=8965)
+[29.9] TCP: TIMEOUT - Retransmitting seq=10364
+[31.1] TCP: TIMEOUT - Retransmitting seq=10364
+[31.1] Network: LOST Packet(DATA, seq=10364, ack=7831, len=110)
+[32.1] TCP: TIMEOUT - Retransmitting seq=10364
+[32.4] TCP: Received DATA (seq=10364, len=110)
+[32.4] Network: LOST Packet(ACK, seq=7830, ack=8965, len=0)
+[32.4] TCP: Sent ACK (ack=8965)
+[33.4] TCP: TIMEOUT - Retransmitting seq=10364
+[33.4] Network: LOST Packet(DATA, seq=10364, ack=7831, len=110)
+[34.4] TCP: TIMEOUT - Retransmitting seq=10364
+[34.4] Network: LOST Packet(DATA, seq=10364, ack=7831, len=110)
+[35.4] TCP: TIMEOUT - Retransmitting seq=10364
+[36.9] TCP: TIMEOUT - Retransmitting seq=10364
+[38.0] TCP: Received DATA (seq=10364, len=110)
+[38.4] TCP: Sent ACK (ack=8965)
+[39.0] TCP: TIMEOUT - Retransmitting seq=10364
+### Network Statistics:
+Packets sent: 48
+Packets lost: 22 (45.8%)
+Packets reordered: 8
+Packets duplicated: 0
+### TCP Connection Statistics (10.0.0.2:6000):
+Bytes sent: 1510
+Bytes received: 0
+Packets retransmitted: 34
+Send buffer size: 1
+### TCP Connection Statistics (10.0.0.1:5000):
+Bytes sent: 0
+Bytes received: 0
+Packets retransmitted: 0
+Send buffer size: 0
+## Verification:
+Incomplete: 0/1510 bytes

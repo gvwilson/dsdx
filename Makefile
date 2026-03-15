@@ -6,6 +6,7 @@ LESSONS = \
   msgque \
   oauth \
   saga \
+  tcp \
   tracing \
   worksteal
 

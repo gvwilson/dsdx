@@ -4,21 +4,18 @@ from asimpy import Environment
 from unreliable_network import UnreliableNetwork
 from tcp_connection import TCPConnection
 from tcp_applications import TCPClient, TCPServer
+from dsdx import dsdx
 
 
 # mccole: basicexample
-def run_basic_tcp() -> None:
-    """Demonstrate basic TCP communication over unreliable network."""
+def main():
     env = Environment()
 
-    print("=" * 60)
-    print("Basic TCP Demonstration")
-    print("=" * 60)
+    print("## Basic TCP Demonstration")
     print("Testing TCP reliability with:")
     print("  - 15% packet loss")
     print("  - 10% packet reordering")
     print("  - 5% packet duplication")
-    print("=" * 60 + "\n")
 
     # Create unreliable network
     network = UnreliableNetwork(
@@ -61,4 +58,4 @@ def run_basic_tcp() -> None:
 
 
 if __name__ == "__main__":
-    run_basic_tcp()
+    dsdx(main)

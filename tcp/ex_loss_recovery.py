@@ -4,22 +4,19 @@ from asimpy import Environment
 from unreliable_network import UnreliableNetwork
 from tcp_connection import TCPConnection
 from tcp_applications import TCPClient, TCPServer
+from dsdx import dsdx
 
 
 # mccole: highlossexample
-def run_high_loss_scenario() -> None:
-    """Demonstrate TCP under high packet loss conditions."""
+def main():
     env = Environment()
 
-    print("=" * 60)
-    print("High Loss TCP Scenario")
-    print("=" * 60)
+    print("## High Loss TCP Scenario")
     print("Testing TCP robustness with extreme conditions:")
     print("  - 40% packet loss (!!)")
     print("  - 20% packet reordering")
     print("  - 10% packet duplication")
     print("  - Larger message requiring multiple segments")
-    print("=" * 60 + "\n")
 
     # Extremely unreliable network
     network = UnreliableNetwork(
@@ -67,16 +64,14 @@ def run_high_loss_scenario() -> None:
     server_conn.print_statistics()
 
     # Verify delivery
-    print(f"\n{'=' * 60}")
-    print("Verification:")
-    print("=" * 60)
+    print("## Verification:")
     expected_bytes = len(message.encode("utf-8"))
     if server_conn.bytes_received == expected_bytes:
-        print(f"✓ SUCCESS: All {expected_bytes} bytes delivered correctly!")
+        print(f"Success: All {expected_bytes} bytes delivered correctly!")
     else:
-        print(f"✗ INCOMPLETE: {server_conn.bytes_received}/{expected_bytes} bytes")
+        print(f"Incomplete: {server_conn.bytes_received}/{expected_bytes} bytes")
 # mccole: /highlossexample
 
 
 if __name__ == "__main__":
-    run_high_loss_scenario()
+    dsdx(main)

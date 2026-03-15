@@ -14,8 +14,10 @@ class PacketType(Enum):
     DATA = "DATA"  # Data packet
     FIN = "FIN"  # Finish (connection teardown)
     FIN_ACK = "FIN_ACK"  # Finish-Acknowledge
+# mccole: /packettypes
 
 
+# mccole: connectionstate
 class ConnectionState(Enum):
     """TCP connection states."""
 
@@ -26,8 +28,10 @@ class ConnectionState(Enum):
     FIN_WAIT = "FIN_WAIT"
     CLOSE_WAIT = "CLOSE_WAIT"
     CLOSING = "CLOSING"
+# mccole: /connectionstate
 
 
+# mccole: packet
 @dataclass
 class Packet:
     """A network packet (simulating IP + TCP)."""
@@ -41,6 +45,7 @@ class Packet:
     packet_type: PacketType
     data: bytes = b""
     window_size: int = 65535
+# mccole: /packet
 
     def __str__(self) -> str:
         data_len = len(self.data)
@@ -48,7 +53,6 @@ class Packet:
             f"Packet({self.packet_type.value}, seq={self.seq_num}, "
             f"ack={self.ack_num}, len={data_len})"
         )
-# mccole: /packettypes
 
 
 @dataclass

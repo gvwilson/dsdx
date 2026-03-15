@@ -90,9 +90,7 @@ class UnreliableNetwork(Process):
 
     def print_statistics(self) -> None:
         """Print network statistics."""
-        print(f"\n{'=' * 60}")
-        print("Network Statistics:")
-        print("=" * 60)
+        print("### Network Statistics:")
         print(f"Packets sent: {self.packets_sent}")
         print(
             f"Packets lost: {self.packets_lost} "

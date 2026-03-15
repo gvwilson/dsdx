@@ -50,112 +50,49 @@
 <main>
 <h1>Building TCP on UDP</h1>
 <p>When you open a website, stream a video, or send an email,
-you're almost certainly using TCP (Transmission Control Protocol).
+you're almost certainly using <a href="../glossary/#tcp">Transmission Control Protocol</a> (TCP).
 TCP provides reliable, ordered delivery of data over the internet,
 handling packet loss, reordering, and congestion automatically.
 But TCP itself runs on top of UDP,
 which only provides best-effort, unordered packet delivery with no guarantees.</p>
-<p>Building a simplified TCP on top of UDP demonstrates
-the core mechanisms that make reliable communication possible over unreliable networks:
-sequence numbers for ordering,
-acknowledgments for reliability,
-retransmission timers for handling loss,
-and flow control for preventing overwhelm.
-These same principles appear throughout distributed systems:
-message queues use acknowledgments,
-databases use write-ahead logs with sequence numbers,
-and streaming protocols use sliding windows.</p>
-<p>This pattern is fundamental to understanding how networks work.
-Google's QUIC protocol reimplements TCP-like reliability over UDP to enable faster connection establishment.
-Reliable UDP libraries like ENet power multiplayer games.</p>
-<table>
-<thead>
-<tr>
-<th>Feature</th>
-<th>UDP</th>
-<th>Our TCP</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Reliability</td>
-<td>None</td>
-<td>Guaranteed delivery</td>
-</tr>
-<tr>
-<td>Ordering</td>
-<td>None</td>
-<td>In-order delivery</td>
-</tr>
-<tr>
-<td>Overhead</td>
-<td>Minimal</td>
-<td>Header + ACKs + retransmissions</td>
-</tr>
-<tr>
-<td>Latency</td>
-<td>Low</td>
-<td>Higher (due to ACKs and retransmits)</td>
-</tr>
-<tr>
-<td>Throughput</td>
-<td>High</td>
-<td>Lower (due to window limits)</td>
-</tr>
-<tr>
-<td>Use Cases</td>
-<td>Live video, gaming, DNS</td>
-<td>File transfer, web, email</td>
-</tr>
-</tbody>
-</table>
-<h2>The TCP Guarantee</h2>
-<p>TCP provides a reliable byte stream abstraction over unreliable packet delivery:</p>
-<ol>
-<li><strong>Reliable delivery</strong>: All data arrives or an error is reported</li>
-<li><strong>Ordered delivery</strong>: Data arrives in the order sent</li>
-<li><strong>Flow control</strong>: Receiver controls sender rate to prevent overflow</li>
-<li><strong>Congestion control</strong>: Sender adapts to network capacity</li>
-</ol>
-<p>UDP, in contrast, provides none of these guarantees:
-packets can be lost, duplicated, reordered, or corrupted.
-Our implementation will add reliability and ordering on top of UDP's unreliable datagram service.</p>
-<h2>Core Mechanisms</h2>
-<p>TCP uses several key mechanisms:</p>
+<p>Building a simplified TCP on top of UDP
+demonstrates the core mechanisms that make reliable communication possible over unreliable networks:</p>
 <ul>
 <li>
-<p><strong>Sequence Numbers</strong>: Each byte has a sequence number.
+<p>Sequence numbers:
+    Each byte has a sequence number.
     Receivers use these to detect missing data and reorder packets.</p>
 </li>
 <li>
-<p><strong>Acknowledgments (ACKs)</strong>: Receivers send ACKs indicating what data they've received.
+<p>Acknowledgments (ACKs):
+    Receivers send ACKs indicating what data they've received.
     Senders use ACKs to know what to retransmit.</p>
 </li>
 <li>
-<p><strong>Retransmission</strong>: If an ACK doesn't arrive within a timeout, the sender retransmits the data.</p>
+<p>Retransmission:
+    If an ACK doesn't arrive within a timeout, the sender retransmits the data.</p>
 </li>
 <li>
-<p><strong>Sliding Window</strong>: Sender can have multiple unacknowledged packets in flight
+<p>Cumulative ACKs:
+    ACKs indicate that the receiver has received everything up to a particular message,
+    which simplifies acknowledgment logic.</p>
+</li>
+<li>
+<p>Sliding windows:
+    Sender can have multiple unacknowledged packets in flight
     to maintain throughput despite round-trip latency.</p>
 </li>
-<li>
-<p><strong>Cumulative ACKs</strong>: ACKs indicate, "I've received everything up to sequence number X,"
-    simplifying acknowledgment logic.</p>
-</li>
 </ul>
-<h2>Implementation Overview</h2>
 <p>Our TCP-over-UDP implementation consists of:</p>
 <ol>
-<li><code>tcp_types.py</code>: Core data structures (Packet, SegmentBuffer, ReceiveBuffer)</li>
-<li><code>unreliable_network.py</code>: Simulates packet loss, reordering, duplication</li>
-<li><code>tcp_connection.py</code>: TCP connection with reliability mechanisms</li>
-<li><code>tcp_applications.py</code>: Client and server applications</li>
-<li><code>example_basic_tcp.py</code>: Basic reliable transfer demonstration</li>
-<li><code>example_loss_recovery.py</code>: High packet loss scenario</li>
+<li><code>tcp_types.py</code>: core data structures.</li>
+<li><code>unreliable_network.py</code>: simulates packet loss, reordering, duplication.</li>
+<li><code>tcp_connection.py</code>: TCP connection with reliability mechanisms.</li>
+<li><code>tcp_applications.py</code>: client and server applications</li>
 </ol>
-<p>Let's examine each component.</p>
-<h2>Data Structures</h2>
-<p>The core types represent TCP segments and connection state:</p>
+<p>Let's examine each component in turn.</p>
+<h2 id="tcp-data">Data Structures</h2>
+<p>We start by defining the six types of packets our protocol will use:</p>
 <div data-filter="inc=packettypes" data-inc="tcp_types.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">PacketType</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""Types of TCP packets."""</span>
 
@@ -165,9 +102,10 @@ Our implementation will add reliability and ordering on top of UDP's unreliable 
     <span class="n">DATA</span> <span class="o">=</span> <span class="s2">"DATA"</span>  <span class="c1"># Data packet</span>
     <span class="n">FIN</span> <span class="o">=</span> <span class="s2">"FIN"</span>  <span class="c1"># Finish (connection teardown)</span>
     <span class="n">FIN_ACK</span> <span class="o">=</span> <span class="s2">"FIN_ACK"</span>  <span class="c1"># Finish-Acknowledge</span>
-
-
-<span class="k">class</span><span class="w"> </span><span class="nc">ConnectionState</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+</code></pre></div>
+</div>
+<p>and the seven different states that a connection can be in:</p>
+<div data-filter="inc=connectionstate" data-inc="tcp_types.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ConnectionState</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""TCP connection states."""</span>
 
     <span class="n">CLOSED</span> <span class="o">=</span> <span class="s2">"CLOSED"</span>
@@ -177,9 +115,13 @@ Our implementation will add reliability and ordering on top of UDP's unreliable 
     <span class="n">FIN_WAIT</span> <span class="o">=</span> <span class="s2">"FIN_WAIT"</span>
     <span class="n">CLOSE_WAIT</span> <span class="o">=</span> <span class="s2">"CLOSE_WAIT"</span>
     <span class="n">CLOSING</span> <span class="o">=</span> <span class="s2">"CLOSING"</span>
-
-
-<span class="nd">@dataclass</span>
+</code></pre></div>
+</div>
+<p>The <code>Packet</code> structure mirrors a real TCP/IP packet header with source and destination addressing,
+sequence and acknowledgment numbers,
+packet type,
+and payload data:</p>
+<div data-filter="inc=packet" data-inc="tcp_types.py"><div class="codehilite"><pre class=""><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">Packet</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""A network packet (simulating IP + TCP)."""</span>
 
@@ -192,22 +134,12 @@ Our implementation will add reliability and ordering on top of UDP's unreliable 
     <span class="n">packet_type</span><span class="p">:</span> <span class="n">PacketType</span>
     <span class="n">data</span><span class="p">:</span> <span class="nb">bytes</span> <span class="o">=</span> <span class="sa">b</span><span class="s2">""</span>
     <span class="n">window_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">65535</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="n">data_len</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
-        <span class="k">return</span> <span class="p">(</span>
-            <span class="sa">f</span><span class="s2">"Packet(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">packet_type</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2">, seq=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">seq_num</span><span class="si">}</span><span class="s2">, "</span>
-            <span class="sa">f</span><span class="s2">"ack=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">ack_num</span><span class="si">}</span><span class="s2">, len=</span><span class="si">{</span><span class="n">data_len</span><span class="si">}</span><span class="s2">)"</span>
-        <span class="p">)</span>
 </code></pre></div>
 </div>
-<p>The <code>Packet</code> structure mirrors a real TCP/IP packet header with source and destination addressing,
-sequence and acknowledgment numbers,
-packet type,
-and payload data.</p>
-<h2>Unreliable Network Layer</h2>
+<h2 id="tcp-network">Unreliable Network Layer</h2>
 <p>Before building TCP, we need to simulate UDP's unreliable delivery.
-<code>UnreliableNetwork</code> tracks per-packet statistics and maintains a registry mapping address:port pairs to their receive queues:</p>
+<code>UnreliableNetwork</code> tracks per-packet statistics
+and maintains a registry mapping address:port pairs to their receive queues:</p>
 <div data-filter="inc=network_init" data-inc="unreliable_network.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">UnreliableNetwork</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""Simulates unreliable packet delivery (like UDP)."""</span>
 
@@ -249,7 +181,9 @@ and payload data.</p>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Network: Registered </span><span class="si">{</span><span class="n">endpoint_id</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </code></pre></div>
 </div>
-<p><code>send_packet</code> applies the configured loss and duplication rates before calling <code>_deliver_packet</code>, which adds a random delay and optionally increases it to simulate reordering:</p>
+<p><code>send_packet</code> applies the configured loss and duplication rates
+before calling <code>_deliver_packet</code>,
+which adds a random delay and optionally increases it to simulate reordering:</p>
 <div data-filter="inc=network_send" data-inc="unreliable_network.py"><div class="codehilite"><pre class=""><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">send_packet</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">packet</span><span class="p">:</span> <span class="n">Packet</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Send packet with simulated unreliability."""</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">packets_sent</span> <span class="o">+=</span> <span class="mi">1</span>
@@ -291,7 +225,7 @@ and payload data.</p>
 </div>
 <p>This simulates the way packets in real networks can be lost, delayed, reordered, or duplicated.
 The network maintains a registry of endpoints and routes packets accordingly.</p>
-<h2>TCP Connection</h2>
+<h2 id="tcp-connection">TCP Connection</h2>
 <p>The TCP connection implements reliability over the unreliable network:</p>
 <div data-filter="inc=tcpinit" data-inc="tcp_connection.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">TCPConnection</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""TCP connection with reliability over unreliable network."""</span>
@@ -350,7 +284,8 @@ The network maintains a registry of endpoints and routes packets accordingly.</p
 <p>The connection maintains send and receive buffers.
 The send buffer holds unacknowledged segments for potential retransmission.
 The receive buffer handles out-of-order delivery by holding segments until gaps are filled.</p>
-<p>The <code>run</code> loop reads packets from the receive queue and dispatches each one through <code>handle_packet</code>, which routes SYN, SYN-ACK, ACK, and DATA packets to the appropriate handler:</p>
+<p>The <code>run</code> loop reads packets from the receive queue and dispatches each one through <code>handle_packet</code>,
+which routes SYN, SYN-ACK, ACK, and DATA packets to the appropriate handler:</p>
 <div data-filter="inc=tcp_run" data-inc="tcp_connection.py"><div class="codehilite"><pre class=""><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Main TCP loop: handle incoming packets."""</span>
         <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
@@ -400,7 +335,7 @@ The receive buffer handles out-of-order delivery by holding segments until gaps 
             <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_data</span><span class="p">(</span><span class="n">packet</span><span class="p">)</span>
 </code></pre></div>
 </div>
-<h2>Three-Way Handshake</h2>
+<h2 id="tcp-handshake">Three-Way Handshake</h2>
 <p>TCP connection establishment uses three packets to synchronize state:</p>
 <div data-filter="inc=tcpconnect" data-inc="tcp_connection.py"><div class="codehilite"><pre class=""><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">connect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">remote_addr</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">remote_port</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Initiate TCP connection (3-way handshake)."""</span>
@@ -448,7 +383,8 @@ The receive buffer handles out-of-order delivery by holding segments until gaps 
 <li>Client → Server: ACK (ack=y+1)</li>
 </ol>
 <p>This synchronizes sequence numbers and establishes bidirectional communication.</p>
-<p>The server side of the handshake is handled by <code>listen_and_accept</code>, which waits for a SYN packet and then delegates the response to <code>handle_syn</code>:</p>
+<p>The server side of the handshake is handled by <code>listen_and_accept</code>,
+which waits for a SYN packet and then delegates the response to <code>handle_syn</code>:</p>
 <div data-filter="inc=server_accept" data-inc="tcp_connection.py"><div class="codehilite"><pre class=""><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">listen_and_accept</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Listen for incoming connection (server side)."""</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] TCP </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">local_addr</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">local_port</span><span class="si">}</span><span class="s2">: Listening..."</span><span class="p">)</span>
@@ -498,7 +434,7 @@ The receive buffer handles out-of-order delivery by holding segments until gaps 
         <span class="p">)</span>
 </code></pre></div>
 </div>
-<h2>Sliding Window Protocol</h2>
+<h2 id="tcp-window">Sliding Window Protocol</h2>
 <p>The sliding window allows multiple packets in flight:</p>
 <div data-filter="inc=tcpsend" data-inc="tcp_connection.py"><div class="codehilite"><pre class=""><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">send</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Send data reliably using TCP."""</span>
@@ -550,9 +486,10 @@ The receive buffer handles out-of-order delivery by holding segments until gaps 
 <p>The sender can have <code>window_size</code> unacknowledged packets in flight.
 This maintains throughput even with high latency:
 new packets are being sent while waiting for ACKs from earlier packets.</p>
-<h2>Retransmission on Timeout</h2>
-<p>If an ACK doesn't arrive within the timeout period, the segment is retransmitted.
-We use a separate <code>Process</code> for each retransmission timer:</p>
+<h2 id="tcp-retrans">Retransmission on Timeout</h2>
+<p>If an ACK doesn't arrive within the timeout period,
+the segment is retransmitted.
+We use a separate <code>Process</code> to simulate each retransmission timer:</p>
 <div data-filter="inc=retransmission" data-inc="tcp_connection.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">RetransmissionTimer</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""Timer process for retransmitting unacknowledged segments."""</span>
 
@@ -593,7 +530,7 @@ We use a separate <code>Process</code> for each retransmission timer:</p>
             <span class="n">RetransmissionTimer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_env</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">segment</span><span class="p">)</span>
 </code></pre></div>
 </div>
-<p>When sending a segment, we create a <code>RetransmissionTimer</code> <code>Process</code>:</p>
+<p>Each time we sent a segment, we create a <code>RetransmissionTimer</code>:</p>
 <div class="codehilite"><pre class=""><span></span><code><span class="c1"># In TCPConnection.send():</span>
 <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">network</span><span class="o">.</span><span class="n">send_packet</span><span class="p">(</span><span class="n">segment</span><span class="p">)</span>
 
@@ -607,7 +544,10 @@ We use a separate <code>Process</code> for each retransmission timer:</p>
 If the segment hasn't been acknowledged (i.e., is still in the send buffer)
 when the timer expires,
 it is retransmitted and a new timer starts.</p>
-<p>When a DATA packet arrives, <code>handle_data</code> adds it to the receive buffer, extracts any newly contiguous data to deliver to the application, and sends a cumulative ACK:</p>
+<p>When a DATA packet arrives,
+<code>handle_data</code> adds it to the receive buffer,
+extracts any newly contiguous data to deliver to the application,
+and sends a cumulative ACK:</p>
 <div data-filter="inc=handle_data" data-inc="tcp_connection.py"><div class="codehilite"><pre class=""><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handle_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">packet</span><span class="p">:</span> <span class="n">Packet</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Handle DATA packet."""</span>
         <span class="n">seq_num</span> <span class="o">=</span> <span class="n">packet</span><span class="o">.</span><span class="n">seq_num</span>
@@ -645,7 +585,7 @@ it is retransmitted and a new timer starts.</p>
         <span class="p">)</span>
 </code></pre></div>
 </div>
-<h2>Handling Out-of-Order Delivery</h2>
+<h2 id="tcp-order">Handling Out-of-Order Delivery</h2>
 <p>The receive buffer handles segments arriving out of order:</p>
 <div data-filter="inc=receivebuffer" data-inc="tcp_types.py"><div class="codehilite"><pre class=""><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ReceiveBuffer</span><span class="p">:</span>
@@ -680,8 +620,9 @@ it is retransmitted and a new timer starts.</p>
 </code></pre></div>
 </div>
 <p>Segments are held until all gaps are filled.
-When a contiguous block of data is available, it's delivered to the application in order.</p>
-<h2>Cumulative Acknowledgments</h2>
+When a contiguous block of data is available,
+it's delivered to the application in order.</p>
+<h2 id="tcp-ack">Cumulative Acknowledgments</h2>
 <p>TCP uses cumulative ACKs,
 i.e.,
 each ACK indicates all data up to a sequence number has been received:</p>
@@ -706,20 +647,16 @@ each ACK indicates all data up to a sequence number has been received:</p>
 </div>
 <p>A single ACK can acknowledge multiple segments.
 This is simpler than selective acknowledgments and works well when most data arrives in order.</p>
-<h2>Basic Example</h2>
+<h2 id="tcp-basic">Basic Example</h2>
 <p>Let's see TCP in action:</p>
-<div data-filter="inc=basicexample" data-inc="example_basic_tcp.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">run_basic_tcp</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">"""Demonstrate basic TCP communication over unreliable network."""</span>
+<div data-filter="inc=basicexample" data-inc="ex_basic.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
     <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
 
-    <span class="nb">print</span><span class="p">(</span><span class="s2">"="</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">"Basic TCP Demonstration"</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">"="</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"## Basic TCP Demonstration"</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">"Testing TCP reliability with:"</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">"  - 15% packet loss"</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">"  - 10% packet reordering"</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">"  - 5% packet duplication"</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">"="</span> <span class="o">*</span> <span class="mi">60</span> <span class="o">+</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
 
     <span class="c1"># Create unreliable network</span>
     <span class="n">network</span> <span class="o">=</span> <span class="n">UnreliableNetwork</span><span class="p">(</span>
@@ -760,23 +697,68 @@ This is simpler than selective acknowledgments and works well when most data arr
     <span class="n">server_conn</span><span class="o">.</span><span class="n">print_statistics</span><span class="p">()</span>
 </code></pre></div>
 </div>
+<div data-inc="ex_basic.txt"><div class="codehilite"><pre class=""><span></span><code>## Basic TCP Demonstration
+Testing TCP reliability with:
+  - 15% packet loss
+  - 10% packet reordering
+  - 5% packet duplication
+[0.0] Network: Started (loss=15%, reorder=10%)
+[0.0] Network: Registered 192.168.1.100:8080
+[0.0] TCP 192.168.1.100:8080: Created (ISN=7830)
+[0.0] Network: Registered 192.168.1.101:9000
+[0.0] TCP 192.168.1.101:9000: Created (ISN=8964)
+[0.0] TCP 192.168.1.100:8080: Listening...
+
+[0.0] TCP: Starting connection to 192.168.1.100:8080
+[0.8] TCP: Sent SYN (seq=8964)
+[0.8] TCP: Received SYN from 192.168.1.101:9000
+[0.9] TCP: Sent SYN-ACK (seq=7830, ack=8965)
+[0.9] TCP: Received SYN-ACK (seq=7830, ack=8965)
+[0.9] Network: LOST Packet(ACK, seq=8965, ack=7831, len=0)
+[0.9] TCP: Sent ACK, connection established
+[1.0] TCP: Connection ESTABLISHED
+
+
+[1.0] Client: Sending message (232 bytes)
+  Message: 'Hello from TCP client! This message will be delive...'
+[1.0] Network: LOST Packet(DATA, seq=8964, ack=7831, len=232)
+[1.0] TCP: Sent DATA (seq=8964, len=232)
+[2.5] TCP: TIMEOUT - Retransmitting seq=8964
+[3.0] Client: Done sending
+[4.2] TCP: TIMEOUT - Retransmitting seq=8964
+[4.6] TCP: Received DATA (seq=8964, len=232)
+[5.2] TCP: Sent ACK (ack=8965)
+[5.2] TCP: ACK 8965 (acknowledged 1 segments)
+### Network Statistics:
+Packets sent: 7
+Packets lost: 2 (28.6%)
+Packets reordered: 2
+Packets duplicated: 0
+### TCP Connection Statistics (192.168.1.101:9000):
+Bytes sent: 232
+Bytes received: 0
+Packets retransmitted: 2
+Send buffer size: 0
+### TCP Connection Statistics (192.168.1.100:8080):
+Bytes sent: 0
+Bytes received: 0
+Packets retransmitted: 0
+Send buffer size: 0
+</code></pre></div>
+</div>
 <p>Despite 15% packet loss and reordering,
 TCP successfully delivers the complete message in order.</p>
-<h2>High Loss Scenario</h2>
+<h2 id="tcp-highloss">High Loss Scenario</h2>
 <p>Let's test TCP under extreme conditions:</p>
-<div data-filter="inc=highlossexample" data-inc="example_loss_recovery.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">run_high_loss_scenario</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">"""Demonstrate TCP under high packet loss conditions."""</span>
+<div data-filter="inc=highlossexample" data-inc="ex_loss_recovery.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
     <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
 
-    <span class="nb">print</span><span class="p">(</span><span class="s2">"="</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">"High Loss TCP Scenario"</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">"="</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"## High Loss TCP Scenario"</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">"Testing TCP robustness with extreme conditions:"</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">"  - 40% packet loss (!!)"</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">"  - 20% packet reordering"</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">"  - 10% packet duplication"</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">"  - Larger message requiring multiple segments"</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">"="</span> <span class="o">*</span> <span class="mi">60</span> <span class="o">+</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
 
     <span class="c1"># Extremely unreliable network</span>
     <span class="n">network</span> <span class="o">=</span> <span class="n">UnreliableNetwork</span><span class="p">(</span>
@@ -824,18 +806,137 @@ TCP successfully delivers the complete message in order.</p>
     <span class="n">server_conn</span><span class="o">.</span><span class="n">print_statistics</span><span class="p">()</span>
 
     <span class="c1"># Verify delivery</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="si">{</span><span class="s1">'='</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">60</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">"Verification:"</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">"="</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"## Verification:"</span><span class="p">)</span>
     <span class="n">expected_bytes</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">message</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">"utf-8"</span><span class="p">))</span>
     <span class="k">if</span> <span class="n">server_conn</span><span class="o">.</span><span class="n">bytes_received</span> <span class="o">==</span> <span class="n">expected_bytes</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"✓ SUCCESS: All </span><span class="si">{</span><span class="n">expected_bytes</span><span class="si">}</span><span class="s2"> bytes delivered correctly!"</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Success: All </span><span class="si">{</span><span class="n">expected_bytes</span><span class="si">}</span><span class="s2"> bytes delivered correctly!"</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"✗ INCOMPLETE: </span><span class="si">{</span><span class="n">server_conn</span><span class="o">.</span><span class="n">bytes_received</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">expected_bytes</span><span class="si">}</span><span class="s2"> bytes"</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Incomplete: </span><span class="si">{</span><span class="n">server_conn</span><span class="o">.</span><span class="n">bytes_received</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">expected_bytes</span><span class="si">}</span><span class="s2"> bytes"</span><span class="p">)</span>
 </code></pre></div>
 </div>
-<p>Even with 40% loss, TCP delivers the complete message.
-You'll see many retransmissions but eventual success.</p>
+<div data-inc="ex_loss_recovery.txt"><div class="codehilite"><pre class=""><span></span><code>## High Loss TCP Scenario
+Testing TCP robustness with extreme conditions:
+  - 40% packet loss (!!)
+  - 20% packet reordering
+  - 10% packet duplication
+  - Larger message requiring multiple segments
+[0.0] Network: Started (loss=40%, reorder=20%)
+[0.0] Network: Registered 10.0.0.1:5000
+[0.0] TCP 10.0.0.1:5000: Created (ISN=7830)
+[0.0] Network: Registered 10.0.0.2:6000
+[0.0] TCP 10.0.0.2:6000: Created (ISN=8964)
+[0.0] TCP 10.0.0.1:5000: Listening...
+
+[0.0] TCP: Starting connection to 10.0.0.1:5000
+[0.9] TCP: Sent SYN (seq=8964)
+[0.9] TCP: Received SYN from 10.0.0.2:6000
+[1.1] TCP: Sent SYN-ACK (seq=7830, ack=8965)
+[1.1] TCP: Received SYN-ACK (seq=7830, ack=8965)
+[1.1] Network: LOST Packet(ACK, seq=8965, ack=7831, len=0)
+[1.1] TCP: Sent ACK, connection established
+[1.2] TCP: Connection ESTABLISHED
+
+
+[1.2] Client: Sending message (1510 bytes)
+  Message: 'This is a much longer message that will be split i...'
+[1.2] Network: LOST Packet(DATA, seq=8964, ack=7831, len=1400)
+[1.2] TCP: Sent DATA (seq=8964, len=1400)
+[1.2] Network: LOST Packet(DATA, seq=10364, ack=7831, len=110)
+[1.2] TCP: Sent DATA (seq=10364, len=110)
+[2.2] TCP: TIMEOUT - Retransmitting seq=8964
+[2.2] TCP: TIMEOUT - Retransmitting seq=10364
+[2.7] TCP: Received DATA (seq=8964, len=1400)
+[2.7] Network: LOST Packet(ACK, seq=7830, ack=8965, len=0)
+[2.7] TCP: Sent ACK (ack=8965)
+[3.2] Client: Done sending
+[3.6] TCP: TIMEOUT - Retransmitting seq=10364
+[3.6] Network: LOST Packet(DATA, seq=10364, ack=7831, len=110)
+[3.7] TCP: TIMEOUT - Retransmitting seq=8964
+[3.7] Network: LOST Packet(DATA, seq=8964, ack=7831, len=1400)
+[4.6] TCP: TIMEOUT - Retransmitting seq=10364
+[4.6] Network: LOST Packet(DATA, seq=10364, ack=7831, len=110)
+[4.7] TCP: TIMEOUT - Retransmitting seq=8964
+[5.6] TCP: TIMEOUT - Retransmitting seq=10364
+[5.6] Network: LOST Packet(DATA, seq=10364, ack=7831, len=110)
+[6.5] TCP: TIMEOUT - Retransmitting seq=8964
+[6.6] TCP: TIMEOUT - Retransmitting seq=10364
+[7.0] TCP: Received DATA (seq=8964, len=1400)
+[7.0] Network: LOST Packet(ACK, seq=7830, ack=8965, len=0)
+[7.0] TCP: Sent ACK (ack=8965)
+[8.0] TCP: TIMEOUT - Retransmitting seq=8964
+[8.3] TCP: Received DATA (seq=8964, len=1400)
+[8.5] TCP: TIMEOUT - Retransmitting seq=10364
+[8.5] Network: LOST Packet(DATA, seq=10364, ack=7831, len=110)
+[9.1] TCP: Sent ACK (ack=8965)
+[9.1] TCP: ACK 8965 (acknowledged 1 segments)
+[9.5] TCP: TIMEOUT - Retransmitting seq=10364
+[11.3] TCP: TIMEOUT - Retransmitting seq=10364
+[11.3] Network: LOST Packet(DATA, seq=10364, ack=7831, len=110)
+[12.3] TCP: TIMEOUT - Retransmitting seq=10364
+[13.1] TCP: Received DATA (seq=10364, len=110)
+[13.5] TCP: Sent ACK (ack=8965)
+[14.1] TCP: TIMEOUT - Retransmitting seq=10364
+[14.1] Network: LOST Packet(DATA, seq=10364, ack=7831, len=110)
+[15.1] TCP: TIMEOUT - Retransmitting seq=10364
+[15.1] Network: LOST Packet(DATA, seq=10364, ack=7831, len=110)
+[16.1] TCP: TIMEOUT - Retransmitting seq=10364
+[16.1] Network: LOST Packet(DATA, seq=10364, ack=7831, len=110)
+[17.1] TCP: TIMEOUT - Retransmitting seq=10364
+[18.5] TCP: TIMEOUT - Retransmitting seq=10364
+[19.1] TCP: Received DATA (seq=10364, len=110)
+[19.1] Network: LOST Packet(ACK, seq=7830, ack=8965, len=0)
+[19.1] TCP: Sent ACK (ack=8965)
+[20.1] TCP: TIMEOUT - Retransmitting seq=10364
+[21.6] TCP: TIMEOUT - Retransmitting seq=10364
+[22.2] TCP: Received DATA (seq=10364, len=110)
+[22.5] TCP: Sent ACK (ack=8965)
+[23.2] TCP: TIMEOUT - Retransmitting seq=10364
+[24.8] TCP: TIMEOUT - Retransmitting seq=10364
+[24.8] Network: LOST Packet(DATA, seq=10364, ack=7831, len=110)
+[25.8] TCP: TIMEOUT - Retransmitting seq=10364
+[25.8] Network: LOST Packet(DATA, seq=10364, ack=7831, len=110)
+[26.8] TCP: TIMEOUT - Retransmitting seq=10364
+[26.8] Network: LOST Packet(DATA, seq=10364, ack=7831, len=110)
+[27.8] TCP: TIMEOUT - Retransmitting seq=10364
+[28.9] TCP: Received DATA (seq=10364, len=110)
+[29.2] TCP: Sent ACK (ack=8965)
+[29.9] TCP: TIMEOUT - Retransmitting seq=10364
+[31.1] TCP: TIMEOUT - Retransmitting seq=10364
+[31.1] Network: LOST Packet(DATA, seq=10364, ack=7831, len=110)
+[32.1] TCP: TIMEOUT - Retransmitting seq=10364
+[32.4] TCP: Received DATA (seq=10364, len=110)
+[32.4] Network: LOST Packet(ACK, seq=7830, ack=8965, len=0)
+[32.4] TCP: Sent ACK (ack=8965)
+[33.4] TCP: TIMEOUT - Retransmitting seq=10364
+[33.4] Network: LOST Packet(DATA, seq=10364, ack=7831, len=110)
+[34.4] TCP: TIMEOUT - Retransmitting seq=10364
+[34.4] Network: LOST Packet(DATA, seq=10364, ack=7831, len=110)
+[35.4] TCP: TIMEOUT - Retransmitting seq=10364
+[36.9] TCP: TIMEOUT - Retransmitting seq=10364
+[38.0] TCP: Received DATA (seq=10364, len=110)
+[38.4] TCP: Sent ACK (ack=8965)
+[39.0] TCP: TIMEOUT - Retransmitting seq=10364
+### Network Statistics:
+Packets sent: 48
+Packets lost: 22 (45.8%)
+Packets reordered: 8
+Packets duplicated: 0
+### TCP Connection Statistics (10.0.0.2:6000):
+Bytes sent: 1510
+Bytes received: 0
+Packets retransmitted: 34
+Send buffer size: 1
+### TCP Connection Statistics (10.0.0.1:5000):
+Bytes sent: 0
+Bytes received: 0
+Packets retransmitted: 0
+Send buffer size: 0
+## Verification:
+Incomplete: 0/1510 bytes
+</code></pre></div>
+</div>
+<p>Even with 40% loss, TCP delivers the complete message:
+there are many retransmissions but eventual success.</p>
 <h2>Key TCP Concepts</h2>
 <p><strong>Sequence Number Space</strong>:
 Each byte transmitted has a unique sequence number.
@@ -909,23 +1010,6 @@ With 15% loss and 4-segment window:</p>
 <div class="codehilite"><pre class=""><span></span><code>efficiency = successful_transmission_rate / available_bandwidth
            ≈ (1 - loss_rate) / (1 + loss_rate × retransmissions)
 </code></pre></div>
-<h2>Conclusion</h2>
-<p>Building TCP on UDP reveals how reliability emerges from unreliable components.
-The key principles are:</p>
-<ol>
-<li><strong>Sequence numbers</strong> enable detecting loss and reordering</li>
-<li><strong>Acknowledgments</strong> confirm successful delivery</li>
-<li><strong>Retransmission timers</strong> recover from packet loss</li>
-<li><strong>Sliding windows</strong> maintain throughput despite latency</li>
-<li><strong>Cumulative ACKs</strong> simplify acknowledgment logic</li>
-</ol>
-<p>These patterns appear throughout distributed systems:</p>
-<ul>
-<li><strong>Message queues</strong> use similar acknowledgment schemes</li>
-<li><strong>Database replication</strong> uses sequence numbers for ordering</li>
-<li><strong>Consensus protocols</strong> use timeouts for failure detection</li>
-<li><strong>QUIC</strong> rebuilds TCP-like reliability over UDP for faster handshakes</li>
-</ul>
 </main>
 <footer>
 <div class="row">

@@ -1,0 +1,47 @@
+## Basic TCP Demonstration
+Testing TCP reliability with:
+  - 15% packet loss
+  - 10% packet reordering
+  - 5% packet duplication
+[0.0] Network: Started (loss=15%, reorder=10%)
+[0.0] Network: Registered 192.168.1.100:8080
+[0.0] TCP 192.168.1.100:8080: Created (ISN=7830)
+[0.0] Network: Registered 192.168.1.101:9000
+[0.0] TCP 192.168.1.101:9000: Created (ISN=8964)
+[0.0] TCP 192.168.1.100:8080: Listening...
+
+[0.0] TCP: Starting connection to 192.168.1.100:8080
+[0.8] TCP: Sent SYN (seq=8964)
+[0.8] TCP: Received SYN from 192.168.1.101:9000
+[0.9] TCP: Sent SYN-ACK (seq=7830, ack=8965)
+[0.9] TCP: Received SYN-ACK (seq=7830, ack=8965)
+[0.9] Network: LOST Packet(ACK, seq=8965, ack=7831, len=0)
+[0.9] TCP: Sent ACK, connection established
+[1.0] TCP: Connection ESTABLISHED
+
+
+[1.0] Client: Sending message (232 bytes)
+  Message: 'Hello from TCP client! This message will be delive...'
+[1.0] Network: LOST Packet(DATA, seq=8964, ack=7831, len=232)
+[1.0] TCP: Sent DATA (seq=8964, len=232)
+[2.5] TCP: TIMEOUT - Retransmitting seq=8964
+[3.0] Client: Done sending
+[4.2] TCP: TIMEOUT - Retransmitting seq=8964
+[4.6] TCP: Received DATA (seq=8964, len=232)
+[5.2] TCP: Sent ACK (ack=8965)
+[5.2] TCP: ACK 8965 (acknowledged 1 segments)
+### Network Statistics:
+Packets sent: 7
+Packets lost: 2 (28.6%)
+Packets reordered: 2
+Packets duplicated: 0
+### TCP Connection Statistics (192.168.1.101:9000):
+Bytes sent: 232
+Bytes received: 0
+Packets retransmitted: 2
+Send buffer size: 0
+### TCP Connection Statistics (192.168.1.100:8080):
+Bytes sent: 0
+Bytes received: 0
+Packets retransmitted: 0
+Send buffer size: 0

@@ -358,9 +358,7 @@ class TCPConnection(Process):
 
     def print_statistics(self) -> None:
         """Print connection statistics."""
-        print(f"\n{'=' * 60}")
-        print(f"TCP Connection Statistics ({self.local_addr}:{self.local_port}):")
-        print("=" * 60)
+        print(f"### TCP Connection Statistics ({self.local_addr}:{self.local_port}):")
         print(f"Bytes sent: {self.bytes_sent}")
         print(f"Bytes received: {self.bytes_received}")
         print(f"Packets retransmitted: {self.packets_retransmitted}")
