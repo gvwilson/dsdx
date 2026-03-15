@@ -6,7 +6,8 @@ In a monolithic system you would roll back the entire transaction,
 but in a microservices architecture using separate databases for flights, hotels, and cars,
 traditional ACID transactions don't work.
 
-The Saga pattern solves this by breaking long-running transactions into a sequence of local transactions,
+The [Saga pattern](g:saga) solves this
+by breaking long-running transactions into a sequence of local transactions,
 each with a [compensating action](g:compensation) to undo its effects if the overall transaction fails.
 This enables distributed transactions without distributed locks,
 maintaining eventual consistency while handling failures gracefully.

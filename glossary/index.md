@@ -59,7 +59,9 @@
     Together with associativity, it allows operations to be applied in any order and combined safely.
 
 <span id="compensation">compensation</span>
-:   FIXME
+:   A corrective action taken to undo the effects of a previously completed step in a saga
+    when a later step fails,
+    restoring the system to a consistent state without requiring distributed transactions.
 
 <span id="concurrency">concurrency</span>
 :   The execution of multiple tasks that overlap in time,
@@ -92,10 +94,14 @@
     during network partitions.
 
 <span id="critical-section">critical section</span>
-:   FIXME
+:   A portion of code that accesses a shared resource and must not be executed
+    by more than one process or thread at a time,
+    requiring mutual exclusion to prevent data corruption.
 
 <span id="csrf">cross-site request forgery</span> (CSRF)
-:   FIXME
+:   An attack where a malicious site tricks a user's browser into sending an authenticated request
+    to another site without the user's knowledge,
+    exploiting the browser's automatic inclusion of session cookies.
 
 ## D
 
@@ -153,7 +159,9 @@
     in the presence of failures of some of its components.
 
 <span id="fencing-token">fencing token</span>
-:   FIXME
+:   A monotonically increasing number issued with each lock grant
+    that a protected resource uses to reject requests from stale lock holders,
+    preventing split-brain data corruption.
 
 <span id="future">future</span>
 :   An object representing the result of an asynchronous computation that may not have completed yet.
@@ -216,10 +224,13 @@
     Simple to implement but may silently lose updates.
 
 <span id="lease">lease</span>
-:   FIXME
+:   A time-limited grant of a resource or lock that expires automatically
+    if not renewed by the holder,
+    allowing the system to recover from client failures without manual intervention.
 
 <span id="lease-based-lock">lease-based lock</span>
-:   FIXME
+:   A distributed lock that is held for a limited duration and must be periodically renewed,
+    so that the lock is automatically released if the holder crashes or becomes unreachable.
 
 <span id="linearizability">linearizability</span>
 :   A strong consistency model where every operation appears to take effect instantaneously
@@ -254,10 +265,13 @@
     each responsible for a specific business capability and communicating over a network.
 
 <span id="mutex">mutex</span>
-:   FIXME
+:   A synchronization primitive that grants exclusive access to a shared resource,
+    allowing only one thread or process to hold it at a time
+    and blocking others until it is released.
 
 <span id="mutual-exclusion">mutual exclusion</span>
-:   FIXME
+:   The guarantee that only one process or thread accesses a shared resource at any given time,
+    preventing race conditions and data corruption in concurrent systems.
 
 ## N
 
@@ -274,10 +288,13 @@
 ## O
 
 <span id="oauth-scope">OAuth scope</span>
-:   FIXME
+:   A string that specifies the permissions an application is requesting from a user,
+    limiting what the application can do with the access token it receives.
 
 <span id="oauth-token">OAuth token</span>
-:   FIXME
+:   A credential issued by an authorization server that grants an application
+    limited access to a user's resources on another service
+    without exposing the user's password.
 
 <span id="op-based-crdt">operation-based CRDT</span>
 :   A CRDT that replicates by broadcasting individual operations to all replicas.
@@ -322,6 +339,10 @@
 
 ## S
 
+<span id="saga">saga</span>
+:   A apttern in which a multi-step transaction is implemented as a sequence of local transactions,
+    each with a compensating action to undo its effects if the overall transaction fails.
+
 <span id="sampling">sampling</span>
 :   Recording only a fraction of traces in distributed tracing
     to reduce overhead and storage requirements.
@@ -332,14 +353,18 @@
     Common in databases and data interchange formats such as JSON and Avro.
 
 <span id="semaphore">semaphore</span>
-:   FIXME
+:   A synchronization primitive that controls access to a shared resource
+    by maintaining a counter representing the number of available permits,
+    allowing up to that many concurrent accessors.
 
 <span id="sequential-consistency">sequential consistency</span>
 :   A consistency model where all operations appear to execute in some total order
     that is consistent with the order seen by each individual process.
 
 <span id="single-sign-on">single sign-on</span>
-:   FIXME
+:   An authentication scheme that allows a user to log in once
+    and gain access to multiple applications or services
+    without re-entering credentials for each one.
 
 <span id="singleton">singleton</span>
 :   A design pattern that restricts a class to a single instance
@@ -355,7 +380,9 @@
     to reduce the impact of slow or failed workers.
 
 <span id="split-brain">split-brain scenario</span>
-:   FIXME
+:   A situation where two or more nodes in a distributed system each believe they hold exclusive control
+    over a resource, typically caused by a network partition,
+    leading to conflicting writes and data inconsistency.
 
 <span id="state-based-crdt">state-based CRDT</span>
 :   A CRDT that replicates by periodically sending the full state to other replicas,
@@ -391,7 +418,8 @@
     and stores or forwards them to a backend for analysis and visualization.
 
 <span id="trust-anchor">trust anchor</span>
-:   FIXME
+:   A certificate or public key that is trusted unconditionally
+    and serves as the root from which the validity of other certificates in a chain is established.
 
 ## U
 
