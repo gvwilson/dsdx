@@ -98,6 +98,8 @@ while unrelated operations may be observed in different orders on different node
 <dd>The property of an operation where the order of operands does not affect the result,
 i.e., a op b = b op a.
 Together with associativity, it allows operations to be applied in any order and combined safely.</dd>
+<dt><span id="compensation">compensation</span></dt>
+<dd>FIXME</dd>
 <dt><span id="concurrency">concurrency</span></dt>
 <dd>The execution of multiple tasks that overlap in time,
 which may or may not run simultaneously on different processors.
@@ -122,6 +124,8 @@ so that operations can be correlated in distributed tracing.</dd>
 according to the CAP theorem,
 refusing to serve requests rather than returning potentially inconsistent data
 during network partitions.</dd>
+<dt><span id="critical-section">critical section</span></dt>
+<dd>FIXME</dd>
 <dt><span id="csrf">cross-site request forgery</span> (CSRF)</dt>
 <dd>FIXME</dd>
 </dl>
@@ -171,6 +175,8 @@ such as publishing to multiple subscribers or calling multiple services in paral
 <dt><span id="fault-tolerance">fault tolerance</span></dt>
 <dd>The ability of a system to continue operating correctly
 in the presence of failures of some of its components.</dd>
+<dt><span id="fencing-token">fencing token</span></dt>
+<dd>FIXME</dd>
 <dt><span id="future">future</span></dt>
 <dd>An object representing the result of an asynchronous computation that may not have completed yet.
 The result can be retrieved once the computation finishes,
@@ -207,7 +213,7 @@ and 500s indicate server errors.</dd>
 </dl>
 <h2>I</h2>
 <dl>
-<dt><span id="idempotent">idempotent</span></dt>
+<dt><span id="idempotence">idempotence</span></dt>
 <dd>Describing an operation that produces the same result whether applied once or multiple times.
 Idempotent operations are safe to retry in at-least-once delivery systems.</dd>
 </dl>
@@ -225,6 +231,10 @@ Widely used for data exchange between web services.</dd>
 <dd>A CRDT that resolves concurrent writes by keeping the value with the highest timestamp,
 discarding earlier writes.
 Simple to implement but may silently lose updates.</dd>
+<dt><span id="lease">lease</span></dt>
+<dd>FIXME</dd>
+<dt><span id="lease-based-lock">lease-based lock</span></dt>
+<dd>FIXME</dd>
 <dt><span id="linearizability">linearizability</span></dt>
 <dd>A strong consistency model where every operation appears to take effect instantaneously
 at some point between its start and completion,
@@ -252,6 +262,10 @@ It decouples senders from receivers and may provide durability, ordering, and fi
 <dd>An architectural style where an application is built as a collection of small,
 independently deployable services,
 each responsible for a specific business capability and communicating over a network.</dd>
+<dt><span id="mutex">mutex</span></dt>
+<dd>FIXME</dd>
+<dt><span id="mutual-exclusion">mutual exclusion</span></dt>
+<dd>FIXME</dd>
 </dl>
 <h2>N</h2>
 <dl>
@@ -314,6 +328,8 @@ to reduce overhead and storage requirements.</dd>
 <dd>A formal description of the structure and types of data,
 used to validate that data conforms to an expected format.
 Common in databases and data interchange formats such as JSON and Avro.</dd>
+<dt><span id="semaphore">semaphore</span></dt>
+<dd>FIXME</dd>
 <dt><span id="sequential-consistency">sequential consistency</span></dt>
 <dd>A consistency model where all operations appear to execute in some total order
 that is consistent with the order seen by each individual process.</dd>
@@ -329,6 +345,8 @@ Spans can be nested to form a tree that represents the full execution of a reque
 <dd>Running multiple instances of a task in parallel and using the result of whichever completes first,
 discarding the others,
 to reduce the impact of slow or failed workers.</dd>
+<dt><span id="split-brain">split-brain scenario</span></dt>
+<dd>FIXME</dd>
 <dt><span id="state-based-crdt">state-based CRDT</span></dt>
 <dd>A CRDT that replicates by periodically sending the full state to other replicas,
 which merge it using a commutative, associative, and idempotent merge function.</dd>

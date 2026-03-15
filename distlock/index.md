@@ -33,12 +33,12 @@ fencing tokens to prevent split-brain scenarios,
 and a simplified consensus protocol
 to ensure lock state remains consistent across multiple lock servers.
 
-## The Split-Brain Scenario {:# distlock-split}
+## The Split-Brain Scenario {: #distlock-split}
 
 Consider this scenario:
 
 1.  Process A acquires a lock on resource X.
-1.  Process A pauses due to garbage collection or a [network partition](g:network-partition).
+1.  Process A pauses due to garbage collection or a network partition.
 1.  The lock manager thinks A has died and grants the lock to Process B.
 1.  Process A wakes up, still believing it holds the lock.
 1.  Both A and B now access the resource, violating mutual exclusion.

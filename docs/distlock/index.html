@@ -78,11 +78,11 @@ lease-based locks with expiration,
 fencing tokens to prevent split-brain scenarios,
 and a simplified consensus protocol
 to ensure lock state remains consistent across multiple lock servers.</p>
-<h2 distlock-split="distlock-split" id="">The Split-Brain Scenario</h2>
+<h2 id="distlock-split">The Split-Brain Scenario</h2>
 <p>Consider this scenario:</p>
 <ol>
 <li>Process A acquires a lock on resource X.</li>
-<li>Process A pauses due to garbage collection or a <a href="../glossary/#network-partition">network partition</a>.</li>
+<li>Process A pauses due to garbage collection or a network partition.</li>
 <li>The lock manager thinks A has died and grants the lock to Process B.</li>
 <li>Process A wakes up, still believing it holds the lock.</li>
 <li>Both A and B now access the resource, violating mutual exclusion.</li>

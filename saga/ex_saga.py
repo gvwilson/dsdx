@@ -4,11 +4,11 @@ from asimpy import Environment, Process
 from saga_orchestrator import SagaOrchestrator
 from booking_services import FlightService, HotelService, CarRentalService
 from saga_types import BookingRequest
+from dsdx import dsdx
 
 
 # mccole: orchestratedexample
-def run_orchestrated_saga() -> None:
-    """Demonstrate orchestration-based saga."""
+def main():
     env = Environment()
 
     # Create services
@@ -55,4 +55,4 @@ def run_orchestrated_saga() -> None:
 
 
 if __name__ == "__main__":
-    run_orchestrated_saga()
+    dsdx(main)

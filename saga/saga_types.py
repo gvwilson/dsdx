@@ -5,7 +5,7 @@ from typing import List, Dict, Optional, Any, Callable
 from enum import Enum
 
 
-# mccole: sagatypes
+# mccole: enum
 class SagaStatus(Enum):
     """Status of a saga execution."""
 
@@ -23,8 +23,10 @@ class TransactionStatus(Enum):
     COMPLETED = "completed"
     FAILED = "failed"
     COMPENSATED = "compensated"
+# mccole: /enum
 
 
+# mccole: sagatypes
 @dataclass
 class SagaStep:
     """A step in the saga with transaction and compensation."""

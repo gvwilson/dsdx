@@ -58,6 +58,9 @@
     i.e., a op b = b op a.
     Together with associativity, it allows operations to be applied in any order and combined safely.
 
+<span id="compensation">compensation</span>
+:   FIXME
+
 <span id="concurrency">concurrency</span>
 :   The execution of multiple tasks that overlap in time,
     which may or may not run simultaneously on different processors.
@@ -87,6 +90,9 @@
     according to the CAP theorem,
     refusing to serve requests rather than returning potentially inconsistent data
     during network partitions.
+
+<span id="critical-section">critical section</span>
+:   FIXME
 
 <span id="csrf">cross-site request forgery</span> (CSRF)
 :   FIXME
@@ -146,6 +152,9 @@
 :   The ability of a system to continue operating correctly
     in the presence of failures of some of its components.
 
+<span id="fencing-token">fencing token</span>
+:   FIXME
+
 <span id="future">future</span>
 :   An object representing the result of an asynchronous computation that may not have completed yet.
     The result can be retrieved once the computation finishes,
@@ -186,7 +195,7 @@
 
 ## I
 
-<span id="idempotent">idempotent</span>
+<span id="idempotence">idempotence</span>
 :   Describing an operation that produces the same result whether applied once or multiple times.
     Idempotent operations are safe to retry in at-least-once delivery systems.
 
@@ -205,6 +214,12 @@
 :   A CRDT that resolves concurrent writes by keeping the value with the highest timestamp,
     discarding earlier writes.
     Simple to implement but may silently lose updates.
+
+<span id="lease">lease</span>
+:   FIXME
+
+<span id="lease-based-lock">lease-based lock</span>
+:   FIXME
 
 <span id="linearizability">linearizability</span>
 :   A strong consistency model where every operation appears to take effect instantaneously
@@ -237,6 +252,12 @@
 :   An architectural style where an application is built as a collection of small,
     independently deployable services,
     each responsible for a specific business capability and communicating over a network.
+
+<span id="mutex">mutex</span>
+:   FIXME
+
+<span id="mutual-exclusion">mutual exclusion</span>
+:   FIXME
 
 ## N
 
@@ -310,6 +331,9 @@
     used to validate that data conforms to an expected format.
     Common in databases and data interchange formats such as JSON and Avro.
 
+<span id="semaphore">semaphore</span>
+:   FIXME
+
 <span id="sequential-consistency">sequential consistency</span>
 :   A consistency model where all operations appear to execute in some total order
     that is consistent with the order seen by each individual process.
@@ -329,6 +353,9 @@
 :   Running multiple instances of a task in parallel and using the result of whichever completes first,
     discarding the others,
     to reduce the impact of slow or failed workers.
+
+<span id="split-brain">split-brain scenario</span>
+:   FIXME
 
 <span id="state-based-crdt">state-based CRDT</span>
 :   A CRDT that replicates by periodically sending the full state to other replicas,

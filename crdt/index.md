@@ -31,7 +31,7 @@ The second means that group doesnt' matter,
 so (A+B)+C = A+(B+C).
 If the merge operation for the data type has these properties,
 replicas can receive updates in any order and still converge to the same state.
-Some approaches to implementing CRDTs also require operations to be [idempotent](g:idempotent),
+Some approaches to implementing CRDTs also require operations to be [idempotent](g:idempotence),
 which means that the operation can be applied any number of times
 with the same cumulative effect
 (just as zero can be added to a number over and over).

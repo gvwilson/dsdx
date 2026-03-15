@@ -1,0 +1,102 @@
+[0.0] FlightService started (seats: 10)
+[0.0] HotelService started (rooms: 5)
+[0.0] CarRentalService started (cars: 3)
+[0.0] SagaOrchestrator started
+
+[0.0] ============================================================
+[0.0] Starting saga for Booking(BOOK001)
+[0.0] ============================================================
+[0.0] Orchestrator: Executing step 1/3: book_flight
+[0.3] FlightService: Booking flight FL123
+[0.3] FlightService: ✓ Flight booked (remaining: 9)
+[0.3] Orchestrator: Executing step 2/3: book_hotel
+[0.6] HotelService: Booking hotel HTL456
+[0.6] HotelService: ✓ Hotel booked (remaining: 4)
+[0.6] Orchestrator: Executing step 3/3: book_car
+[0.9] CarRentalService: Booking car CAR789
+[0.9] CarRentalService: ✓ Car booked (remaining: 2)
+
+[0.9] ✓✓✓ Saga BOOK001 COMPLETED ✓✓✓
+
+[3.0] ============================================================
+[3.0] Starting saga for Booking(BOOK002)
+[3.0] ============================================================
+[3.0] Orchestrator: Executing step 1/3: book_flight
+[3.3] FlightService: Booking flight FL123
+[3.3] FlightService: Booking FAILED - system error
+[3.3] Orchestrator: Step book_flight FAILED
+
+[3.3] Orchestrator: Starting compensation...
+
+[3.3] ✗✗✗ Saga BOOK002 FAILED - compensated ✗✗✗
+
+[6.0] ============================================================
+[6.0] Starting saga for Booking(BOOK003)
+[6.0] ============================================================
+[6.0] Orchestrator: Executing step 1/3: book_flight
+[6.3] FlightService: Booking flight FL123
+[6.3] FlightService: Booking FAILED - system error
+[6.3] Orchestrator: Step book_flight FAILED
+
+[6.3] Orchestrator: Starting compensation...
+
+[6.3] ✗✗✗ Saga BOOK003 FAILED - compensated ✗✗✗
+
+[9.0] ============================================================
+[9.0] Starting saga for Booking(BOOK004)
+[9.0] ============================================================
+[9.0] Orchestrator: Executing step 1/3: book_flight
+[9.3] FlightService: Booking flight FL123
+[9.3] FlightService: ✓ Flight booked (remaining: 8)
+[9.3] Orchestrator: Executing step 2/3: book_hotel
+[9.6] HotelService: Booking hotel HTL456
+[9.6] HotelService: ✓ Hotel booked (remaining: 3)
+[9.6] Orchestrator: Executing step 3/3: book_car
+[9.9] CarRentalService: Booking car CAR789
+[9.9] CarRentalService: Booking FAILED - no cars
+[9.9] Orchestrator: Step book_car FAILED
+
+[9.9] Orchestrator: Starting compensation...
+[9.9] Orchestrator: Compensating book_hotel
+[10.1] HotelService: COMPENSATING - canceling BOOK004
+[10.1] HotelService: ✓ Hotel canceled (available: 4)
+[10.1] Orchestrator: Compensating book_flight
+[10.3] FlightService: COMPENSATING - canceling BOOK004
+[10.3] FlightService: ✓ Flight canceled (available: 9)
+
+[10.3] ✗✗✗ Saga BOOK004 FAILED - compensated ✗✗✗
+
+[12.0] ============================================================
+[12.0] Starting saga for Booking(BOOK005)
+[12.0] ============================================================
+[12.0] Orchestrator: Executing step 1/3: book_flight
+[12.3] FlightService: Booking flight FL123
+[12.3] FlightService: ✓ Flight booked (remaining: 8)
+[12.3] Orchestrator: Executing step 2/3: book_hotel
+[12.6] HotelService: Booking hotel HTL456
+[12.6] HotelService: ✓ Hotel booked (remaining: 3)
+[12.6] Orchestrator: Executing step 3/3: book_car
+[12.9] CarRentalService: Booking car CAR789
+[12.9] CarRentalService: Booking FAILED - no cars
+[12.9] Orchestrator: Step book_car FAILED
+
+[12.9] Orchestrator: Starting compensation...
+[12.9] Orchestrator: Compensating book_hotel
+[13.1] HotelService: COMPENSATING - canceling BOOK005
+[13.1] HotelService: ✓ Hotel canceled (available: 4)
+[13.1] Orchestrator: Compensating book_flight
+[13.3] FlightService: COMPENSATING - canceling BOOK005
+[13.3] FlightService: ✓ Flight canceled (available: 9)
+
+[13.3] ✗✗✗ Saga BOOK005 FAILED - compensated ✗✗✗
+
+
+============================================================
+Final State:
+============================================================
+Flight seats available: 9/10
+Hotel rooms available: 4/5
+Cars available: 2/3
+
+Completed sagas: 1
+Failed sagas: 4

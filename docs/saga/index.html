@@ -49,35 +49,62 @@
 </nav>
 <main>
 <h1>The Saga Pattern</h1>
-<p>When you book a flight, reserve a hotel, and rent a car in a single transaction, what happens if the car rental fails but the flight and hotel are already reserved? In a monolithic database, you'd roll back the entire transaction.
-But in a microservices architecture with separate databases for flights, hotels, and cars, traditional ACID transactions don't work.
-The Saga pattern solves this by breaking long-running transactions into a sequence of local transactions, each with a compensating action to undo its effects if the overall transaction fails.</p>
-<p>Netflix uses Sagas to coordinate video encoding pipelines across multiple services.
-E-commerce platforms use them for order processing—reserving inventory, charging payment, arranging shipping.
-Travel booking systems use them to coordinate flights, hotels, and rental cars.
-The Saga pattern enables distributed transactions without distributed locks, maintaining eventual consistency while handling failures gracefully.</p>
-<p>This pattern emerged from a fundamental limitation: distributed transactions using two-phase commit (2PC) don't scale.
-They require holding locks across services, creating bottlenecks and failure points.
-Sagas trade immediate consistency for availability and fault tolerance—a deliberate choice that fits modern distributed systems.</p>
-<h2>The Saga Pattern</h2>
-<p>A Saga is a sequence of local transactions where each transaction updates a single service and publishes an event or message to trigger the next transaction.
-If a transaction fails, the Saga executes compensating transactions to undo the changes made by preceding transactions.</p>
-<p>The pattern has two main approaches:</p>
-<p><strong>Orchestration</strong>: A central coordinator tells each service what to do.
-Easier to understand and monitor, but the coordinator is a coordination point.</p>
-<p><strong>Choreography</strong>: Each service listens for events and decides what to do next.
-Decentralized, no single point of coordination, but harder to understand and monitor.</p>
-<p>The key components are:</p>
-<ol>
-<li><strong>Local transactions</strong>: Each service performs its own transaction</li>
-<li><strong>Compensating transactions</strong>: Reverse the effects of local transactions  </li>
-<li><strong>Saga coordinator</strong> (orchestration): Manages the sequence</li>
-<li><strong>Events</strong> (choreography): Trigger next steps in the sequence</li>
-</ol>
-<p>Unlike 2PC which uses prepare/commit phases and locks, Sagas commit each step immediately and use compensation to handle failures.</p>
-<h2>Core Data Structures</h2>
-<p>Let's build a travel booking Saga with flights, hotels, and car rentals:</p>
-<div data-filter="inc=sagatypes" data-inc="saga_types.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SagaStatus</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<p>When you book a flight, reserve a hotel, and rent a car in a single transaction,
+what happens if the car rental fails but the flight and hotel are already reserved?
+In a monolithic system you would roll back the entire transaction,
+but in a microservices architecture using separate databases for flights, hotels, and cars,
+traditional ACID transactions don't work.</p>
+<p>The Saga pattern solves this by breaking long-running transactions into a sequence of local transactions,
+each with a <a href="../glossary/#compensation">compensating action</a> to undo its effects if the overall transaction fails.
+This enables distributed transactions without distributed locks,
+maintaining eventual consistency while handling failures gracefully.</p>
+<p>The pattern is a response to the fact that distributed transactions using two-phase commit don't scale.
+Sagas trade immediate consistency for availability and fault tolerance,
+but as we'll see,
+bring constraints of their own.</p>
+<h2 id="saga-pattern">The Saga Pattern</h2>
+<p>A Saga is a sequence of local transactions,
+each of which updates a single service and publishes an event or message to trigger the next transaction.
+If a transaction fails,
+the Saga executes compensating transactions to undo the changes made by preceding transactions.</p>
+<p>Unlike two-phase commit,
+which uses prepare/commit phases and locks,
+Sagas commit each step immediately and use compensation to handle failures.
+The pattern can be implemented in one of two ways.</p>
+<ul>
+<li>
+<p>Orchestration:
+    a central coordinator tells each service what to do.
+    This is easier to understand and monitor,
+    but the coordinator is a coordination point.</p>
+</li>
+<li>
+<p>Choreography:
+    each service listens for events and decides what to do next.
+    Its decentralization makes it more scalable,
+    but also makes it harder to understand and monitor.</p>
+</li>
+</ul>
+<p>Whichever approach is used,
+each forward step must be define a backward compensation that is retryable and idempotent.
+The first requirement is self-explanatory;
+the second means that the compensation has the same effect on the system
+no matter how many times it is tried.
+(A simple example is multiplying a value by 1:
+it can be done any number of times, but always has the same result.)</p>
+<p>Compensations must be idempotent because it's possible for a workflow to go forward and backward several times.
+Compensations can be implemented as negative transitions,
+but it is often easier to implement them by saving the state before the transition,
+such as the account balance,
+and then restoring that state.
+These approaches can be mixed together in a single workflow
+depending on which is easiest to use with a particular external service.</p>
+<h2 id="saga-struct">Core Data Structures</h2>
+<p>Let's build a travel booking saga with flights, hotels, and car rentals.
+We start by defining the states that the saga as a whole
+and the individual transactions
+can be in:</p>
+<div data-filter="inc=enum" data-inc="saga_types.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SagaStatus</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""Status of a saga execution."""</span>
 
     <span class="n">PENDING</span> <span class="o">=</span> <span class="s2">"pending"</span>
@@ -94,9 +121,11 @@ Decentralized, no single point of coordination, but harder to understand and mon
     <span class="n">COMPLETED</span> <span class="o">=</span> <span class="s2">"completed"</span>
     <span class="n">FAILED</span> <span class="o">=</span> <span class="s2">"failed"</span>
     <span class="n">COMPENSATED</span> <span class="o">=</span> <span class="s2">"compensated"</span>
-
-
-<span class="nd">@dataclass</span>
+</code></pre></div>
+</div>
+<p>We then create structures to represent the saga's state  machine.
+Each step has a forward transaction and a backward compensation.</p>
+<div data-filter="inc=sagatypes" data-inc="saga_types.py"><div class="codehilite"><pre class=""><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">SagaStep</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""A step in the saga with transaction and compensation."""</span>
 
@@ -151,12 +180,12 @@ Decentralized, no single point of coordination, but harder to understand and mon
         <span class="k">return</span> <span class="sa">f</span><span class="s2">"Event(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">event_type</span><span class="si">}</span><span class="s2">)"</span>
 </code></pre></div>
 </div>
-<p>These structures represent the Saga's state machine.
-Each step has a forward transaction and a backward compensation.</p>
-<h2>Service Implementations</h2>
-<p>Let's implement the microservices that participate in the Saga.
-Each service manages its own local state and provides both forward (book) and backward (cancel) operations.</p>
-<p>The flight service manages seat availability and implements a 10% random failure rate to simulate real-world unreliability:</p>
+<h2 id="saga-services">Service Implementations</h2>
+<p>We can now implement the three microservices involved in the saga.
+Each service manages its own local state
+and provides both forward (book) and backward (cancel) operations.
+The flight service manages seat availability;
+we have given it a 10% random failure rate to simulate real-world unreliability:</p>
 <div data-filter="inc=flight_service" data-inc="booking_services.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">FlightService</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""Microservice for booking flights."""</span>
 
@@ -278,7 +307,8 @@ Each service manages its own local state and provides both forward (book) and ba
         <span class="k">return</span> <span class="kc">True</span>
 </code></pre></div>
 </div>
-<p>The car rental service has a 30% failure rate to demonstrate more frequent compensation:</p>
+<p>Finally,
+the car rental service has a 30% failure rate to demonstrate more frequent compensation:</p>
 <div data-filter="inc=car_service" data-inc="booking_services.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">CarRentalService</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""Microservice for renting cars."""</span>
 
@@ -339,8 +369,9 @@ Each service manages its own local state and provides both forward (book) and ba
         <span class="k">return</span> <span class="kc">True</span>
 </code></pre></div>
 </div>
-<p>Each service is autonomous—it manages its own database and can succeed or fail independently.</p>
-<h2>Orchestration-Based Saga</h2>
+<p>Each service is autonomous:
+it manages its own database and can succeed or fail independently.</p>
+<h2 id="saga-orch">Orchestration-Based Saga</h2>
 <p>The orchestrator coordinates the sequence of transactions.
 It stores references to each service and processes requests from a queue:</p>
 <div data-filter="inc=orch_init" data-inc="saga_orchestrator.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SagaOrchestrator</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
@@ -372,7 +403,9 @@ It stores references to each service and processes requests from a queue:</p>
             <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">execute_saga</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
 </code></pre></div>
 </div>
-<p>When a booking request arrives, <code>execute_saga</code> builds the list of steps and drives them forward, triggering compensation if any step fails:</p>
+<p>When a booking request arrives,
+<code>execute_saga</code> builds the list of steps and drives them forward,
+triggering compensation if any step fails:</p>
 <div data-filter="inc=orch_execute" data-inc="saga_orchestrator.py"><div class="codehilite"><pre class=""><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">execute_saga</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">booking</span><span class="p">:</span> <span class="n">BookingRequest</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Execute travel booking saga."""</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="s1">'='</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">60</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
@@ -435,7 +468,8 @@ It stores references to each service and processes requests from a queue:</p>
             <span class="p">)</span>
 </code></pre></div>
 </div>
-<p>The forward pass runs each step in sequence, stopping immediately on the first failure:</p>
+<p>The forward pass runs each step in sequence,
+stopping immediately on the first failure:</p>
 <div data-filter="inc=orch_forward" data-inc="saga_orchestrator.py"><div class="codehilite"><pre class=""><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">execute_forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">saga</span><span class="p">:</span> <span class="n">SagaExecution</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Execute forward transactions in sequence."""</span>
         <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">step</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">saga</span><span class="o">.</span><span class="n">steps</span><span class="p">):</span>
@@ -462,7 +496,8 @@ It stores references to each service and processes requests from a queue:</p>
         <span class="k">return</span> <span class="kc">True</span>
 </code></pre></div>
 </div>
-<p>The compensation pass runs in reverse, undoing each completed step:</p>
+<p>The compensation pass runs in reverse,
+undoing each completed step:</p>
 <div data-filter="inc=orch_compensate" data-inc="saga_orchestrator.py"><div class="codehilite"><pre class=""><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">execute_compensation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">saga</span><span class="p">:</span> <span class="n">SagaExecution</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Execute compensating transactions in reverse order."""</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Orchestrator: Starting compensation..."</span><span class="p">)</span>
@@ -487,12 +522,9 @@ It stores references to each service and processes requests from a queue:</p>
                     <span class="p">)</span>
 </code></pre></div>
 </div>
-<p>The orchestrator provides a clear, centralized view of the workflow.
-It's easy to monitor and debug.</p>
 <h2>Basic Orchestration Example</h2>
 <p>Let's see orchestration in action:</p>
-<div data-filter="inc=orchestratedexample" data-inc="example_orchestrated_saga.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">run_orchestrated_saga</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">"""Demonstrate orchestration-based saga."""</span>
+<div data-filter="inc=orchestratedexample" data-inc="ex_saga.py"><div class="codehilite"><pre class=""><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
     <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
 
     <span class="c1"># Create services</span>
@@ -537,124 +569,110 @@ It's easy to monitor and debug.</p>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Failed sagas: </span><span class="si">{</span><span class="n">orchestrator</span><span class="o">.</span><span class="n">sagas_failed</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </code></pre></div>
 </div>
-<p>This demonstrates how compensation restores system state when bookings fail partway through.</p>
-<h2>Key Saga Concepts</h2>
-<h3>Compensating Transactions</h3>
-<p>Compensations are NOT rollbacks—they're forward operations that semantically undo effects:</p>
-<ul>
-<li><strong>Cancel reservation</strong> (not "delete booking record")</li>
-<li><strong>Refund payment</strong> (not "undo charge")</li>
-<li><strong>Return inventory</strong> (not "remove allocation")</li>
-</ul>
-<p>Compensations must be:
-- <strong>Idempotent</strong>: Can be retried safely
-- <strong>Retryable</strong>: Will eventually succeed<br/>
-- <strong>Commutative</strong>: Order doesn't matter (where possible)</p>
-<h3>Semantic Locking</h3>
-<p>Prevent dirty reads during saga execution:</p>
-<ul>
-<li>Mark records as "pending"</li>
-<li>Users see "Processing..." status</li>
-<li>Don't show incomplete state</li>
-<li>Use optimistic locking for conflicts</li>
-</ul>
-<h3>Pivot Transaction</h3>
-<p>The last transaction in a Saga that can't be compensated.
-For example:
-- Sending email notification
-- Shipping physical goods
-- Executing wire transfer</p>
-<p>Design Sagas so risky operations happen early (compensatable) and irreversible operations happen last.</p>
-<h2>Trade-offs: Orchestration vs Choreography</h2>
-<p><strong>Orchestration Advantages</strong>:
-- Easy to understand and debug
-- Centralized monitoring
-- Clear workflow visualization
-- Simpler testing
-- Easy to add/modify steps</p>
-<p><strong>Orchestration Disadvantages</strong>:
-- Coordinator is coordination point
-- Coordinator becomes complex for large sagas
-- Services coupled to orchestrator</p>
-<p><strong>Choreography Advantages</strong>:
-- No central coordinator
-- Services more loosely coupled
-- Better for event-driven architectures
-- Scales better
-- Natural for domain events</p>
-<p><strong>Choreography Disadvantages</strong>:
-- Hard to understand overall flow
-- Difficult to monitor
-- Debugging is challenging
-- Circular dependencies possible
-- No single source of truth for saga state</p>
-<h2>Saga vs Two-Phase Commit</h2>
-<table>
-<thead>
-<tr>
-<th></th>
-<th>Saga</th>
-<th>2PC</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Locks</td>
-<td>No locks</td>
-<td>Locks resources</td>
-</tr>
-<tr>
-<td>Isolation</td>
-<td>Not isolated</td>
-<td>Full isolation</td>
-</tr>
-<tr>
-<td>Consistency</td>
-<td>Eventual</td>
-<td>Immediate</td>
-</tr>
-<tr>
-<td>Availability</td>
-<td>High</td>
-<td>Lower</td>
-</tr>
-<tr>
-<td>Coordinator failure</td>
-<td>Can recover</td>
-<td>Blocks system</td>
-</tr>
-<tr>
-<td>Cross-org</td>
-<td>Works</td>
-<td>Impractical</td>
-</tr>
-<tr>
-<td>Complexity</td>
-<td>Compensations</td>
-<td>Prepare/commit</td>
-</tr>
-</tbody>
-</table>
-<p>Sagas are preferred for microservices because they don't require locks and work across organizational boundaries.</p>
-<h2>Conclusion</h2>
-<p>The Saga pattern enables distributed transactions through eventual consistency.
-The key principles are:</p>
-<ol>
-<li><strong>Local transactions</strong>: Each service commits independently</li>
-<li><strong>Compensations</strong>: Semantic undo operations</li>
-<li><strong>No distributed locks</strong>: Services don't block each other</li>
-<li><strong>Eventual consistency</strong>: State converges over time</li>
-<li><strong>Graceful degradation</strong>: Failures trigger compensations</li>
-</ol>
-<p>Sagas trade immediate consistency for availability and scalability.
-They work best when:</p>
-<ul>
-<li>Traditional 2PC is impractical</li>
-<li>Services have separate databases</li>
-<li>Long-running transactions span services</li>
-<li>Eventual consistency is acceptable</li>
-<li>Operations are compensatable</li>
-</ul>
+<div data-inc="ex_saga.txt"><div class="codehilite"><pre class=""><span></span><code>[0.0] FlightService started (seats: 10)
+[0.0] HotelService started (rooms: 5)
+[0.0] CarRentalService started (cars: 3)
+[0.0] SagaOrchestrator started
+
+[0.0] ============================================================
+[0.0] Starting saga for Booking(BOOK001)
+[0.0] ============================================================
+[0.0] Orchestrator: Executing step 1/3: book_flight
+[0.3] FlightService: Booking flight FL123
+[0.3] FlightService: ✓ Flight booked (remaining: 9)
+[0.3] Orchestrator: Executing step 2/3: book_hotel
+[0.6] HotelService: Booking hotel HTL456
+[0.6] HotelService: ✓ Hotel booked (remaining: 4)
+[0.6] Orchestrator: Executing step 3/3: book_car
+[0.9] CarRentalService: Booking car CAR789
+[0.9] CarRentalService: ✓ Car booked (remaining: 2)
+
+[0.9] ✓✓✓ Saga BOOK001 COMPLETED ✓✓✓
+
+[3.0] ============================================================
+[3.0] Starting saga for Booking(BOOK002)
+[3.0] ============================================================
+[3.0] Orchestrator: Executing step 1/3: book_flight
+[3.3] FlightService: Booking flight FL123
+[3.3] FlightService: Booking FAILED - system error
+[3.3] Orchestrator: Step book_flight FAILED
+
+[3.3] Orchestrator: Starting compensation...
+
+[3.3] ✗✗✗ Saga BOOK002 FAILED - compensated ✗✗✗
+
+[6.0] ============================================================
+[6.0] Starting saga for Booking(BOOK003)
+[6.0] ============================================================
+[6.0] Orchestrator: Executing step 1/3: book_flight
+[6.3] FlightService: Booking flight FL123
+[6.3] FlightService: Booking FAILED - system error
+[6.3] Orchestrator: Step book_flight FAILED
+
+[6.3] Orchestrator: Starting compensation...
+
+[6.3] ✗✗✗ Saga BOOK003 FAILED - compensated ✗✗✗
+
+[9.0] ============================================================
+[9.0] Starting saga for Booking(BOOK004)
+[9.0] ============================================================
+[9.0] Orchestrator: Executing step 1/3: book_flight
+[9.3] FlightService: Booking flight FL123
+[9.3] FlightService: ✓ Flight booked (remaining: 8)
+[9.3] Orchestrator: Executing step 2/3: book_hotel
+[9.6] HotelService: Booking hotel HTL456
+[9.6] HotelService: ✓ Hotel booked (remaining: 3)
+[9.6] Orchestrator: Executing step 3/3: book_car
+[9.9] CarRentalService: Booking car CAR789
+[9.9] CarRentalService: Booking FAILED - no cars
+[9.9] Orchestrator: Step book_car FAILED
+
+[9.9] Orchestrator: Starting compensation...
+[9.9] Orchestrator: Compensating book_hotel
+[10.1] HotelService: COMPENSATING - canceling BOOK004
+[10.1] HotelService: ✓ Hotel canceled (available: 4)
+[10.1] Orchestrator: Compensating book_flight
+[10.3] FlightService: COMPENSATING - canceling BOOK004
+[10.3] FlightService: ✓ Flight canceled (available: 9)
+
+[10.3] ✗✗✗ Saga BOOK004 FAILED - compensated ✗✗✗
+
+[12.0] ============================================================
+[12.0] Starting saga for Booking(BOOK005)
+[12.0] ============================================================
+[12.0] Orchestrator: Executing step 1/3: book_flight
+[12.3] FlightService: Booking flight FL123
+[12.3] FlightService: ✓ Flight booked (remaining: 8)
+[12.3] Orchestrator: Executing step 2/3: book_hotel
+[12.6] HotelService: Booking hotel HTL456
+[12.6] HotelService: ✓ Hotel booked (remaining: 3)
+[12.6] Orchestrator: Executing step 3/3: book_car
+[12.9] CarRentalService: Booking car CAR789
+[12.9] CarRentalService: Booking FAILED - no cars
+[12.9] Orchestrator: Step book_car FAILED
+
+[12.9] Orchestrator: Starting compensation...
+[12.9] Orchestrator: Compensating book_hotel
+[13.1] HotelService: COMPENSATING - canceling BOOK005
+[13.1] HotelService: ✓ Hotel canceled (available: 4)
+[13.1] Orchestrator: Compensating book_flight
+[13.3] FlightService: COMPENSATING - canceling BOOK005
+[13.3] FlightService: ✓ Flight canceled (available: 9)
+
+[13.3] ✗✗✗ Saga BOOK005 FAILED - compensated ✗✗✗
+
+
+============================================================
+Final State:
+============================================================
+Flight seats available: 9/10
+Hotel rooms available: 4/5
+Cars available: 2/3
+
+Completed sagas: 1
+Failed sagas: 4
+</code></pre></div>
+</div>
 </main>
 <footer>
 <div class="row">

@@ -5,6 +5,7 @@ LESSONS = \
   mapreduce \
   msgque \
   oauth \
+  saga \
   tracing \
   worksteal
 
