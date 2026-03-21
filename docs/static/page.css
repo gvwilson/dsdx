@@ -225,10 +225,10 @@ nav {
     padding-bottom: var(--len-half);
 }
 
-/* Code block */
 pre {
     background-color: var(--color-highlight);
     padding: var(--len-half);
+    overflow-x: auto;
 }
 
 /* Table */
