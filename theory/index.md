@@ -9,7 +9,7 @@ None of these guarantees hold automatically in a distributed system.
 
 ## Clocks and Order {: #theory-clock}
 
-[](b:Lamport1978) is one of the most influential papers in computer science.
+[%b Lamport1978 %] is one of the most influential papers in computer science.
 Its central insight is that clocks are unreliable in distributed systems.
 Two machines might disagree about the time by milliseconds or even seconds,
 and there is no way to synchronize them perfectly.
@@ -19,7 +19,7 @@ to determine which of two events on different machines happened first.
 Lamport proposed an alternative.
 Instead of asking, "What time did this happen?"
 we should ask, "What happened before what?"
-He defined a [happens-before relation](g:happens-before):
+He defined a [%g happens-before "happens-before relation" %]:
 
 1.  If event A occurs before event B on the same machine,
     then A happens-before B.
@@ -31,11 +31,11 @@ He defined a [happens-before relation](g:happens-before):
     then A happens-before C
     (i.e., the relation is transitive).
 
-Two events are [concurrent](g:concurrency) if neither happens-before the other.
+Two events are [%g concurrency "concurrent" %] if neither happens-before the other.
 This does not mean they occurred at the same instant;
 it just means that we cannot put them in order.
 
-To track this relation in practice, Lamport introduced [logical clocks](g:logical-clock).
+To track this relation in practice, Lamport introduced [%g logical-clock "logical clocks" %].
 Each machine maintains a counter;
 it increments the counter before each event
 and includes the counter's value in every message it sends.
@@ -46,10 +46,10 @@ This guarantees that if A happens-before B,
 then A's timestamp is less than B's.
 Note that the converse is not true:
 a lower timestamp does not prove that one event happened first.
-This means that logical clocks capture a [partial order](g:partial-order),
-not a [total order](g:total-order).
+This means that logical clocks capture a [%g partial-order "partial order" %],
+not a [%g total-order "total order" %].
 
-[Vector clocks](g:vector-clock) extend this idea to capture the full happens-before relation.
+[%g vector-clock "Vector clocks" %] extend this idea to capture the full happens-before relation.
 Instead of a single counter,
 each machine maintains a vector with one entry per machine.
 A machine increments its own entry for each event
@@ -65,11 +65,11 @@ and merging takes the element-wise maximum.
 
 In a single-machine program,
 reading a variable always returns the most recent value written to it.
-This property is called [strong consistency](g:strong-consistency),
+This property is called [%g strong-consistency "strong consistency" %],
 and is expensive in a distributed system
 because it requires all replicas to coordinate on every operation.
 
-At the other end of the spectrum is [eventual consistency](g:eventual-consistency),
+At the other end of the spectrum is [%g eventual-consistency "eventual consistency" %],
 which only guarantees that if no new updates are made,
 all replicas will eventually converge to the same state.
 Eventual consistency says nothing about what a replica might return in the meantime:
@@ -91,16 +91,16 @@ because the data structures are designed
 to allow concurrent updates to be merged deterministically.
 
 Several other models lie between strong consistency and eventual consistency.
-[Linearizability](g:linearizability) means that
+[%g linearizability "Linearizability" %] means that
 every operation appears to take effect at some instant between its invocation and its response,
 and all operations are consistent with a single global order.
 This is both very useful and very expensive,
 since it typically requires consensus protocols like [Paxos][paxos] or [Raft][raft].
 
-[Sequential consistency](g:sequential-consistency) is slightly weaker:
+[%g sequential-consistency "Sequential consistency" %] is slightly weaker:
 operations appear in some total order that respects each machine's local order,
 but that order need not correspond to real time.
-[Causal consistency](g:causal-consistency) lies between its sequential and eventual cousins:
+[%g causal-consistency "Causal consistency" %] lies between its sequential and eventual cousins:
 it guarantees that operations related by happens-before are seen in order by everyone,
 but concurrent operations may be seen in different orders by different replicas.
 This is closely related to Lamport's happens-before relation
@@ -109,7 +109,7 @@ that can be achieved without expensive global coordination.
 
 ## The CAP Theorem {: #theory-cap}
 
-[](b:Gilbert2002) proved that
+[%b Gilbert2002 %] proved that
 a distributed system cannot simultaneously provide all three of the following properties:
 
 -   consistency: every read returns the most recent write;
@@ -118,7 +118,7 @@ a distributed system cannot simultaneously provide all three of the following pr
 
 Since network partitions are inevitable in any real distributed system,
 the theorem effectively forces a choice between consistency and availability.
-A [CP system](g:cp-system)
+A [%g cp-system "CP system" %]
 (i.e., one that is consistent and partition-tolerant)
 will refuse to respond rather than return stale data during a partition.
 Traditional relational databases with synchronous replication behave this way:
@@ -126,7 +126,7 @@ if a replica cannot reach the primary,
 it rejects writes rather than risk inconsistency.
 
 On the other hand,
-an [AP system](g:ap-system) (i.e., one that is available and partition-tolerant)
+an [%g ap-system "AP system" %] (i.e., one that is available and partition-tolerant)
 will always respond,
 but may return stale or divergent data during a partition.
 CRDTs are a tool for building AP systems

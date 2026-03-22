@@ -2,7 +2,7 @@
 
 In order for computers to coordinate actions,
 they must agree on what time it is.
-[Network Time Protocol](g:ntp) (NTP) enables this
+[%g ntp "Network Time Protocol" %] (NTP) enables this
 by giving computers a way to synchronize their clocks over a network with millisecond precision.
 NTP dates from 1985,
 but has survived largely unchanged because it works so well.
@@ -34,7 +34,7 @@ The offset tells you how to adjust your clock,
 while the delay tells you how reliable this measurement is
 (lower delays are more accurate).
 
-NTP organizes time servers into levels called [strata](g:ntp-stratum):
+NTP organizes time servers into levels called [%g ntp-stratum "strata" %]:
 Stratum 0 is reference clocks such as atomic clocks and GPS receivers.
 Stratum 1 includes servers directly connected to stratum 0, which act as primary time servers.
 Stratum 2 is servers that connect with stratum 1 servers, and so on.
@@ -45,7 +45,7 @@ End-user computers typically sync with stratum 2 or 3 servers.
 
 Our simulation starts with the NTP message structure:
 
-<div data-inc="ntp_message.py" data-filter="inc=ntpmessage"></div>
+[%inc ntp_message.py mark=ntpmessage %]
 
 The message holds the four timestamps and includes methods to calculate offset and delay using the NTP formulas.
 
@@ -54,7 +54,7 @@ In our simulation, the server's clock is accurate:
 it uses `self.now`, which is the simulation's true time.
 The `stratum` field indicates this server's level in the time hierarchy:
 
-<div data-inc="ntp_server.py" data-filter="inc=ntpserver"></div>
+[%inc ntp_server.py mark=ntpserver %]
 
 The NTP client is more complex because it must adjust its own clock.
 The constructor stores the server queue,
@@ -62,11 +62,11 @@ sync interval,
 simulated network delay,
 and an initial clock offset that represents how far off the client starts:
 
-<div data-inc="ntp_client.py" data-filter="inc=client_init"></div>
+[%inc ntp_client.py mark=client_init %]
 
 The `run` method simply waits for each sync interval before calling `_sync_with_server`:
 
-<div data-inc="ntp_client.py" data-filter="inc=client_run"></div>
+[%inc ntp_client.py mark=client_run %]
 
 `_sync_with_server` executes one full NTP exchange.
 It records the send time t1,
@@ -74,7 +74,7 @@ waits for the server's response containing t2 and t3,
 records the receive time t4,
 and then applies the calculated offset:
 
-<div data-inc="ntp_client.py" data-filter="inc=client_sync"></div>
+[%inc ntp_client.py mark=client_sync %]
 
 The client maintains a `clock_offset` representing how far its local clock differs from true time.
 When it syncs,
@@ -86,24 +86,24 @@ which may differ from simulation time until synchronization occurs.
 
 Let's see clock synchronization in action:
 
-<div data-inc="ex_usage.py" data-filter="inc=simulate"></div>
+[%inc ex_usage.py mark=simulate %]
 
 The output shows clients starting with different clock offsets—some fast, some slow—and
 gradually converging toward the true time as they sync with the server.
 After a few iterations, all clients are within milliseconds of true time.
 
-<div data-inc="ex_usage.txt"></div>
+[%inc ex_usage.out %]
 
 ## Stratum Hierarchy
 
 In real NTP deployments, servers form a hierarchy.
 Let's simulate this with a server:
 
-<div data-inc="ex_stratum.py" data-filter="inc=stratumserver"></div>
+[%inc ex_stratum.py mark=stratumserver %]
 
 We also need a client for the stratum simulation:
 
-<div data-inc="ex_stratum.py" data-filter="inc=stratumclient"></div>
+[%inc ex_stratum.py mark=stratumclient %]
 
 A stratum N server needs to both sync with stratum N-1 (as a client)
 and serve stratum N+1 clients (as a server).
@@ -111,7 +111,7 @@ We implement this with two separate processes that share clock state via a dicti
 The client process syncs with upstream and updates the shared clock offset.
 The server process reads from the shared clock offset when responding to downstream requests.
 
-<div data-inc="ex_stratum.py" data-filter="inc=hierarchy"></div>
+[%inc ex_stratum.py mark=hierarchy %]
 
 In this simulation,
 stratum 1 servers sync with reference clocks (simulated as perfect time),

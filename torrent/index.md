@@ -34,11 +34,11 @@ The key insight is **tit-for-tat**: peers upload to those who upload to them. Th
 Let's start with the fundamental types.
 The file types describe pieces and torrent metadata:
 
-<div data-inc="bittorrent_types.py" data-filter="inc=file_types"></div>
+[%inc bittorrent_types.py mark=file_types %]
 
 The message types describe the protocol exchanges between peers and tracker:
 
-<div data-inc="bittorrent_types.py" data-filter="inc=message_types"></div>
+[%inc bittorrent_types.py mark=message_types %]
 
 These structures represent the protocol's messages and state. The bitfield is particularly important—it compactly represents which pieces a peer has.
 
@@ -47,11 +47,11 @@ These structures represent the protocol's messages and state. The bitfield is pa
 The tracker coordinates the swarm by maintaining a list of active peers.
 The class and its constructor set up the request queue and swarm registry:
 
-<div data-inc="tracker.py" data-filter="inc=tracker_init"></div>
+[%inc tracker.py mark=tracker_init %]
 
 When a peer announces itself, `handle_request` updates the swarm and returns a list of known peers:
 
-<div data-inc="tracker.py" data-filter="inc=tracker_handle"></div>
+[%inc tracker.py mark=tracker_handle %]
 
 The tracker is stateless—it just maintains the current list of peers. In production, trackers often use UDP for efficiency and can handle millions of peers.
 
@@ -60,19 +60,19 @@ The tracker is stateless—it just maintains the current list of peers. In produ
 The peer is the heart of BitTorrent—it downloads pieces, uploads to others, and manages connections.
 The constructor stores the peer's identity, piece inventory, and connections to other peers:
 
-<div data-inc="simplified_peer.py" data-filter="inc=peer_init"></div>
+[%inc simplified_peer.py mark=peer_init %]
 
 The `run` method announces to the tracker, then loops through download rounds until all pieces are obtained:
 
-<div data-inc="simplified_peer.py" data-filter="inc=peer_run"></div>
+[%inc simplified_peer.py mark=peer_run %]
 
 Each download round selects pieces to request using rarest-first ordering, then attempts to download from available peers:
 
-<div data-inc="simplified_peer.py" data-filter="inc=peer_download_round"></div>
+[%inc simplified_peer.py mark=peer_download_round %]
 
 `_download_from_peer` applies the tit-for-tat rule—only downloading from a peer if it has uploaded to us recently—and on success updates piece state and broadcasts a HAVE message:
 
-<div data-inc="simplified_peer.py" data-filter="inc=peer_download_from"></div>
+[%inc simplified_peer.py mark=peer_download_from %]
 
 This simplified version captures the essence of BitTorrent without all the protocol complexity.
 
@@ -80,7 +80,7 @@ This simplified version captures the essence of BitTorrent without all the proto
 
 Let's see BitTorrent in action:
 
-<div data-inc="example_basic_bittorrent.py" data-filter="inc=basicexample"></div>
+[%inc example_basic_bittorrent.py mark=basicexample %]
 
 This shows how pieces propagate through the swarm—early peers help later peers, distributing the upload burden.
 

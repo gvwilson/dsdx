@@ -1,6 +1,6 @@
 # MapReduce Framework
 
-[](b:Dean2004) introduced the MapReduce framework,
+[%b Dean2004 %] introduced the MapReduce framework,
 which allowed programmers to perform many different data processing tasks
 by using two abstractions called (as you might guess) map and reduce.
 [Hadoop][hadoop], [Apache Spark][apache-spark], and other tools
@@ -39,7 +39,7 @@ Let's start by showing how MapReduce is used,
 and then show how it is implemented.
 The classic MapReduce example counts how often each word occurs in a document.
 
-<div data-inc="ex_word_count.py"></div>
+[%inc ex_word_count.py %]
 
 As this example shows,
 he programmer writes two simple functions and runs a process to coordinate them.
@@ -50,21 +50,21 @@ The framework handles distribution, parallelization, and aggregation.
 Let's start with some dataclasses to represent the data flowing through the framework.
 Input will be split into chunks for the map phase:
 
-<div data-inc="mr_types.py" data-filter="inc=map"></div>
+[%inc mr_types.py mark=map %]
 
 Intermediate data will be partitioned for reducers:
 
-<div data-inc="mr_types.py" data-filter="inc=intermediate"></div>
+[%inc mr_types.py mark=intermediate %]
 
 And finally,
 intermediate chunks will be reduced:
 
-<div data-inc="mr_types.py" data-filter="inc=reduce"></div>
+[%inc mr_types.py mark=reduce %]
 
 <div class="callout" markdown="1">
 
 The initial implementation of MapReduce contained a subtle bug.
-Python's built-in function `hash` generates a [hash code](g:hash-code)
+Python's built-in function `hash` generates a [%g hash-code "hash code" %]
 from a chunk of data.
 That value is partially randomized:
 it is the same within any run of a program,
@@ -75,7 +75,7 @@ which in turn meant that runs weren't reproducible.
 To fix this,
 we introduced our own hashing function:
 
-<div data-inc="mr_types.py" data-filter="inc=hash"></div>
+[%inc mr_types.py mark=hash %]
 
 </div>
 
@@ -86,7 +86,7 @@ Each has a unique worker ID,
 a queue of incoming tasks,
 and a reference to the overall work coordinator:
 
-<div data-inc="mr_worker.py" data-filter="inc=worker"></div>
+[%inc mr_worker.py mark=worker %]
 
 The code shown above also records a few simple statistics
 and can simulate failure with a specified probability;
@@ -97,7 +97,7 @@ it repeatedly gets a task from its queue and executes it.
 If there's a simulated failure,
 the worker reports that back to the coordinator instead:
 
-<div data-inc="mr_worker.py" data-filter="inc=run"></div>
+[%inc mr_worker.py mark=run %]
 
 Each map task consists of one or more records.
 For simplicity's sake we assume each record needs the same processing time,
@@ -105,18 +105,18 @@ so after waiting that long,
 the worker partitions the results
 and sends them back to the coordinator:
 
-<div data-inc="mr_worker.py" data-filter="inc=map"></div>
+[%inc mr_worker.py mark=map %]
 
 Reducing works the same way:
 
-<div data-inc="mr_worker.py" data-filter="inc=reduce"></div>
+[%inc mr_worker.py mark=reduce %]
 
 ## MapReduce Coordinator {: #mapreduce-coordinator}
 
 The coordinator manages the entire lifecycle:
 splitting input, dispatching tasks, collecting results, and handling failures by re-executing failed tasks.
 
-<div data-inc="mr_coordinator.py"></div>
+[%inc mr_coordinator.py %]
 
 Note that `run()` returns a coroutine by returning the result of `_execute()`;
 this coroutine is awaited by the `Process` that the user writes.
@@ -127,7 +127,7 @@ A combiner is a local reduce that runs on each mapper's output before shuffling
 in order to reduce network traffic.
 Doing this can dramatically improve performance for operations like summation or counting.
 
-<div data-inc="coordinator_with_combiner.py"></div>
+[%inc coordinator_with_combiner.py %]
 
 ## Handling Stragglers with Speculative Execution {: #mapreduce-speculative}
 
@@ -135,18 +135,18 @@ Some workers may be stragglers due to hardware issues or resource contention.
 MapReduce can accommodate this by launching backup copies of slow tasks.
 The first copy to complete wins,
 while others are discarded.
-This is called [speculative execution](g:speculative-execution),
+This is called [%g speculative-execution "speculative execution" %],
 and ensures that one slow worker doesn't delay the entire job.
 
-<div data-inc="speculative_coordinator.py"></div>
+[%inc speculative_coordinator.py %]
 
 ## Fault Tolerance Simulation {: #mapreduce-fault}
 
-A simple extension of speculative execution is [fault tolerance](g:fault-tolerance):
+A simple extension of speculative execution is [%g fault-tolerance "fault tolerance" %]:
 the framework automatically retries failed tasks,
 ensuring that computation completes despite failures.
 
-<div data-inc="ex_fault_tolerance.py"></div>
+[%inc ex_fault_tolerance.py %]
 
 ## In the Real World {: #mapreduce-real}
 

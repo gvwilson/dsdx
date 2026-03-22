@@ -1,7 +1,7 @@
 # Building TCP on UDP
 
 When you open a website, stream a video, or send an email,
-you're almost certainly using [Transmission Control Protocol](g:tcp) (TCP).
+you're almost certainly using [%g tcp "Transmission Control Protocol" %] (TCP).
 TCP provides reliable, ordered delivery of data over the internet,
 handling packet loss, reordering, and congestion automatically.
 But TCP itself runs on top of UDP,
@@ -42,18 +42,18 @@ Let's examine each component in turn.
 
 We start by defining the six types of packets our protocol will use:
 
-<div data-inc="tcp_types.py" data-filter="inc=packettypes"></div>
+[%inc tcp_types.py mark=packettypes %]
 
 and the seven different states that a connection can be in:
 
-<div data-inc="tcp_types.py" data-filter="inc=connectionstate"></div>
+[%inc tcp_types.py mark=connectionstate %]
 
 The `Packet` structure mirrors a real TCP/IP packet header with source and destination addressing,
 sequence and acknowledgment numbers,
 packet type,
 and payload data:
 
-<div data-inc="tcp_types.py" data-filter="inc=packet"></div>
+[%inc tcp_types.py mark=packet %]
 
 ## Unreliable Network Layer {: #tcp-network}
 
@@ -61,13 +61,13 @@ Before building TCP, we need to simulate UDP's unreliable delivery.
 `UnreliableNetwork` tracks per-packet statistics
 and maintains a registry mapping address:port pairs to their receive queues:
 
-<div data-inc="unreliable_network.py" data-filter="inc=network_init"></div>
+[%inc unreliable_network.py mark=network_init %]
 
 `send_packet` applies the configured loss and duplication rates
 before calling `_deliver_packet`,
 which adds a random delay and optionally increases it to simulate reordering:
 
-<div data-inc="unreliable_network.py" data-filter="inc=network_send"></div>
+[%inc unreliable_network.py mark=network_send %]
 
 This simulates the way packets in real networks can be lost, delayed, reordered, or duplicated.
 The network maintains a registry of endpoints and routes packets accordingly.
@@ -76,7 +76,7 @@ The network maintains a registry of endpoints and routes packets accordingly.
 
 The TCP connection implements reliability over the unreliable network:
 
-<div data-inc="tcp_connection.py" data-filter="inc=tcpinit"></div>
+[%inc tcp_connection.py mark=tcpinit %]
 
 The connection maintains send and receive buffers.
 The send buffer holds unacknowledged segments for potential retransmission.
@@ -85,13 +85,13 @@ The receive buffer handles out-of-order delivery by holding segments until gaps 
 The `run` loop reads packets from the receive queue and dispatches each one through `handle_packet`,
 which routes SYN, SYN-ACK, ACK, and DATA packets to the appropriate handler:
 
-<div data-inc="tcp_connection.py" data-filter="inc=tcp_run"></div>
+[%inc tcp_connection.py mark=tcp_run %]
 
 ## Three-Way Handshake {: #tcp-handshake}
 
 TCP connection establishment uses three packets to synchronize state:
 
-<div data-inc="tcp_connection.py" data-filter="inc=tcpconnect"></div>
+[%inc tcp_connection.py mark=tcpconnect %]
 
 The handshake sequence is:
 
@@ -104,13 +104,13 @@ This synchronizes sequence numbers and establishes bidirectional communication.
 The server side of the handshake is handled by `listen_and_accept`,
 which waits for a SYN packet and then delegates the response to `handle_syn`:
 
-<div data-inc="tcp_connection.py" data-filter="inc=server_accept"></div>
+[%inc tcp_connection.py mark=server_accept %]
 
 ## Sliding Window Protocol {: #tcp-window}
 
 The sliding window allows multiple packets in flight:
 
-<div data-inc="tcp_connection.py" data-filter="inc=tcpsend"></div>
+[%inc tcp_connection.py mark=tcpsend %]
 
 The sender can have `window_size` unacknowledged packets in flight.
 This maintains throughput even with high latency:
@@ -122,7 +122,7 @@ If an ACK doesn't arrive within the timeout period,
 the segment is retransmitted.
 We use a separate `Process` to simulate each retransmission timer:
 
-<div data-inc="tcp_connection.py" data-filter="inc=retransmission"></div>
+[%inc tcp_connection.py mark=retransmission %]
 
 Each time we sent a segment, we create a `RetransmissionTimer`:
 
@@ -147,13 +147,13 @@ When a DATA packet arrives,
 extracts any newly contiguous data to deliver to the application,
 and sends a cumulative ACK:
 
-<div data-inc="tcp_connection.py" data-filter="inc=handle_data"></div>
+[%inc tcp_connection.py mark=handle_data %]
 
 ## Handling Out-of-Order Delivery {: #tcp-order}
 
 The receive buffer handles segments arriving out of order:
 
-<div data-inc="tcp_types.py" data-filter="inc=receivebuffer"></div>
+[%inc tcp_types.py mark=receivebuffer %]
 
 Segments are held until all gaps are filled.
 When a contiguous block of data is available,
@@ -165,7 +165,7 @@ TCP uses cumulative ACKs,
 i.e.,
 each ACK indicates all data up to a sequence number has been received:
 
-<div data-inc="tcp_connection.py" data-filter="inc=handleack"></div>
+[%inc tcp_connection.py mark=handleack %]
 
 A single ACK can acknowledge multiple segments.
 This is simpler than selective acknowledgments and works well when most data arrives in order.
@@ -174,8 +174,8 @@ This is simpler than selective acknowledgments and works well when most data arr
 
 Let's see TCP in action:
 
-<div data-inc="ex_basic.py" data-filter="inc=basicexample"></div>
-<div data-inc="ex_basic.txt"></div>
+[%inc ex_basic.py mark=basicexample %]
+[%inc ex_basic.out %]
 
 Despite 15% packet loss and reordering,
 TCP successfully delivers the complete message in order.
@@ -184,8 +184,8 @@ TCP successfully delivers the complete message in order.
 
 Let's test TCP under extreme conditions:
 
-<div data-inc="ex_loss_recovery.py" data-filter="inc=highlossexample"></div>
-<div data-inc="ex_loss_recovery.txt"></div>
+[%inc ex_loss_recovery.py mark=highlossexample %]
+[%inc ex_loss_recovery.out %]
 
 Even with 40% loss, TCP delivers the complete message:
 there are many retransmissions but eventual success.

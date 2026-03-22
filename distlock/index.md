@@ -9,10 +9,10 @@ Similarly,
 when multiple workers process jobs from a queue,
 each job should be handled by exactly one worker.
 
-These coordination problems all require [mutual exclusion](g:mutual-exclusion):
+These coordination problems all require [%g mutual-exclusion "mutual exclusion" %]:
 ensuring that only one process holds a lock at any given time.
 This is straightforward on a single machine,
-since operating systems provide [mutexes](g:mutex) and [semaphores](g:semaphore).
+since operating systems provide [%g mutex "mutexes" %] and [%g semaphore "semaphores" %].
 But a distributed system does not have shared memory,
 processes can fail independently,
 network messages can be delayed or lost,
@@ -43,16 +43,16 @@ Consider this scenario:
 1.  Process A wakes up, still believing it holds the lock.
 1.  Both A and B now access the resource, violating mutual exclusion.
 
-This is called a [split-brain scenario](g:split-brain).
+This is called a [%g split-brain "split-brain scenario" %].
 To prevent it,
 we'll build a distributed lock manager with three main components:
 
 1.  Lock servers that maintain lock state and coordinate through consensus.
 1.  Clients that acquire and release locks.
-1.  [Fencing tokens](g:fencing-token) that prevent stale lock holders from accessing resources.
+1.  [%g fencing-token "Fencing tokens" %] that prevent stale lock holders from accessing resources.
 
-Our system will use [lease-based locks](g:lease-based-lock):
-when a client acquires a lock, it receives a [lease](g:lease) that expires after a timeout.
+Our system will use [%g lease-based-lock "lease-based locks" %]:
+when a client acquires a lock, it receives a [%g lease "lease" %] that expires after a timeout.
 The client must periodically renew the lease to keep the lock.
 If it fails or becomes partitioned,
 its lease expires and the lock becomes available.
@@ -66,48 +66,48 @@ This prevents a process with a stale lock from corrupting the resource.
 
 Let's start with a single lock server that manages locks for multiple resources:
 
-<div data-inc="basic_lock_server.py" data-filter="inc=lockclasses"></div>
+[%inc basic_lock_server.py mark=lockclasses %]
 
 `LockServer` and its constructor set up the request queue and a dictionary of per-resource lock states.
 Its `run` loop dispatches each incoming request by operation type:
 
-<div data-inc="basic_lock_server.py" data-filter="inc=server_init"></div>
+[%inc basic_lock_server.py mark=server_init %]
 
 When a client tries to acquire a lock,
 the server first checks whether the current lease has expired,
 then grants the lock or renews it if the same client is asking again:
 
-<div data-inc="basic_lock_server.py" data-filter="inc=handle_acquire"></div>
+[%inc basic_lock_server.py mark=handle_acquire %]
 
 Releasing a lock simply clears the holder if the request comes from the current holder:
 
-<div data-inc="basic_lock_server.py" data-filter="inc=handle_release"></div>
+[%inc basic_lock_server.py mark=handle_release %]
 
 ## Lock Clients {: #distlock-client}
 
 Clients acquire locks,
-do work in [critical sections](g:critical-section),
+do work in [%g critical-section "critical sections" %],
 and release locks.
 The client class's constructor stores connection details and tracks the current fencing token:
 
-<div data-inc="lock_client.py" data-filter="inc=client_init"></div>
+[%inc lock_client.py mark=client_init %]
 
 Its `run` method schedules repeated attempts to acquire the lock and do work:
 
-<div data-inc="lock_client.py" data-filter="inc=client_run"></div>
+[%inc lock_client.py mark=client_run %]
 
 `acquire` sends a request to the lock server and waits for a response:
 
-<div data-inc="lock_client.py" data-filter="inc=client_acquire"></div>
+[%inc lock_client.py mark=client_acquire %]
 
 `release` sends a release request when the client is done with the resource:
 
-<div data-inc="lock_client.py" data-filter="inc=client_release"></div>
+[%inc lock_client.py mark=client_release %]
 
 Let's run a simple simulation where multiple clients compete for the same lock:
 
-<div data-inc="ex_basic.py" data-filter="inc=basicexample"></div>
-<div data-inc="ex_basic.txt"></div>
+[%inc ex_basic.py mark=basicexample %]
+[%inc ex_basic.out %]
 
 The output shows clients taking turns acquiring the lock.
 Mutual exclusion is preserved:
@@ -119,12 +119,12 @@ What happens if a client crashes while holding a lock?
 Without lease expiration, the lock would be stuck forever.
 Let's create a client that fails on purpose:
 
-<div data-inc="failing_client.py" data-filter="inc=failingclient"></div>
+[%inc failing_client.py mark=failingclient %]
 
 Now let's see what happens:
 
-<div data-inc="ex_failure.py" data-filter="inc=failureexample"></div>
-<div data-inc="ex_failure.txt"></div>
+[%inc ex_failure.py mark=failureexample %]
+[%inc ex_failure.out %]
 
 The failing client crashes at time 1.0 without releasing the lock.
 But the lease expires at time 4.0 (1.0 + 3.0),
@@ -148,31 +148,31 @@ The solution is fencing tokens.
 
 Here's a protected resource that checks tokens:
 
-<div data-inc="protected_resource.py" data-filter="inc=protectedresource"></div>
+[%inc protected_resource.py mark=protectedresource %]
 
 Now let's create a client that uses fencing tokens.
 The fenced client stores the token it received when acquiring the lock
 and passes it with every resource access:
 
-<div data-inc="fenced_client.py" data-filter="inc=fenced_init"></div>
+[%inc fenced_client.py mark=fenced_init %]
 
 Its `run` method follows the same lifecycle as the basic client:
 
-<div data-inc="fenced_client.py" data-filter="inc=fenced_run"></div>
+[%inc fenced_client.py mark=fenced_run %]
 
 The acquire step is identical to the basic client but stores the token:
 
-<div data-inc="fenced_client.py" data-filter="inc=fenced_acquire"></div>
+[%inc fenced_client.py mark=fenced_acquire %]
 
 When accessing the resource,
 the client passes the fencing token so the resource can reject stale requests:
 
-<div data-inc="fenced_client.py" data-filter="inc=fenced_release"></div>
+[%inc fenced_client.py mark=fenced_release %]
 
 Now we can demonstrate split-brain prevention:
 
-<div data-inc="ex_fencing.py" data-filter="inc=fencingexample"></div>
-<div data-inc="ex_fencing.txt"></div>
+[%inc ex_fencing.py mark=fencingexample %]
+[%inc ex_fencing.out %]
 
 Here's what happens:
 
@@ -196,24 +196,24 @@ a client must get agreement from a majority of servers before considering the lo
 Here's a simplified version with replicated lock servers.
 The replicated manager holds references to all lock server replicas and a configurable majority threshold:
 
-<div data-inc="replicated_lock_manager.py" data-filter="inc=replicated_init"></div>
+[%inc replicated_lock_manager.py mark=replicated_init %]
 
 To acquire a lock, the manager sends requests to all replicas and waits until a majority grant it:
 
-<div data-inc="replicated_lock_manager.py" data-filter="inc=replicated_acquire"></div>
+[%inc replicated_lock_manager.py mark=replicated_acquire %]
 
 Releasing a lock sends release requests to all replicas that acknowledged the acquire:
 
-<div data-inc="replicated_lock_manager.py" data-filter="inc=replicated_release"></div>
+[%inc replicated_lock_manager.py mark=replicated_release %]
 
 This client uses the replicated manager:
 
-<div data-inc="replicated_lock_client.py" data-filter="inc=replicatedclient"></div>
+[%inc replicated_lock_client.py mark=replicatedclient %]
 
 And here's the whole system in action:
 
-<div data-inc="ex_replicated.py" data-filter="inc=replicatedexample"></div>
-<div data-inc="ex_replicated.txt"></div>
+[%inc ex_replicated.py mark=replicatedexample %]
+[%inc ex_replicated.out %]
 
 Even if one server fails,
 the lock manager can continue operating as long as a majority of servers remain available.

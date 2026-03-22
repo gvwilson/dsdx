@@ -6,9 +6,9 @@ In a monolithic system you would roll back the entire transaction,
 but in a microservices architecture using separate databases for flights, hotels, and cars,
 traditional ACID transactions don't work.
 
-The [Saga pattern](g:saga) solves this
+The [%g saga "Saga pattern" %] solves this
 by breaking long-running transactions into a sequence of local transactions,
-each with a [compensating action](g:compensation) to undo its effects if the overall transaction fails.
+each with a [%g compensation "compensating action" %] to undo its effects if the overall transaction fails.
 This enables distributed transactions without distributed locks,
 maintaining eventual consistency while handling failures gracefully.
 
@@ -62,12 +62,12 @@ We start by defining the states that the saga as a whole
 and the individual transactions
 can be in:
 
-<div data-inc="saga_types.py" data-filter="inc=enum"></div>
+[%inc saga_types.py mark=enum %]
 
 We then create structures to represent the saga's state  machine.
 Each step has a forward transaction and a backward compensation.
 
-<div data-inc="saga_types.py" data-filter="inc=sagatypes"></div>
+[%inc saga_types.py mark=sagatypes %]
 
 ## Service Implementations {: #saga-services}
 
@@ -77,16 +77,16 @@ and provides both forward (book) and backward (cancel) operations.
 The flight service manages seat availability;
 we have given it a 10% random failure rate to simulate real-world unreliability:
 
-<div data-inc="booking_services.py" data-filter="inc=flight_service"></div>
+[%inc booking_services.py mark=flight_service %]
 
 The hotel service follows the same pattern with a 15% failure rate and room inventory:
 
-<div data-inc="booking_services.py" data-filter="inc=hotel_service"></div>
+[%inc booking_services.py mark=hotel_service %]
 
 Finally,
 the car rental service has a 30% failure rate to demonstrate more frequent compensation:
 
-<div data-inc="booking_services.py" data-filter="inc=car_service"></div>
+[%inc booking_services.py mark=car_service %]
 
 Each service is autonomous:
 it manages its own database and can succeed or fail independently.
@@ -96,27 +96,27 @@ it manages its own database and can succeed or fail independently.
 The orchestrator coordinates the sequence of transactions.
 It stores references to each service and processes requests from a queue:
 
-<div data-inc="saga_orchestrator.py" data-filter="inc=orch_init"></div>
+[%inc saga_orchestrator.py mark=orch_init %]
 
 When a booking request arrives,
 `execute_saga` builds the list of steps and drives them forward,
 triggering compensation if any step fails:
 
-<div data-inc="saga_orchestrator.py" data-filter="inc=orch_execute"></div>
+[%inc saga_orchestrator.py mark=orch_execute %]
 
 The forward pass runs each step in sequence,
 stopping immediately on the first failure:
 
-<div data-inc="saga_orchestrator.py" data-filter="inc=orch_forward"></div>
+[%inc saga_orchestrator.py mark=orch_forward %]
 
 The compensation pass runs in reverse,
 undoing each completed step:
 
-<div data-inc="saga_orchestrator.py" data-filter="inc=orch_compensate"></div>
+[%inc saga_orchestrator.py mark=orch_compensate %]
 
 ## Basic Orchestration Example
 
 Let's see orchestration in action:
 
-<div data-inc="ex_saga.py" data-filter="inc=orchestratedexample"></div>
-<div data-inc="ex_saga.txt"></div>
+[%inc ex_saga.py mark=orchestratedexample %]
+[%inc ex_saga.out %]

@@ -16,7 +16,7 @@ classifiers = [
 ]
 dependencies = [
     "asimpy>=0.10.0",
-    "mccole>=1.5.2",
+    "mccole>=2.0.0",
     "ruff>=0.1.0",
 ]
 
@@ -37,24 +37,14 @@ dev = [
 ]
 
 [tool.mccole]
+title = "Distributed Systems Design by Example"
+repo = "https://github.com/gvwilson/dsdx"
 skips = [
+    "*.out",
     "*.py",
     "*.sh",
-    "*.txt",
     "*~",
     ".ruff_cache/**",
     "__pycache__/**",
-    "distlock/**",
-    "dns/**",
-    "eventual/**",
-    "extras/**",
-    "mapreduce/**",
-    "ntp/**",
-    "oauth/**",
-    "saga/**",
-    "tcp/**",
-    "torrent/**",
-    "unused/**",
     "uv.lock",
-    "worksteal/**",
 ]

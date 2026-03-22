@@ -2,7 +2,7 @@
 
 If a monolithic application is slow,
 we can profile a single process to find out why.
-In a [microservices](g:microservice) architecture,
+In a [%g microservice "microservices" %] architecture,
 however,
 a single request may touch many services,
 each of which may cause multiple database queries and external API calls.
@@ -19,17 +19,17 @@ and identify bottlenecks.
 
 Distributed tracing has two key elements:
 
--   A [span](g:span) represents a single unit of work.
-    Spans form a tree with its origin in a [root span](g:root-span);
+-   A [%g span "span" %] represents a single unit of work.
+    Spans form a tree with its origin in a [%g root-span "root span" %];
     this tree represents the (distributed) call graph.
 
--   A [trace](g:trace) is complete journey of a request through the system,
+-   A [%g trace "trace" %] is complete journey of a request through the system,
     and is identified by a unique trace ID.
     A single trace may contain many spans.
 
-[Context propagation](g:context-propagation) means
+[%g context-propagation "Context propagation" %] means
 passing trace and span IDs between services so that they can be correlated.
-Trace and span IDs are often propagated using [HTTP headers](g:http-header):
+Trace and span IDs are often propagated using [%g http-header "HTTP headers" %]:
 
 ```
 X-Trace-Id: abc123
@@ -37,7 +37,7 @@ X-Span-Id: def456
 X-Parent-Span-Id: ghi789
 ```
 
-Tracing systems often use [sampling](g:sampling)
+Tracing systems often use [%g sampling "sampling" %]
 to record only a fraction of traces.
 Doing this means that some questions cannot be answered after the fact,
 but sampling reduces storage costs and,
@@ -46,8 +46,8 @@ prevents the tracing system from overwhelming the network.
 
 Finally, tags and logs are metadata attached to spans for debugging.
 Tags are values used for filtering and searching,
-such as the [HTTP status code](g:http-status-code),
-while logs are timestamped events such as a [cache miss](g:cache-miss)
+such as the [%g http-status-code "HTTP status code" %],
+while logs are timestamped events such as a [%g cache-miss "cache miss" %]
 or retry attempt.
 
 ## A Minimum Viable Decorator {: #tracing-decorator}
@@ -58,14 +58,14 @@ in a traceable way.
 If we add the tracing code directly in `handle_request()`
 we wind up with something like this:
 
-<div data-inc="long_winded.py" data-filter="inc=service"></div>
+[%inc long_winded.py mark=service %]
 
 That is 15 lines of tracing code for a simple function,
 and those lines would have to be copied into every function we want to trace.
-A better approach is to define a [decorator](g:decorator)
+A better approach is to define a [%g decorator "decorator" %]
 that adds tracing for us so that we can write:
 
-<div data-inc="short_winded.py" data-filter="inc=service"></div>
+[%inc short_winded.py mark=service %]
 
 A minimum viable version of that decorator needs to do the following:
 
@@ -80,37 +80,37 @@ A minimum viable version of that decorator needs to do the following:
 None of this is particularly hard,
 but it does require a fair bit of code.
 First,
-we create a [singleton](g:singleton) to hold the active trace context
-and the [collector](g:trace-collector) where completed spans are to be sent.
+we create a [%g singleton "singleton" %] to hold the active trace context
+and the [%g trace-collector "collector" %] where completed spans are to be sent.
 (In production,
-we would use [thread-local storage](g:thread-local-storage)
-or [async context variables](g:async-context-vars) to storage this data.)
+we would use [%g thread-local-storage "thread-local storage" %]
+or [%g async-context-vars "async context variables" %] to storage this data.)
 
-<div data-inc="tracing_decorators.py" data-filter="inc=storage"></div>
+[%inc tracing_decorators.py mark=storage %]
 
 We can now define the tracing decorator itself.
 It's long,
 but all of the steps are fairly straightforward:
 
-<div data-inc="tracing_decorators.py" data-filter="inc=traced"></div>
+[%inc tracing_decorators.py mark=traced %]
 
 ## Data Types {: #tracing-types}
 
 We now need to double back and define the core types for distributed tracing.
 `TraceContext` propagates between services:
 
-<div data-inc="tracing_types.py" data-filter="inc=context"></div>
+[%inc tracing_types.py mark=context %]
 
 `Span` tracks individual operations,
 and has methods for adding tags and log entries
 and to mark the span as completed:
 
-<div data-inc="tracing_types.py" data-filter="inc=span"></div>
+[%inc tracing_types.py mark=span %]
 
 Finally, `Trace` aggregates spans,
 and has methods for adding spans and getting the overall duration of the trace:
 
-<div data-inc="tracing_types.py" data-filter="inc=trace"></div>
+[%inc tracing_types.py mark=trace %]
 
 ## Trace Collector
 
@@ -119,7 +119,7 @@ that receives spans from services and assembles them into traces.
 When it runs,
 it repeatedly gets a span from its incoming queue and processes it:
 
-<div data-inc="trace_collector.py" data-filter="inc=collector"></div>
+[%inc trace_collector.py mark=collector %]
 
 To process a new span,
 the collector either adds it to an existing trace
@@ -127,14 +127,14 @@ or creates a new one.
 If the trace is now complete,
 the collector moves it from the active set into the completed set:
 
-<div data-inc="trace_collector.py" data-filter="inc=process"></div>
+[%inc trace_collector.py mark=process %]
 
 ## A Simple Service {: #tracing-service}
 
 With all this machinery in place,
 tracing a microservice is relatively straightforward:
 
-<div data-inc="simple_service.py" data-filter="inc=simple"></div>
+[%inc simple_service.py mark=simple %]
 
 `handle_request` is automatically traced;
 `process_data` is also traced and becomes a child span.
@@ -143,11 +143,11 @@ and error handling is automatic.
 
 The client creates the root span manually (since it initiates the trace):
 
-<div data-inc="ex_decorators.py" data-filter="inc=client"></div>
+[%inc ex_decorators.py mark=client %]
 
 The output shows that we are capturing what we wanted to:
 
-<div data-inc="ex_decorators.txt"></div>
+[%inc ex_decorators.out %]
 
 ## Useful Data {: #tracing-useful}
 
@@ -158,7 +158,7 @@ which will summarize and reorganize it
 to make it comprehensible to human beings.
 To support that,
 we should always generate data in a structured format such as JSON,
-and use a standard [schema](g:schema) instead of creating one of our own.
+and use a standard [%g schema "schema" %] instead of creating one of our own.
 
 The [OpenTelemetry][opentelemetry] standard defines such a schema,
 but it is notoriously complex.
@@ -173,15 +173,18 @@ The simplified subset generated by `json_collector.py` has:
 Even with these simplifications,
 a simple example like the one below produces over 300 lines of pretty-printed output:
 
-<div data-inc="ex_json.py" data-filter="inc=client"></div>
+[%inc ex_json.py mark=client %]
 
 A sample clause of this JSON looks like this:
 
-<div data-inc="ex_json.txt" data-filter="head=52"></div>
+[%inc ex_json.out head=52 %]
 
 It isn't something anyone would browse for fun,
 but (hopefully) everything needed to track down problems is there.
 
+<section class="exercises" markdown="1">
 ## Exercises {: #tracing-exercises}
 
 FIXME: add exercises.
+
+</section>

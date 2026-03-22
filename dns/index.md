@@ -3,7 +3,7 @@
 Every time you visit a website or send an email,
 your computer translates a human-readable name like "www.example.com"
 into an IP addresses like "192.0.2.1".
-[Domain Name System](g:dns) (DNS) is what makes this possible.
+[%g dns "Domain Name System" %] (DNS) is what makes this possible.
 DNS is a distributed database,
 and is one of the internet's most critical infrastructure components.
 Among other things,
@@ -18,11 +18,11 @@ Instead of one central server knowing all domain names,
 which couldn't possibly scale,
 the work is distributed across millions of servers organized in a tree structure:
 
--   13 [root servers](g:root-server)
+-   13 [%g root-server "root servers" %]
     (though there are actually many more physical servers).
--   [Top-level domain](g:tld) (TLD) servers for `.com`, `.org`, `.net`, etc.
+-   [%g tld "Top-level domain" %] (TLD) servers for `.com`, `.org`, `.net`, etc.
 -   Authoritative name servers specific to each domain like `example.com`.
--   [Recursive resolvers](g:recursive-resolver),
+-   [%g recursive-resolver "Recursive resolvers" %],
     such as your ISP's DNS server or public DNS like 8.8.8.8.
 
 When you look up `www.example.com`, your computer asks a recursive resolver, which may:
@@ -39,7 +39,7 @@ each server knows its piece of the hierarchy and where to find the next level.
 
 DNS would be unusably slow if every lookup required multiple round-trips through the hierarchy.
 The solution is caching:
-resolvers remember answers for a period referred to as [Time to Live](g:ttl) (TTL).
+resolvers remember answers for a period referred to as [%g ttl "Time to Live" %] (TTL).
 Popular domains like wikipedia.org are cached at every level
 so that most queries are answered from cache in milliseconds.
 This ensures that root servers handle surprisingly few queries
@@ -54,55 +54,55 @@ Our implementation will focus on A and CNAME records, which handle most web traf
 As in previous chapters,
 we start by enumerating the different types of records:
 
-<div data-inc="dns_message.py" data-filter="inc=recordtype"></div>
+[%inc dns_message.py mark=recordtype %]
 
 and then define a DNS resource record:
 
-<div data-inc="dns_message.py" data-filter="inc=dnsrecord"></div>
+[%inc dns_message.py mark=dnsrecord %]
 
 We also need to define the structure of queries and responses:
 
-<div data-inc="dns_message.py" data-filter="inc=dnsquery"></div>
-<div data-inc="dns_message.py" data-filter="inc=dnsresponse"></div>
+[%inc dns_message.py mark=dnsquery %]
+[%inc dns_message.py mark=dnsresponse %]
 
 The next step is to create the authoritative DNS server.
 The constructor registers the zone this server is authoritative for and creates its record store.
 `add_record` lets callers populate the zone before the simulation starts:
 
-<div data-inc="authoritative_server.py" data-filter="inc=auth_init"></div>
+[%inc authoritative_server.py mark=auth_init %]
 
 The `run` loop receives queries and builds responses.
 If the query domain ends in this server's zone,
 the server looks up the record directly;
 it also follows CNAME chains to resolve aliases to their target A records:
 
-<div data-inc="authoritative_server.py" data-filter="inc=auth_run"></div>
+[%inc authoritative_server.py mark=auth_run %]
 
 The recursive resolver is more complex because it must cache and coordinate with authoritative servers.
 A `CacheEntry` wraps a record with its expiry time:
 
-<div data-inc="recursive_resolver.py" data-filter="inc=cacheentry"></div>
+[%inc recursive_resolver.py mark=cacheentry %]
 
 The resolver's constructor sets up the cache and tracks hit and miss statistics:
 
-<div data-inc="recursive_resolver.py" data-filter="inc=resolver_init"></div>
+[%inc recursive_resolver.py mark=resolver_init %]
 
 The `run` loop checks the cache before forwarding to an authoritative server.
 On a cache miss it calls `_resolve_recursive`, then stores the results:
 
-<div data-inc="recursive_resolver.py" data-filter="inc=resolver_run"></div>
+[%inc recursive_resolver.py mark=resolver_run %]
 
 `_check_cache` filters out expired entries and returns `None` on a complete miss.
 `_cache_records` stores records with expiry times computed from each record's TTL:
 
-<div data-inc="recursive_resolver.py" data-filter="inc=resolver_cache"></div>
+[%inc recursive_resolver.py mark=resolver_cache %]
 
 `_resolve_recursive` finds the authoritative server
 whose zone suffix matches the query domain most specifically,
 then forwards the query and returns the response.
 Each cached entry has an expiration time based on the record's TTL.
 
-<div data-inc="recursive_resolver.py" data-filter="inc=resolver_resolve"></div>
+[%inc recursive_resolver.py mark=resolver_resolve %]
 
 Our simplified resolver directly contacts authoritative servers.
 Real DNS resolvers walk the hierarchy starting from root servers,
@@ -113,11 +113,11 @@ cache aggressively, query only when necessary.
 
 The DNS client wraps a response queue and a query counter:
 
-<div data-inc="dns_client.py" data-filter="inc=client_init"></div>
+[%inc dns_client.py mark=client_init %]
 
 `lookup` constructs a query, sends it to the resolver, and prints the response:
 
-<div data-inc="dns_client.py" data-filter="inc=client_lookup"></div>
+[%inc dns_client.py mark=client_lookup %]
 
 Clients send queries to recursive resolvers and wait for responses.
 In real systems,
@@ -127,11 +127,11 @@ clients also cache locally and can query multiple resolvers for redundancy.
 
 Let's see DNS resolution in action by building a client:
 
-<div data-inc="ex_usage.py" data-filter="inc=testclient"></div>
+[%inc ex_usage.py mark=testclient %]
 
 We can now create the overall simulation:
 
-<div data-inc="ex_usage.py" data-filter="inc=simulate"></div>
+[%inc ex_usage.py mark=simulate %]
 
 The output shows that the first lookup of `www.example.com` is a cache miss,
 necessitating a query to the authoritative server,
@@ -142,7 +142,7 @@ In other words,
 the first user to look up a domain pays the full resolution cost,
 but subsequent users (or repeated lookups) get instant responses.
 
-<div data-inc="ex_usage.txt"></div>
+[%inc ex_usage.out %]
 
 `ex_hierarchy.py` is a more comples simulation
 that demonstrate several key properties of DNS,
@@ -163,7 +163,7 @@ Our implementation simplifies several DNS complexities:
     DNS records can have multiple values (like multiple A records for load balancing).
     Real clients choose among them.
 
--   [Negative caching](g:negative-cache):
+-   [%g negative-cache "Negative caching" %]:
     DNS caches "this domain doesn't exist" responses to avoid repeatedly querying for non-existent domains.
 
 -   Anycast:
@@ -178,4 +178,4 @@ The most important omission in our implementation,
 however,
 is security.
 DNS was designed without it;
-[DNSSEC](g:dnssec) adds cryptographic signatures to prevent spoofing and cache poisoning.
+[%g dnssec "DNSSEC" %] adds cryptographic signatures to prevent spoofing and cache poisoning.

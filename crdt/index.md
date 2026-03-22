@@ -8,7 +8,7 @@ Similarly,
 when one person edits a document offline and the reconnects,
 their changes are merged into the online version.
 Traditional approaches to managing this require locking or complex transformations.
-[Conflict-Free Replicated Data Types](g:crdt) (CRDTs),
+[%g crdt "Conflict-Free Replicated Data Types" %] (CRDTs),
 on the other hand,
 are designed so that concurrent updates on different replicas
 can always be merged automatically without conflicts,
@@ -16,7 +16,7 @@ and all replicas eventually converge to the same state.
 Updates are always accepted immediately,
 and no locking or consensus protocol is needed.
 
-CRDTs guarantee [strong eventual consistency](g:strong-eventual-consistency),
+CRDTs guarantee [%g strong-eventual-consistency "strong eventual consistency" %],
 which means three things:
 
 1.  Eventual delivery: every update reaches every replica eventually.
@@ -24,28 +24,28 @@ which means three things:
 1.  No conflicts: concurrent updates can always be merged automatically.
 
 The insight that CRDTs rely on
-is that some operations are [commutative](g:commutativity) and [associative](g:associativity).
+is that some operations are [%g commutativity "commutative" %] and [%g associativity "associative" %].
 The first property means that order doesn't matter,
 i.e., that A+B = B+A.
 The second means that group doesnt' matter,
 so (A+B)+C = A+(B+C).
 If the merge operation for the data type has these properties,
 replicas can receive updates in any order and still converge to the same state.
-Some approaches to implementing CRDTs also require operations to be [idempotent](g:idempotence),
+Some approaches to implementing CRDTs also require operations to be [%g idempotence "idempotent" %],
 which means that the operation can be applied any number of times
 with the same cumulative effect
 (just as zero can be added to a number over and over).
 
 There are two approaches to building CRDTs.
-In a [state-based CRDT](g:state-based-crdt),
+In a [%g state-based-crdt "state-based CRDT" %],
 replicas send their entire state and merge those states.
 State-based CRDTs are simpler to reason about,
 but have higher network cost because the entire state must be sent for each operation.
 They also require merge operations to be commutative, associate, *and* idempotent.
 
 In contrast,
-the replicas in [operation-based CRDTs](g:op-based-crdt) send each other *changes* in state
-(sometimes called [deltas](g:delta)).
+the replicas in [%g op-based-crdt "operation-based CRDTs" %] send each other *changes* in state
+(sometimes called [%g delta "deltas" %]).
 This reduces the network overhead,
 but requires exactly-once delivery of operations.
 Those operations must commute,
@@ -55,21 +55,21 @@ We will implement both approaches to understand the trade-offs.
 ## Last-Write-Wins Register {: #dxdx-lww}
 
 Let's start with the simplest CRDT:
-a [last-write-wins register](g:lww-register).
+a [%g lww-register "last-write-wins register" %].
 For values that should be overwritten (like a user's profile name),
 we can use timestamps to determine which write wins.
 
-<div data-inc="lwwregister.py" data-filter="inc=lww"></div>
+[%inc lwwregister.py mark=lww %]
 
 To see how this works,
 consider three replicas that randomly choose color values to share with peers:
 
-<div data-inc="ex_lwwregister.py" data-filter="inc=replica"></div>
+[%inc ex_lwwregister.py mark=replica %]
 
 If we run three replicas for 10 timesteps,
 the output is:
 
-<div data-inc="ex_lwwregister.txt"></div>
+[%inc ex_lwwregister.out %]
 
 Chiti's final value is different because all three replicas wrote at time 10:
 Ahmed and Baemi set "red", while Chiti set "green".
@@ -92,11 +92,11 @@ such as a shared to-do list where two people add items at the same time.
 
 ## Counters {: #crdt-counter}
 
-Another CRDT is a [grow-only counter](g:grow-only-counter)
+Another CRDT is a [%g grow-only-counter "grow-only counter" %]
 whose value can only increase.
 Each replica maintains a vector of counters, one per replica:
 
-<div data-inc="gcounter.py" data-filter="inc=gcounter"></div>
+[%inc gcounter.py mark=gcounter %]
 
 The G-Counter works by having each replica only modify its own entry in the vector.
 When merging,
@@ -155,12 +155,12 @@ No increments are lost, regardless of sync order or timing.
 
 A grow-only counter is limited.
 What if we want to be able to decrement the value?
-A [positive-negative counter](g:pn-counter), or PN-Counter, uses two G-Counters:
+A [%g pn-counter "positive-negative counter" %], or PN-Counter, uses two G-Counters:
 one for increments, one for decrements.
 This works because increments and decrements are tracked separately.
 Each remains monotonically increasing, so the G-Counter merge properties still apply.
 
-<div data-inc="pncounter.py" data-filter="inc=pncounter"></div>
+[%inc pncounter.py mark=pncounter %]
 
 ## Observed-Remove Set (OR-Set) {: #crdt-orset}
 
@@ -172,12 +172,12 @@ The key idea is that an element is in the set if there is an add tag that hasn't
 This gives "add-wins" semantics:
 concurrent add and remove operations result in the element being present.
 
-<div data-inc="orset.py" data-filter="inc=orset"></div>
+[%inc orset.py mark=orset %]
 
 This example shows an OR-set in operation:
 
-<div data-inc="ex_orset.py" data-filter="inc=replica"></div>
-<div data-inc="ex_orset.txt"></div>
+[%inc ex_orset.py mark=replica %]
+[%inc ex_orset.out %]
 
 ## Operation-Based CRDTs {: #crdt-op}
 
@@ -186,11 +186,11 @@ operation-based CRDTs send just the operations.
 Let's implement an operation-based counter
 by defining a dataclass to represent a single operation:
 
-<div data-inc="opbased_counter.py" data-filter="inc=op"></div>
+[%inc opbased_counter.py mark=op %]
 
 and then a class to use it:
 
-<div data-inc="opbased_counter.py" data-filter="inc=counter"></div>
+[%inc opbased_counter.py mark=counter %]
 
 Operation-based CRDTs require reliable broadcast
 to ensure that every operation reaches every replica exactly once.
@@ -200,7 +200,7 @@ which is what the `applied_ops` member of the `OpBasedCounter` class above does.
 
 The `Replica` class below exercises this counter:
 
-<div data-inc="ex_opbased_counter.py" data-filter="inc=replica"></div>
+[%inc ex_opbased_counter.py mark=replica %]
 
 Unlike the state-based examples that sync by merging full state,
 each replica creates an increment or decrement operation with a unique ID,
@@ -212,45 +212,48 @@ As the output below shows,
 all replicas converge to the same value
 because every operation is delivered to every replica exactly once:
 
-<div data-inc="ex_opbased_counter.txt"></div>
+[%inc ex_opbased_counter.out %]
 
 ## Network Partition Simulation {: #crdt-partition}
 
-A [network partition](g:network-partition) happens
+A [%g network-partition "network partition" %] happens
 when nodes in a distributed system temporarily can't communicate,
 which causes them to form isolated groups.
 As a result,
 messages sent from one part of the system may not reach another,
 effectively splitting the system into disconnected segments.
 
-One of CRDTs' key benefits is [partition tolerance](g:partition-tolerance).
+One of CRDTs' key benefits is [%g partition-tolerance "partition tolerance" %].
 Let's simulate a network partition using the `GCounter` class defined earlier.
 First,
 we create a simple dataclass to represent peers in the network:
 
-<div data-inc="ex_partition.py" data-filter="inc=peer"></div>
+[%inc ex_partition.py mark=peer %]
 
 Next,
 we define a `Replica` process that repeatedly tries to synchronize
 with a randomly-selected peer:
 
-<div data-inc="ex_partition.py" data-filter="inc=replica"></div>
+[%inc ex_partition.py mark=replica %]
 
 We then create a partition controller that creates and heals a partition:
 
-<div data-inc="ex_partition.py" data-filter="inc=partition"></div>
+[%inc ex_partition.py mark=partition %]
 
 Finally,
 we create three replicas and force a break in the network
 at a particular time and for a particular duration:
 
-<div data-inc="ex_partition.py" data-filter="inc=sim"></div>
+[%inc ex_partition.py mark=sim %]
 
 As the output shows,
 the counter recovers from the partitioning:
 
-<div data-inc="ex_partition.txt"></div>
+[%inc ex_partition.out %]
 
+<section class="exercises" markdown="1">
 ## Exercises {: #crdt-exercises}
 
 FIXME: add exercises.
+
+</section>

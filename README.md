@@ -1,15 +1,12 @@
 # Distributed Systems Design by Example
 
-A sequel to *[Software Design by Example][sdxpy]*.
-
 ## Learner Persona
 
 FIXME
 
-## Lessons
+## Chapters
 
 <div id="lessons" markdown="1">
-
 1.  [Introduction](@/intro/): what this training does and doesn't cover.
 1.  [MapReduce](@/mapreduce/): processing large datasets.
 1.  [A Publish-Subscribe Message Queue](@/msgque/): loosely-coupled communication.
@@ -25,13 +22,11 @@ FIXME
 1.  [DNS](@/dns/): how sites find each other.
 1.  [NTP](@/ntp/): what time is it?
 1.  [Conclusion](@/finale/): looking back and next steps.
-
 </div>
 
 ## Appendices
 
 <div id="appendices" markdown="1">
-
 1.  [License](@/license/)
 1.  [Code of Conduct](@/conduct/)
 1.  [Contributing](@/contributing/)
@@ -39,12 +34,11 @@ FIXME
 1.  [Glossary](@/glossary/)
 1.  [A Bit of Theory](@/theory/)
 1.  [Discrete Event Simulation with asimpy](@/asimpy/)
-
 </div>
 
 ## Acknowledgments {: #acknowledgments}
 
-*[Greg Wilson][wilson-greg]* is a programmer, author, and educator based in Toronto, Canada.
+[Greg Wilson][wilson-greg] is a programmer, author, and educator based in Toronto, Canada.
 He was the co-founder and first Executive Director of Software Carpentry
 and received ACM SIGSOFT's Influential Educator Award in 2020.
 
