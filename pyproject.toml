@@ -16,7 +16,7 @@ classifiers = [
 ]
 dependencies = [
     "asimpy>=0.10.0",
-    "mccole>=2.0.0",
+    "mccole>=2.3.0",
     "ruff>=0.1.0",
 ]
 

@@ -4,25 +4,31 @@
 
 FIXME
 
+<div class="row" markdown="1">
+<div class="col-6" markdown="1">
+
 ## Chapters
 
 <div id="lessons" markdown="1">
-1.  [Introduction](@/intro/): what this training does and doesn't cover.
-1.  [MapReduce](@/mapreduce/): processing large datasets.
-1.  [A Publish-Subscribe Message Queue](@/msgque/): loosely-coupled communication.
-1.  [A Work-Stealing Scheduler](@/worksteal/): sharing work more efficiently.
-1.  [Distributed Tracing](@/tracing/): keeping track of what's happening.
-1.  [Conflict-Free Replicated Data Types](@/crdt/): scalable data structures.
-1.  [OAuth](@/oauth/): distributed authentication.
-1.  [Distributed Locks](@/distlock/): coordinating access to shared resources.
-1.  [BitTorrent](@/torrent/): sharing data at scale.
-1.  [Eventually Consistent Key-Value Store](@/eventual/): when availability matters more than consistency.
-1.  [The Saga Pattern](@/saga/): distributed transactions with compensations.
-1.  [TCP](@/tcp/): reliable communication.
-1.  [DNS](@/dns/): how sites find each other.
-1.  [NTP](@/ntp/): what time is it?
-1.  [Conclusion](@/finale/): looking back and next steps.
+1.  [Introduction](@/intro/)
+1.  [MapReduce](@/mapreduce/)
+1.  [A Publish-Subscribe Message Queue](@/msgque/)
+1.  [A Work-Stealing Scheduler](@/worksteal/)
+1.  [Distributed Tracing](@/tracing/)
+1.  [Conflict-Free Replicated Data Types](@/crdt/)
+1.  [OAuth](@/oauth/)
+1.  [Distributed Locks](@/distlock/)
+1.  [BitTorrent](@/torrent/)
+1.  [Eventually Consistent Key-Value Store](@/eventual/)
+1.  [The Saga Pattern](@/saga/)
+1.  [TCP](@/tcp/)
+1.  [DNS](@/dns/)
+1.  [NTP](@/ntp/)
+1.  [Conclusion](@/finale/)
 </div>
+
+</div>
+<div class="col-6" markdown="1">
 
 ## Appendices
 
@@ -34,6 +40,9 @@ FIXME
 1.  [Glossary](@/glossary/)
 1.  [A Bit of Theory](@/theory/)
 1.  [Discrete Event Simulation with asimpy](@/asimpy/)
+</div>
+
+</div>
 </div>
 
 ## Acknowledgments {: #acknowledgments}
