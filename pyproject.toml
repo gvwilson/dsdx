@@ -48,3 +48,6 @@ skips = [
     "__pycache__/**",
     "uv.lock",
 ]
+
+[tool.uv.sources]
+mccole = { path = "../mccole", editable = true }

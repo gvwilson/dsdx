@@ -65,7 +65,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "asimpy", specifier = ">=0.10.0" },
-    { name = "mccole", specifier = ">=2.3.0" },
+    { name = "mccole", editable = "../mccole" },
     { name = "ruff", specifier = ">=0.1.0" },
 ]
 
@@ -156,8 +156,7 @@ wheels = [
 
 [[package]]
 name = "mccole"
-version = "2.5.0"
-source = { registry = "https://pypi.org/simple" }
+source = { editable = "../mccole" }
 dependencies = [
     { name = "beautifulsoup4" },
     { name = "html5validator" },
@@ -167,9 +166,28 @@ dependencies = [
     { name = "python-frontmatter" },
     { name = "tomli" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f6/3d/38fa5c5e3e7f69ba371d5156f6dd9d51f18eeb7d734ce6f0c54a5949ad0d/mccole-2.5.0.tar.gz", hash = "sha256:db31b9849fb0e6465c7b4fc63703530b2b1e2a4242b9192ab8f9fbf7ac181074", size = 731532, upload-time = "2026-03-29T12:25:02.941Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/93/32/9af0a390fcfd622cb7c31b50f239638f14f4265456b4bd7b67878c64e2fc/mccole-2.5.0-py3-none-any.whl", hash = "sha256:de84a493857a223503f3441b7ae6fa845441b12f4ff9b26daed15a38cee22bdd", size = 76462, upload-time = "2026-03-29T12:25:01.919Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "beautifulsoup4", specifier = ">=4.14.3" },
+    { name = "html5validator", specifier = ">=0.4.2" },
+    { name = "jinja2", specifier = ">=3.1.6" },
+    { name = "markdown", specifier = ">=3.10" },
+    { name = "pygments", specifier = ">=2.19.2" },
+    { name = "python-frontmatter", specifier = ">=1.1.0" },
+    { name = "tomli", specifier = ">=2.3.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "build", specifier = ">=1.3.0" },
+    { name = "markdown-include", specifier = ">=0.8.1" },
+    { name = "mkdocs", specifier = ">=1.6.1" },
+    { name = "mkdocs-material", specifier = ">=9.7.1" },
+    { name = "mkdocstrings", extras = ["python"], specifier = ">=1.0.0" },
+    { name = "pytest", specifier = ">=9.0.2" },
+    { name = "ruff", specifier = ">=0.14.10" },
+    { name = "twine", specifier = ">=6.2.0" },
 ]
 
 [[package]]
