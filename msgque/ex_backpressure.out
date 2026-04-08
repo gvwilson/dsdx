@@ -3,8 +3,8 @@
 [0.5] FastPublisher published: Message 2 from FastPublisher (interval: 0.5s)
 [1.0] FastPublisher published: Message 3 from FastPublisher (interval: 0.5s)
 [1.5] FastPublisher published: Message 4 from FastPublisher (interval: 0.5s)
-[2.0] FastPublisher published: Message 5 from FastPublisher (interval: 0.5s)
 [2.0] SlowSubscriber received from 'events': Message 2 from FastPublisher (latency: 1.5)
+[2.0] FastPublisher published: Message 5 from FastPublisher (interval: 0.5s)
 [2.5] FastPublisher published: Message 6 from FastPublisher (interval: 0.5s)
 [3.0] FastPublisher published: Message 7 from FastPublisher (interval: 0.5s)
 [3.5] FastPublisher BACKPRESSURE - slowing to 1.0s interval

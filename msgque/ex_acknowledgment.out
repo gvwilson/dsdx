@@ -33,7 +33,7 @@
 [25.0] Processor: FAILED to process Message 9 from OrderService (will be redelivered)
 
 === Acknowledgment Statistics ===
-Messages published: 0
+Messages published: 9
 Messages received: 12
 Messages acknowledged: 6
 Pending acks: 3

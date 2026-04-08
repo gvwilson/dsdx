@@ -30,6 +30,7 @@ class AckBroker(MessageBroker):
     # mccole: publish
     async def publish(self, message: Message):
         """Publish with acknowledgment."""
+        self.num_published += 1
         queues = self.topics.get(message.topic, [])
 
         for queue in queues:
@@ -57,7 +58,7 @@ class AckBroker(MessageBroker):
         if ack_id in self.pending_acks:
             msg, _, queue = self.pending_acks[ack_id]
             if queue._getters:
-                evt = queue._getters.pop(0)
+                evt = queue._getters.popleft()
                 evt.succeed(msg)
             else:
                 queue._items.append(msg)

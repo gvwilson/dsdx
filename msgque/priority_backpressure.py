@@ -1,6 +1,6 @@
 import bisect
 from dataclasses import dataclass
-from asimpy import Environment, Queue
+from asimpy import Environment, Queue, PriorityQueue
 from collections import defaultdict
 
 from message import Message
@@ -33,7 +33,7 @@ class PriorityBackpressureBroker:
 
     def subscribe(self, topic: str) -> Queue:
         """Create a bounded priority queue for a subscriber to a topic."""
-        queue = Queue(self.env, max_capacity=self.max_queue_size, priority=True)
+        queue = PriorityQueue(self.env, capacity=self.max_queue_size)
         self.topics[topic].append(queue)
         return queue
 
@@ -56,7 +56,7 @@ class PriorityBackpressureBroker:
                 # Displace lowest priority item if new message has higher priority
                 bisect.insort(queue._items, message)
                 kept = message is not queue._items[-1]
-                queue._items = queue._items[: queue._max_capacity]
+                queue._items = queue._items[: queue._capacity]
                 if kept:
                     self.num_delivered += 1
                 else:

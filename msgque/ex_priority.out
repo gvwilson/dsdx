@@ -4,8 +4,8 @@
 [0.6] EventGen: Published priority 0 Msg3
 [0.9] EventGen: Published priority 8 Msg4
 [1.2] EventGen: Published priority 6 Msg5
-[1.5] EventGen: Published priority 7 Msg6
 [1.5] Processor: Processing priority 0 Msg3
+[1.5] EventGen: Published priority 7 Msg6
 [1.8] EventGen: Published priority 5 Msg7
 [2.1] EventGen: Published priority 1 Msg8
 [2.4] EventGen: Published priority 4 Msg9
@@ -34,8 +34,8 @@
 [8.1] EventGen: Published priority 3 Msg28
 [8.4] EventGen: Published priority 7 Msg29
 [8.7] EventGen: Published priority 1 Msg30
-[9.0] EventGen: Published priority 6 Msg31
 [9.0] Processor: Processing priority 1 Msg30
+[9.0] EventGen: Published priority 6 Msg31
 [9.3] EventGen: Published priority 6 Msg32
 [9.6] EventGen: Published priority 9 Msg33
 [9.9] EventGen: Published priority 7 Msg34

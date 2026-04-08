@@ -21,7 +21,7 @@ class BackpressureBroker:
     # mccole: subscribe
     def subscribe(self, topic: str) -> Queue:
         """Create a bounded queue for a subscriber to a topic."""
-        queue = Queue(self.env, max_capacity=self.max_queue_size)
+        queue = Queue(self.env, capacity=self.max_queue_size)
         self.topics[topic].append(queue)
         return queue
 
