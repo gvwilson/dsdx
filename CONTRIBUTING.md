@@ -10,7 +10,7 @@ All contributors must abide by our Code of Conduct.
 -   Create a virtual environment by running `uv venv` in the root directory.
 -   Activate it by running `source .venv/bin/activate` in your shell.
 -   Install dependencies by running `uv sync`.
--   Run `task --list` on its own to see a list of common commands.
+-   Run `make` on its own to see a list of common commands.
 
 ## FAQ
 
