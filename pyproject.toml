@@ -16,7 +16,7 @@ classifiers = [
 ]
 dependencies = [
     "asimpy>=0.10.0",
-    "mccole>=2.3.0",
+    "mccole>=2.9.0",
     "ruff>=0.1.0",
 ]
 
@@ -48,6 +48,3 @@ skips = [
     "__pycache__/**",
     "uv.lock",
 ]
-
-[tool.uv.sources]
-mccole = { path = "../mccole", editable = true }
