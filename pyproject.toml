@@ -16,8 +16,8 @@ classifiers = [
 ]
 dependencies = [
     "asimpy>=0.10.0",
-    "mccole>=2.9.0",
-    "ruff>=0.1.0",
+    "mccole>=2.13.1",
+    "ruff>=0.15.8",
 ]
 
 [project.urls]
