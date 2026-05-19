@@ -156,7 +156,7 @@ wheels = [
 
 [[package]]
 name = "mccole"
-version = "4.5.1"
+version = "4.5.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "beautifulsoup4" },
@@ -167,9 +167,9 @@ dependencies = [
     { name = "python-frontmatter" },
     { name = "tomli" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b6/c6/ec4b47819a92efa02cfaebb10383a00bb5d0cdd840694e87c357640ca985/mccole-4.5.1.tar.gz", hash = "sha256:d63b01915521a0c1cfce8bc9d0833524840212fbe1abd56a4387eb047632ad9b", size = 708705, upload-time = "2026-05-17T11:21:11.005Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e0/46/00e877aa620b58960bc2ba84e37b8a895e01d53c6ed7032995bc5cc5ac38/mccole-4.5.2.tar.gz", hash = "sha256:d9ba7864e6698d7057a67996ab6b4bd0b531693d59f6f4e63a891524d658605a", size = 708728, upload-time = "2026-05-19T19:22:53.183Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ef/01/62f0803a6e5c8c68e0cc9c5eef87f52ece50640588b58633f974c4b2b1ff/mccole-4.5.1-py3-none-any.whl", hash = "sha256:ac1cbade69dd07cd1ad737cc65b728f1df4f00466d48a22470d4f13cb6071001", size = 42627, upload-time = "2026-05-17T11:21:09.886Z" },
+    { url = "https://files.pythonhosted.org/packages/d9/11/1b38bd494be4a4ae4f59bd98ba0223ab1ea8d669698c157342ddf9b98394/mccole-4.5.2-py3-none-any.whl", hash = "sha256:3a25dbd4a7ee4d1161de0dad7cec50ccaed5c7e35b4de349b21efb91bafae696", size = 42650, upload-time = "2026-05-19T19:22:52.072Z" },
 ]
 
 [[package]]
@@ -201,14 +201,14 @@ wheels = [
 
 [[package]]
 name = "python-frontmatter"
-version = "1.1.0"
+version = "1.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pyyaml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/96/de/910fa208120314a12f9a88ea63e03707261692af782c99283f1a2c8a5e6f/python-frontmatter-1.1.0.tar.gz", hash = "sha256:7118d2bd56af9149625745c58c9b51fb67e8d1294a0c76796dafdc72c36e5f6d", size = 16256, upload-time = "2024-01-16T18:50:04.052Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e9/21/88aefb4f1de6661b5a003175e21e4a5ad94f5e52b2abf4170a11883c7d81/python_frontmatter-1.2.0.tar.gz", hash = "sha256:5b26ccd3cb85af77feb11d83b922c7bb5aeccb0c9d3fb236b938c600b6322984", size = 16890, upload-time = "2026-05-17T23:42:05.493Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/49/87/3c8da047b3ec5f99511d1b4d7a5bc72d4b98751c7e78492d14dc736319c5/python_frontmatter-1.1.0-py3-none-any.whl", hash = "sha256:335465556358d9d0e6c98bbeb69b1c969f2a4a21360587b9873bfc3b213407c1", size = 9834, upload-time = "2024-01-16T18:50:00.911Z" },
+    { url = "https://files.pythonhosted.org/packages/1c/b1/ec12e3e746234006b77dec69d53878253b1da09dbb55fa3cb456083d9069/python_frontmatter-1.2.0-py3-none-any.whl", hash = "sha256:e1ee1d4300450a2f84e778eb4f70edf573da6cd7d463801066f05edc4e819c78", size = 10396, upload-time = "2026-05-17T23:42:04.637Z" },
 ]
 
 [[package]]

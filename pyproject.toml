@@ -37,6 +37,7 @@ dev = [
 ]
 
 [tool.mccole]
+brand = "dsdx"
 title = "Distributed Systems Design by Example"
 repo = "https://github.com/gvwilson/dsdx"
 skips = [
