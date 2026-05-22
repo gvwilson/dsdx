@@ -53,6 +53,16 @@
 </nav>
 <main id="main-content">
 <h1>Domain Name System (DNS)</h1>
+<div class="objectives">
+<ul>
+<li>Trace the full resolution walk from root name server to TLD to authoritative server
+    for a domain name.</li>
+<li>Explain how TTL-based caching reduces DNS query load
+    and why negative caching (for non-existent domains) matters.</li>
+<li>Describe how cache poisoning works and what DNSSEC does to prevent it.</li>
+<li>Explain the difference between a recursive resolver and an iterative resolver.</li>
+</ul>
+</div>
 <p>Every time you visit a website or send an email,
 your computer translates a human-readable name like "www.example.com"
 into an IP addresses like "192.0.2.1".
@@ -101,7 +111,7 @@ old values persist in caches until their TTL expires.</p>
 Our implementation will focus on A and CNAME records, which handle most web traffic.
 As in previous chapters,
 we start by enumerating the different types of records:</p>
-<div data-inc="dns_message.py" data-mark="recordtype"><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">RecordType</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<div data-inc="dns_message.py" data-mark="recordtype"><span aria-label="Source: dns/dns_message.py" class="inc-path" role="img" tabindex="0" title="dns/dns_message.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">RecordType</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""DNS record types."""</span>
 
     <span class="n">A</span> <span class="o">=</span> <span class="s2">"A"</span>  <span class="c1"># IPv4 address</span>
@@ -112,7 +122,7 @@ we start by enumerating the different types of records:</p>
 </code></pre></div>
 </div>
 <p>and then define a DNS resource record:</p>
-<div data-inc="dns_message.py" data-mark="dnsrecord"><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="nd">@dataclass</span>
+<div data-inc="dns_message.py" data-mark="dnsrecord"><span aria-label="Source: dns/dns_message.py" class="inc-path" role="img" tabindex="0" title="dns/dns_message.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">DNSRecord</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""A DNS resource record."""</span>
 
@@ -123,7 +133,7 @@ we start by enumerating the different types of records:</p>
 </code></pre></div>
 </div>
 <p>We also need to define the structure of queries and responses:</p>
-<div data-inc="dns_message.py" data-mark="dnsquery"><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="nd">@dataclass</span>
+<div data-inc="dns_message.py" data-mark="dnsquery"><span aria-label="Source: dns/dns_message.py" class="inc-path" role="img" tabindex="0" title="dns/dns_message.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">DNSQuery</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""A DNS query message."""</span>
 
@@ -132,7 +142,7 @@ we start by enumerating the different types of records:</p>
     <span class="n">record_type</span><span class="p">:</span> <span class="n">RecordType</span>
 </code></pre></div>
 </div>
-<div data-inc="dns_message.py" data-mark="dnsresponse"><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="nd">@dataclass</span>
+<div data-inc="dns_message.py" data-mark="dnsresponse"><span aria-label="Source: dns/dns_message.py" class="inc-path" role="img" tabindex="0" title="dns/dns_message.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">DNSResponse</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""A DNS response message."""</span>
 
@@ -147,7 +157,7 @@ we start by enumerating the different types of records:</p>
 <p>The next step is to create the authoritative DNS server.
 The constructor registers the zone this server is authoritative for and creates its record store.
 <code>add_record</code> lets callers populate the zone before the simulation starts:</p>
-<div data-inc="authoritative_server.py" data-mark="auth_init"><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">AuthoritativeDNSServer</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
+<div data-inc="authoritative_server.py" data-mark="auth_init"><span aria-label="Source: dns/authoritative_server.py" class="inc-path" role="img" tabindex="0" title="dns/authoritative_server.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">AuthoritativeDNSServer</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""An authoritative DNS server for a specific zone."""</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">zone</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">request_queue</span><span class="p">:</span> <span class="n">Queue</span><span class="p">):</span>
@@ -169,7 +179,7 @@ The constructor registers the zone this server is authoritative for and creates 
 If the query domain ends in this server's zone,
 the server looks up the record directly;
 it also follows CNAME chains to resolve aliases to their target A records:</p>
-<div data-inc="authoritative_server.py" data-mark="auth_run"><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div data-inc="authoritative_server.py" data-mark="auth_run"><span aria-label="Source: dns/authoritative_server.py" class="inc-path" role="img" tabindex="0" title="dns/authoritative_server.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">"""Process DNS queries."""</span>
         <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
             <span class="c1"># Wait for a query</span>
@@ -224,7 +234,7 @@ it also follows CNAME chains to resolve aliases to their target A records:</p>
 </div>
 <p>The recursive resolver is more complex because it must cache and coordinate with authoritative servers.
 A <code>CacheEntry</code> wraps a record with its expiry time:</p>
-<div data-inc="recursive_resolver.py" data-mark="cacheentry"><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">CacheEntry</span><span class="p">:</span>
+<div data-inc="recursive_resolver.py" data-mark="cacheentry"><span aria-label="Source: dns/recursive_resolver.py" class="inc-path" role="img" tabindex="0" title="dns/recursive_resolver.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">CacheEntry</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""A cached DNS record with expiration time."""</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">record</span><span class="p">:</span> <span class="n">DNSRecord</span><span class="p">,</span> <span class="n">expire_time</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
@@ -237,7 +247,7 @@ A <code>CacheEntry</code> wraps a record with its expiry time:</p>
 </code></pre></div>
 </div>
 <p>The resolver's constructor sets up the cache and tracks hit and miss statistics:</p>
-<div data-inc="recursive_resolver.py" data-mark="resolver_init"><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">RecursiveDNSResolver</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
+<div data-inc="recursive_resolver.py" data-mark="resolver_init"><span aria-label="Source: dns/recursive_resolver.py" class="inc-path" role="img" tabindex="0" title="dns/recursive_resolver.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">RecursiveDNSResolver</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""A recursive DNS resolver with caching."""</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">init</span><span class="p">(</span>
@@ -258,7 +268,7 @@ A <code>CacheEntry</code> wraps a record with its expiry time:</p>
 </div>
 <p>The <code>run</code> loop checks the cache before forwarding to an authoritative server.
 On a cache miss it calls <code>_resolve_recursive</code>, then stores the results:</p>
-<div data-inc="recursive_resolver.py" data-mark="resolver_run"><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div data-inc="recursive_resolver.py" data-mark="resolver_run"><span aria-label="Source: dns/recursive_resolver.py" class="inc-path" role="img" tabindex="0" title="dns/recursive_resolver.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">"""Process client DNS queries."""</span>
         <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
             <span class="c1"># Wait for a query from a client</span>
@@ -300,7 +310,7 @@ On a cache miss it calls <code>_resolve_recursive</code>, then stores the result
 </div>
 <p><code>_check_cache</code> filters out expired entries and returns <code>None</code> on a complete miss.
 <code>_cache_records</code> stores records with expiry times computed from each record's TTL:</p>
-<div data-inc="recursive_resolver.py" data-mark="resolver_cache"><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">def</span><span class="w"> </span><span class="nf">_check_cache</span><span class="p">(</span>
+<div data-inc="recursive_resolver.py" data-mark="resolver_cache"><span aria-label="Source: dns/recursive_resolver.py" class="inc-path" role="img" tabindex="0" title="dns/recursive_resolver.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">def</span><span class="w"> </span><span class="nf">_check_cache</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">record_type</span><span class="p">:</span> <span class="n">RecordType</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="n">DNSRecord</span><span class="p">]]:</span>
 <span class="w">        </span><span class="sd">"""Check if we have a cached record."""</span>
@@ -335,7 +345,7 @@ On a cache miss it calls <code>_resolve_recursive</code>, then stores the result
 whose zone suffix matches the query domain most specifically,
 then forwards the query and returns the response.
 Each cached entry has an expiration time based on the record's TTL.</p>
-<div data-inc="recursive_resolver.py" data-mark="resolver_resolve"><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_resolve_recursive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">:</span> <span class="n">DNSQuery</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DNSResponse</span><span class="p">:</span>
+<div data-inc="recursive_resolver.py" data-mark="resolver_resolve"><span aria-label="Source: dns/recursive_resolver.py" class="inc-path" role="img" tabindex="0" title="dns/recursive_resolver.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_resolve_recursive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">:</span> <span class="n">DNSQuery</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DNSResponse</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Recursively resolve a query by querying authoritative servers."""</span>
         <span class="c1"># Find the appropriate authoritative server</span>
         <span class="c1"># In real DNS, this involves walking the DNS hierarchy</span>
@@ -372,7 +382,7 @@ but the principle is the same:
 cache aggressively, query only when necessary.</p>
 <h2 id="dns-client">Clients</h2>
 <p>The DNS client wraps a response queue and a query counter:</p>
-<div data-inc="dns_client.py" data-mark="client_init"><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DNSClient</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
+<div data-inc="dns_client.py" data-mark="client_init"><span aria-label="Source: dns/dns_client.py" class="inc-path" role="img" tabindex="0" title="dns/dns_client.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DNSClient</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""A DNS client that performs lookups."""</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">resolver_queue</span><span class="p">:</span> <span class="n">Queue</span><span class="p">):</span>
@@ -388,7 +398,7 @@ cache aggressively, query only when necessary.</p>
 </code></pre></div>
 </div>
 <p><code>lookup</code> constructs a query, sends it to the resolver, and prints the response:</p>
-<div data-inc="dns_client.py" data-mark="client_lookup"><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">lookup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">record_type</span><span class="p">:</span> <span class="n">RecordType</span> <span class="o">=</span> <span class="n">RecordType</span><span class="o">.</span><span class="n">A</span><span class="p">):</span>
+<div data-inc="dns_client.py" data-mark="client_lookup"><span aria-label="Source: dns/dns_client.py" class="inc-path" role="img" tabindex="0" title="dns/dns_client.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">lookup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">record_type</span><span class="p">:</span> <span class="n">RecordType</span> <span class="o">=</span> <span class="n">RecordType</span><span class="o">.</span><span class="n">A</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">"""Perform a DNS lookup."""</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">query_counter</span> <span class="o">+=</span> <span class="mi">1</span>
         <span class="n">query</span> <span class="o">=</span> <span class="n">DNSQuery</span><span class="p">(</span>
@@ -423,7 +433,7 @@ In real systems,
 clients also cache locally and can query multiple resolvers for redundancy.</p>
 <h2>Running a Simulation</h2>
 <p>Let's see DNS resolution in action by building a client:</p>
-<div data-inc="ex_usage.py" data-mark="testclient"><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">TestClient</span><span class="p">(</span><span class="n">DNSClient</span><span class="p">):</span>
+<div data-inc="ex_usage.py" data-mark="testclient"><span aria-label="Source: dns/ex_usage.py" class="inc-path" role="img" tabindex="0" title="dns/ex_usage.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">TestClient</span><span class="p">(</span><span class="n">DNSClient</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""Test client that performs a series of lookups."""</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -445,7 +455,7 @@ clients also cache locally and can query multiple resolvers for redundancy.</p>
 </code></pre></div>
 </div>
 <p>We can now create the overall simulation:</p>
-<div data-inc="ex_usage.py" data-mark="simulate"><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+<div data-inc="ex_usage.py" data-mark="simulate"><span aria-label="Source: dns/ex_usage.py" class="inc-path" role="img" tabindex="0" title="dns/ex_usage.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">"""Simulate DNS resolution with caching."""</span>
     <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
 
@@ -511,7 +521,7 @@ and the cache hit rate improves as the simulation runs.
 In other words,
 the first user to look up a domain pays the full resolution cost,
 but subsequent users (or repeated lookups) get instant responses.</p>
-<div data-inc="ex_usage.out"><div class="codehilite"><pre class="" tabindex="0"><span></span><code>[0.000] client1.local: Looking up www.example.com (A)
+<div data-inc="ex_usage.out"><span aria-label="Source: dns/ex_usage.out" class="inc-path" role="img" tabindex="0" title="dns/ex_usage.out">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code>[0.000] client1.local: Looking up www.example.com (A)
 [0.000] resolver.isp.net: Received query for www.example.com (A)
 [0.000] resolver.isp.net: Cache MISS for www.example.com
 [0.000] ns1.example.com: Query for www.example.com (A) -&gt; 0 record(s)
@@ -543,19 +553,163 @@ Resolver:
   Cache hit rate: 0.0%
 </code></pre></div>
 </div>
-<p><code>ex_hierarchy.py</code> is a more comples simulation
-that demonstrate several key properties of DNS,
-including the use of ultiple resolvers,
+<p><code>ex_hierarchy.py</code> is a more complex simulation
+that demonstrates several key properties of DNS,
+including the use of multiple resolvers,
 load distribution,
 and the effectiveness of multiple caches.
 Its output shows how the cache hit rate increases over time as more domains get cached.</p>
+<h2 id="dns-hier">Hierarchical Resolution</h2>
+<p>Our simplified resolver jumps directly to the best-matching authoritative server.
+Real DNS resolvers cannot do this: they only know about the root servers at startup
+and must walk the delegation chain to find the authoritative server for a new domain.</p>
+<p><code>HierarchicalResolver</code> implements this:</p>
+<div data-inc="hierarchical_resolver.py" data-mark="hier_init"><span aria-label="Source: dns/hierarchical_resolver.py" class="inc-path" role="img" tabindex="0" title="dns/hierarchical_resolver.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">HierarchicalResolver</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Recursive resolver that walks the hierarchy from root servers.</span>
+
+<span class="sd">    The resolver starts every query at a root server.</span>
+<span class="sd">    When a server returns an NS referral (the zone is delegated to another</span>
+<span class="sd">    server), the resolver follows the referral.  This continues until it</span>
+<span class="sd">    reaches an authoritative server that can answer the query directly.</span>
+<span class="sd">    """</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">init</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">request_queue</span><span class="p">:</span> <span class="n">Queue</span><span class="p">,</span>
+        <span class="n">root_server_queue</span><span class="p">:</span> <span class="n">Queue</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">request_queue</span> <span class="o">=</span> <span class="n">request_queue</span>
+        <span class="c1"># The single entry point into the hierarchy.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">root_server_queue</span> <span class="o">=</span> <span class="n">root_server_queue</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">response_queue</span><span class="p">:</span> <span class="n">Queue</span> <span class="o">=</span> <span class="n">Queue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_env</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">RecordType</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="n">CacheEntry</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">queries_received</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache_hits</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache_misses</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">referrals_followed</span> <span class="o">=</span> <span class="mi">0</span>
+</code></pre></div>
+</div>
+<p>Its <code>_walk_hierarchy</code> method starts at the root server,
+follows NS referrals until it reaches an authoritative server, and returns the answer:</p>
+<div data-inc="hierarchical_resolver.py" data-mark="hier_walk"><span aria-label="Source: dns/hierarchical_resolver.py" class="inc-path" role="img" tabindex="0" title="dns/hierarchical_resolver.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_walk_hierarchy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">:</span> <span class="n">DNSQuery</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DNSResponse</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Walk the DNS delegation hierarchy from root to authoritative server.</span>
+
+<span class="sd">        The algorithm:</span>
+<span class="sd">        1. Start at the root server.</span>
+<span class="sd">        2. Send the query.</span>
+<span class="sd">        3. If the response is authoritative, return it.</span>
+<span class="sd">        4. If the response is a referral (NS records), follow the first referral</span>
+<span class="sd">           by looking up the referred zone's server and repeating from step 2.</span>
+<span class="sd">        5. If neither, return a not-found response.</span>
+
+<span class="sd">        In real DNS the resolver must also resolve the IP address of the</span>
+<span class="sd">        referred name server (a glue record lookup) if it is not already known.</span>
+<span class="sd">        We simulate this by giving each server a reference to the next layer.</span>
+<span class="sd">        """</span>
+        <span class="n">current_server_queue</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">root_server_queue</span>
+        <span class="n">labels</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">domain</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"."</span><span class="p">)</span>
+
+        <span class="c1"># Walk up to len(labels) levels of delegation.</span>
+        <span class="k">for</span> <span class="n">depth</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="k">await</span> <span class="n">current_server_queue</span><span class="o">.</span><span class="n">put</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">response_queue</span><span class="p">,</span> <span class="n">query</span><span class="p">))</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">response_queue</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="n">response</span><span class="o">.</span><span class="n">authoritative</span><span class="p">:</span>
+                <span class="c1"># We reached an authoritative server.</span>
+                <span class="k">return</span> <span class="n">response</span>
+
+            <span class="c1"># Look for NS referrals in the response.</span>
+            <span class="n">ns_records</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">records</span> <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">record_type</span> <span class="o">==</span> <span class="n">RecordType</span><span class="o">.</span><span class="n">NS</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">ns_records</span><span class="p">:</span>
+                <span class="c1"># The NS record's value is the queue for the delegated zone server.</span>
+                <span class="c1"># In real DNS, NS values are hostnames that must be resolved</span>
+                <span class="c1"># to IP addresses; here we use the hostname as a direct key</span>
+                <span class="c1"># into the resolver's known server map.</span>
+                <span class="n">referred_zone</span> <span class="o">=</span> <span class="n">ns_records</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+                <span class="n">next_queue</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_known_servers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">referred_zone</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">next_queue</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: "</span>
+                        <span class="sa">f</span><span class="s2">"Unknown referral target </span><span class="si">{</span><span class="n">referred_zone</span><span class="si">}</span><span class="s2">"</span>
+                    <span class="p">)</span>
+                    <span class="k">break</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">referrals_followed</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">current_server_queue</span> <span class="o">=</span> <span class="n">next_queue</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: "</span>
+                    <span class="sa">f</span><span class="s2">"Following referral to </span><span class="si">{</span><span class="n">referred_zone</span><span class="si">}</span><span class="s2"> (depth </span><span class="si">{</span><span class="n">depth</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">)"</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># No answer, no referral.</span>
+                <span class="k">break</span>
+
+        <span class="k">return</span> <span class="n">DNSResponse</span><span class="p">(</span>
+            <span class="n">query_id</span><span class="o">=</span><span class="n">query</span><span class="o">.</span><span class="n">query_id</span><span class="p">,</span>
+            <span class="n">domain</span><span class="o">=</span><span class="n">query</span><span class="o">.</span><span class="n">domain</span><span class="p">,</span>
+            <span class="n">record_type</span><span class="o">=</span><span class="n">query</span><span class="o">.</span><span class="n">record_type</span><span class="p">,</span>
+            <span class="n">records</span><span class="o">=</span><span class="p">[],</span>
+            <span class="n">authoritative</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">register_server</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">zone</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">server_queue</span><span class="p">:</span> <span class="n">Queue</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Register the queue for a delegated zone's server."""</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"_known_servers"</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_known_servers</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Queue</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_known_servers</span><span class="p">[</span><span class="n">zone</span><span class="p">]</span> <span class="o">=</span> <span class="n">server_queue</span>
+</code></pre></div>
+</div>
+<p>The first query for <code>www.example.com</code> requires two round-trips—one to the root, one to <code>.com</code>—
+before reaching <code>example.com</code>'s authoritative server.
+All subsequent queries for anything in <code>example.com</code> can skip this walk because the answers are cached.</p>
+<h2 id="dns-negative">Negative Caching</h2>
+<p>The <code>HierarchicalResolver</code> also caches negative responses (NXDOMAIN):</p>
+<div data-inc="hierarchical_resolver.py" data-mark="hier_negative"><span aria-label="Source: dns/hierarchical_resolver.py" class="inc-path" role="img" tabindex="0" title="dns/hierarchical_resolver.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">def</span><span class="w"> </span><span class="nf">_cache_negative</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">domain</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">record_type</span><span class="p">:</span> <span class="n">RecordType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Cache a negative response (NXDOMAIN) to reduce redundant queries.</span>
+
+<span class="sd">        Negative caching prevents the resolver from querying the authoritative</span>
+<span class="sd">        server again for a domain that does not exist.  The TTL for negative</span>
+<span class="sd">        responses is typically found in the SOA record of the authoritative</span>
+<span class="sd">        zone; we use a fixed value here.</span>
+<span class="sd">        """</span>
+        <span class="n">NEGATIVE_TTL</span> <span class="o">=</span> <span class="mi">300</span>  <span class="c1"># 5 minutes, a common default</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">record_type</span><span class="p">)</span>
+        <span class="c1"># Store an empty entry list with an expiry.  _check_cache returns None</span>
+        <span class="c1"># for an empty list, so we store a sentinel entry instead.</span>
+        <span class="n">sentinel</span> <span class="o">=</span> <span class="n">DNSRecord</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">domain</span><span class="p">,</span>
+            <span class="n">value</span><span class="o">=</span><span class="s2">"NXDOMAIN"</span><span class="p">,</span>
+            <span class="n">record_type</span><span class="o">=</span><span class="n">record_type</span><span class="p">,</span>
+            <span class="n">ttl</span><span class="o">=</span><span class="n">NEGATIVE_TTL</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">entry</span> <span class="o">=</span> <span class="n">CacheEntry</span><span class="p">(</span><span class="n">sentinel</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">now</span> <span class="o">+</span> <span class="n">NEGATIVE_TTL</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">entry</span><span class="p">]</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: "</span>
+            <span class="sa">f</span><span class="s2">"Cached NXDOMAIN for </span><span class="si">{</span><span class="n">domain</span><span class="si">}</span><span class="s2"> (TTL </span><span class="si">{</span><span class="n">NEGATIVE_TTL</span><span class="si">}</span><span class="s2">s)"</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_is_negative_entry</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">record</span><span class="p">:</span> <span class="n">DNSRecord</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Return True if this is a negative-cache sentinel record."""</span>
+        <span class="k">return</span> <span class="n">record</span><span class="o">.</span><span class="n">value</span> <span class="o">==</span> <span class="s2">"NXDOMAIN"</span>
+</code></pre></div>
+</div>
+<p>Without negative caching, every lookup of a non-existent domain (a typo, a deleted record)
+results in a full hierarchy walk—one round-trip to the root, one to the TLD, one to the authoritative server.
+Caching "this domain does not exist" for the TTL specified in the zone's SOA record
+means that repeated lookups of the same nonexistent name are answered locally.
+This is especially important for protecting authoritative servers from DNS amplification attacks,
+where an attacker repeatedly queries nonexistent subdomains to exhaust server resources.</p>
 <h2>Real-World Considerations</h2>
 <p>Our implementation simplifies several DNS complexities:</p>
 <ul>
 <li>
 <p>Hierarchy walking:
-    Real resolvers start at root servers and work down the hierarchy.
-    We skip directly to authoritative servers for clarity.</p>
+    The <code>HierarchicalResolver</code> above implements the basic walk.
+    Real resolvers also handle glue records (A records for name servers embedded in referral responses)
+    so they don't need a second hierarchy walk just to resolve the name server's IP address.</p>
 </li>
 <li>
 <p>Multiple answers:
@@ -582,6 +736,44 @@ however,
 is security.
 DNS was designed without it;
 <a class="gl-ref" href="../glossary/#dnssec">DNSSEC</a> adds cryptographic signatures to prevent spoofing and cache poisoning.</p>
+<section aria-label="Exercises" class="exercises">
+<h2 id="dns-exercises">Exercises</h2>
+<ol>
+<li>
+<p>In the basic simulation, look up the same domain three times in a row.
+    On which lookups is the cache hit?
+    Now look up a domain whose TTL is 1 second, wait 2 seconds, and look it up again.
+    What happens?
+    (Hint: check how <code>CacheEntry.is_expired</code> uses the simulation clock.)</p>
+</li>
+<li>
+<p>The simplified resolver matches the <em>longest</em> zone suffix.
+    For example, <code>api.example.com</code> would match <code>example.com</code> before <code>.com</code>.
+    Construct a test with zones <code>"."</code>, <code>"com"</code>, and <code>"example.com"</code>.
+    Query for <code>api.example.com</code> and trace which server handles it and why.</p>
+</li>
+<li>
+<p>Negative caching stores a sentinel record with value <code>"NXDOMAIN"</code>.
+    Simulate a sequence where a domain genuinely does not exist,
+    then (after the negative TTL expires) a record is added for it and queried again.
+    Does the hierarchical resolver eventually return the correct answer?
+    What would happen if the negative TTL were longer than the positive TTL?</p>
+</li>
+<li>
+<p>Real DNS resolvers query multiple root servers for redundancy and choose the fastest.
+    Modify <code>HierarchicalResolver</code> to accept a list of root server queues
+    and send the query to the first one that responds.
+    (Starter: use <code>asimpy.FirstOf</code> to wait on multiple queues.)</p>
+</li>
+<li>
+<p>DNS cache poisoning is an attack where a malicious responder injects a false record
+    into a resolver's cache.
+    In our simulation, what would happen if an attacker intercepted the resolver's query
+    and replied with a forged IP address before the real authoritative server responded?
+    What does DNSSEC do to prevent this, and at what cost?</p>
+</li>
+</ol>
+</section>
 </main>
 <footer aria-label="Page navigation">
 <div class="row">

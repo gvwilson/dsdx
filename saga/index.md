@@ -1,5 +1,18 @@
 # The Saga Pattern
 
+<div class="objectives" markdown="1">
+
+-   Explain why traditional ACID transactions cannot span multiple independent services
+    and what problem sagas solve.
+-   Describe the difference between orchestration and choreography,
+    and give a scenario where each approach is more suitable.
+-   State the rule for compensation ordering (reverse of forward steps)
+    and explain why violating it can leave the system in an inconsistent state.
+-   Identify what happens if the orchestrator crashes mid-saga
+    and explain what a production implementation must do to survive this failure.
+
+</div>
+
 When you book a flight, reserve a hotel, and rent a car in a single transaction,
 what happens if the car rental fails but the flight and hotel are already reserved?
 In a monolithic system you would roll back the entire transaction,
@@ -114,9 +127,97 @@ undoing each completed step:
 
 [%inc saga_orchestrator.py mark=orch_compensate %]
 
+The compensation pass runs in reverse order—this is not an implementation detail but a logical requirement.
+If the forward steps are A → B → C and C fails,
+we must compensate B before compensating A.
+Compensating A first could leave the system in a state where A's compensation
+removes a resource that B's compensation still needs to reference.
+Reversing the order ensures that each compensation sees the same state
+as the step that originally succeeded.
+
 ## Basic Orchestration Example
 
 Let's see orchestration in action:
 
 [%inc ex_saga.py mark=orchestratedexample %]
 [%inc ex_saga.out %]
+
+## Choreography-Based Saga {: #saga-choreo}
+
+In orchestration, the orchestrator is a single point of failure:
+if it crashes mid-saga, the saga is stuck.
+Choreography avoids this by removing the central coordinator entirely.
+Instead, each service listens for events and decides what to do next.
+
+The event bus routes events to subscribers:
+
+[%inc saga_choreography.py mark=event_bus %]
+
+Each service subscribes to the events it cares about.
+The flight service listens for `"booking_started"` and `"hotel_compensated"`:
+
+[%inc saga_choreography.py mark=choreographed_flight %]
+
+The hotel service listens for `"flight_booked"` (forward step)
+and `"car_booking_failed"` (trigger for its own compensation):
+
+[%inc saga_choreography.py mark=choreographed_hotel %]
+
+The car service is the last step,
+so it triggers the compensation chain when it fails:
+
+[%inc saga_choreography.py mark=choreographed_car %]
+
+The compensation chain in choreography works the same way as in orchestration—reverse order—
+but the ordering is *implicit* in the event subscriptions rather than explicit in a loop.
+The car service publishes `"car_booking_failed"`,
+which the hotel service receives and handles before publishing `"hotel_compensated"`,
+which the flight service receives and handles last.
+This event chain enforces the required reverse order automatically.
+
+**Orchestrator crash and persistence:**
+In choreography, there is no orchestrator to crash,
+but each service can still crash while processing an event.
+A service must acknowledge the event only after it has successfully committed its local transaction.
+If it crashes before acknowledging, the event bus redelivers the event (at-least-once semantics),
+and the service's handler must be idempotent.
+In orchestration, the orchestrator must persist the saga state (which steps have completed)
+to durable storage before driving each step forward.
+Without persistence, an orchestrator crash means starting the saga over from scratch,
+which could double-book resources.
+Real orchestrators (like AWS Step Functions or Temporal) store the saga state in a database
+and replay from the last checkpoint on restart.
+
+<section class="exercises" markdown="1">
+## Exercises {: #saga-exercises}
+
+1.  Run the orchestration example several times (without fixing the random seed).
+    In what fraction of runs does the car booking fail?
+    When it fails, does the hotel always get compensated?
+    Add a counter to verify that the number of successful compensations equals
+    the number of completed forward steps whenever the saga fails.
+
+2.  The compensation order is reversed in `execute_compensation`.
+    Change it to run in forward order (same order as the forward steps)
+    and run a scenario where the hotel booking succeeds but car booking fails.
+    What state are the flight and hotel bookings in after compensation?
+    Why is this wrong?
+
+3.  The car rental service has a 30% failure rate.
+    This means roughly 30% of sagas will fail at the car step.
+    Add a retry to the orchestrator: if the car booking fails, try it again once before compensating.
+    Does this change the success rate?
+    What problem could retrying introduce if the service is not idempotent?
+
+4.  In choreography, the compensation chain is enforced by event subscriptions.
+    Draw the event flow for a successful booking (all three services succeed)
+    and a failed booking (car fails after hotel and flight succeed).
+    Label each event and arrow.
+    What events are published in each scenario?
+
+5.  Suppose the hotel service crashes after booking the hotel but before publishing `"hotel_booked"`.
+    What happens in the choreography scenario?
+    Will the flight ever be compensated?
+    What mechanism would be needed to detect and recover from this situation?
+
+</section>

@@ -1,0 +1,286 @@
+# Critique
+
+2026-05-22
+
+## General
+
+**Inconsistent code presentation.** Some lessons include all code inline (e.g., `distlock`, `tcp`); others reference external files without showing them (e.g., `mapreduce` references `coordinator.py` without quoting it). Students should not need to hunt through the repository to follow the narrative.
+
+**Real-world bridges are weak.** Most lessons end with a "real-world considerations" section that lists features without explaining them. Phrases like "in production you would add X" appear repeatedly without any indication of how X works or where to learn more.
+
+**Magic numbers and fixed parameters.** Simulation parameters (failure rates, queue capacities, timeout values) appear without explanation of why those values were chosen or how changing them affects behavior.
+
+**No learning objectives.** No lesson states what a student should be able to do after completing it. Without objectives, students cannot gauge their own understanding, and the author cannot verify that the content achieves its goals.
+
+---
+
+## intro
+
+The file contains only a `FIXME` comment. This is the first thing a student sees. It should explain:
+
+- What distributed systems are and why they are difficult
+- What the course covers and in what order
+- Prerequisites (Python, basic networking, comfort with concurrency)
+- How to install and run the `asimpy` simulation framework
+- How to read the lessons (concepts first, then code, then exercises)
+- A brief map of which lessons depend on which
+
+Without this, students arrive at the first substantive lesson without context.
+
+---
+
+## theory
+
+This lesson is purely conceptual with no code, which is appropriate for foundational material. However, the concepts are presented abstractly without concrete examples.
+
+The happens-before relation is well-defined (three rules, transitivity), but no worked example shows two processes exchanging messages and a student tracing which events precede which. A small diagram or table would help enormously.
+
+Logical clocks and vector clocks are explained correctly, but the connection to the G-Counter in the CRDT lesson is only mentioned in passing. A sentence pointing forward ("you will implement vector clocks in the `eventual` lesson") would help students see the purpose.
+
+The consistency model spectrum is useful, but the descriptions remain abstract. "Linearizability means operations appear instantaneous" is true but hard to internalize. A concrete scenario showing two clients reading and writing and asking "which models permit this outcome?" would make the distinctions tangible.
+
+The CAP theorem section presents the classic framing without noting that it has been criticized as an oversimplification (notably by Kleppmann in "Critique of the CAP Theorem"). Students who later encounter PACELC or nuanced discussions of consistency will be confused by the lesson's certainty.
+
+Byzantine fault tolerance is never mentioned. Crash failures (processes stop) and Byzantine failures (processes lie) are fundamentally different, and many distributed systems topics only make sense if students know this distinction exists.
+
+The lesson has no exercises. Good exercises here would ask students to classify a scenario by consistency model, or trace vector clock values through a specific execution.
+
+---
+
+## crdt
+
+The lesson opens with an excellent motivating example (collaborative document editing) and the progression from Last-Write-Wins Register through G-Counter, PN-Counter, OR-Set, and operation-based CRDTs is well-constructed.
+
+The LWW Register analysis (lines explaining why Chiti's value is surprising) is good but incomplete. The explanation says replicas "converge" without spelling out what all three replicas wrote simultaneously and why only one value survives. A table showing each replica's state before and after merge would clarify this.
+
+The OR-Set is introduced quickly. The "add-wins" semantics — what happens when a concurrent add and remove touch the same element — are the whole point of this data structure, but the lesson does not show a concrete conflict and trace through the merge.
+
+The operation-based counter section states that exactly-once delivery is required but does not explain how the simulation achieves it (or whether it actually does). Students will wonder whether the simulation is cheating.
+
+The network partition example at the end is the most important demonstration in the lesson and is handled well. However, it appears after the OR-Set and operation-based counter without signposting that "all of the above converge even under partition" is the key claim.
+
+There is a typo: "converg" should be "converge."
+
+No exercises.
+
+---
+
+## eventual
+
+The lesson correctly places the CAP theorem at the start as motivation, though it largely repeats the same ground covered in `theory` without explicitly saying so. A sentence noting "we introduced the CAP theorem in `theory`; here we implement a system that sits on the AP side" would avoid redundancy and reinforce learning.
+
+The vector clock implementation is correct but the merge operation — taking the element-wise maximum — is not explained as an operation. The code shows it; the prose does not describe it. Students unfamiliar with vector clocks from `theory` will not understand why max is the right choice.
+
+The causality preservation in the write handler ("merging the client's causal context") is mentioned but not unpacked. What does the coordinator do with the client's vector clock? This is the crux of the whole lesson and it deserves more explanation.
+
+The partition simulation references `ex_partition.py` but shows no output. The lesson should include the output and explain what it demonstrates.
+
+Hinted handoff and gossip protocols are mentioned as real-world features but not implemented or explained. If they are important enough to mention, they deserve at least a paragraph explaining the mechanism.
+
+There is a typo: "recplica" should be "replica."
+
+The question of version explosion — what happens to the conflict state when many concurrent writes occur — is never raised. This is a known pathology of vector-clock-based systems and students should know it exists.
+
+No exercises.
+
+---
+
+## distlock
+
+The split-brain scenario (the numbered steps showing two clients both believing they hold the lock) is excellent pedagogy — concrete, sequential, and clearly motivating the problem.
+
+The fencing token mechanism is well-explained, but the token generation is not. Where do monotonically increasing integers come from in a distributed system? If the lock server itself generates them, what happens when the lock server restarts? This is not a minor detail.
+
+The majority-based replicated lock manager appears at the end but the WHY of majority is not explained. Why does a majority (not all, not one) guarantee correctness? The lesson says it is linked to Raft and Paxos but a student who has not read those papers is left with a black box.
+
+What happens if a client crashes after acquiring a lock but before releasing it? The lesson mentions lease expiration as the solution, but the interaction between leases and fencing tokens is not shown. Can a stale client with an old fencing token extend its lease?
+
+The "real-world considerations" section lists session management, fair queuing, lock hierarchies, performance, and monitoring without explaining any of them. This reads as a table of contents for a chapter that was not written.
+
+No exercises.
+
+---
+
+## dns
+
+The hierarchical structure of DNS is clearly explained and the resolution walk (root → TLD → authoritative) is well-described.
+
+The simplified resolver skips the hierarchy walk and goes directly to the authoritative server. This is acknowledged in the text but the pedagogical consequence is not addressed: students learn the concept but see code that does not implement it. This is a significant gap in a lesson about how DNS works.
+
+Negative caching — caching NXDOMAIN responses — is described but not implemented, even though it is important for performance and students just learned about caching.
+
+DNSSEC is mentioned only briefly under security. DNS spoofing (cache poisoning) is a historically significant attack; a lesson on DNS should explain the threat model even if it does not fully implement the defense.
+
+The TTL expiration logic in the cache is not clearly tied to any simulation clock. How does the code know that a cache entry has expired? This is implementation-critical and the lesson glosses over it.
+
+There are two typos: "comples" should be "complex" and "ultiple" should be "multiple."
+
+No exercises.
+
+---
+
+## tcp
+
+This is one of the stronger lessons. The five mechanisms (sequence numbers, acknowledgments, retransmission, cumulative ACKs, sliding window) are clearly enumerated at the start and each is implemented. The three-way handshake explanation is correct and the unreliable network simulator is a good teaching device.
+
+Congestion control is the most important feature of TCP in practice and it is absent. The lesson mentions AIMD in the "real-world considerations" section but does not implement it or explain why it exists. A student who completes this lesson and then reads about TCP congestion collapse in 1986 will not understand why it happened or why AIMD fixes it.
+
+Flow control (the receive window) is not implemented. The lesson uses window size to limit in-flight segments but this is congestion window, not receive window. The distinction matters.
+
+Fast retransmit (retransmit on three duplicate ACKs without waiting for a timeout) is mentioned briefly but not explained. This is standard in every TCP implementation and reduces tail latency significantly.
+
+The retransmission timeout value is never specified. Is it fixed? Adaptive (like the real Karn/Jacobson algorithm)? The lesson should say.
+
+The "real-world considerations" section is the best such section in the course — it gives a real sense of TCP's complexity — but it would benefit from a sentence explaining that all of these additions required years of incremental RFC work.
+
+No exercises.
+
+---
+
+## ntp
+
+The four-timestamp algorithm is correctly presented with formulas for offset and round-trip delay, which is better than most introductory treatments.
+
+The lesson does not explain why the formulas are correct. A student who traces through the arithmetic carefully will find it reasonable, but there is an assumption buried here: that network delay is symmetric (same in both directions). This assumption is mentioned nowhere and it is the key limitation of NTP. Students should know when the algorithm breaks down.
+
+The stratum hierarchy is well-explained but the error accumulation across strata is asserted ("each stratum adds a few milliseconds of error") without explanation. Why does error accumulate? What limits stratum 3 synchronization to milliseconds rather than microseconds?
+
+Leap seconds are not addressed. For a lesson about time synchronization, this is a meaningful omission — leap seconds have caused real outages and students should know they exist.
+
+Byzantine clocks (a server sending completely wrong time) are not addressed. Real NTP clients use multiple servers and statistical filtering for exactly this reason.
+
+The "real-world considerations" section is thin: it says NTP is widely deployed but does not explain PTP (Precision Time Protocol), GPS-disciplined clocks, or Google's smeared leap second. These are things students will encounter immediately if they work on distributed systems.
+
+No exercises.
+
+---
+
+## mapreduce
+
+The motivating example (word count) is the canonical MapReduce example and is well-presented. The five phases (input splitting, mapping, shuffling, reducing, output) are clearly enumerated.
+
+The coordinator implementation is not shown inline — only referenced as an external file. The coordinator is the most complex and interesting part of the system (it handles fault tolerance, speculative execution, and task scheduling) and its absence from the lesson narrative is a significant gap.
+
+The hash reproducibility problem (PYTHONHASHSEED causing non-deterministic intermediate key assignment) is a valid point, but the section devoted to it is disproportionately long. It reads as a debugging incident report rather than a lesson concept.
+
+The combiner is introduced and named but not explained. A combiner is a local reduce step that runs on the mapper's output before it goes over the network; knowing that it "reduces network traffic" does not help a student understand when to use one or how to write one.
+
+Real-world limitations (no support for iteration, awkward for graph algorithms) are listed but not explained. Why is MapReduce bad at iterative algorithms? The lesson should say.
+
+There is a typo: "he programmer" should be "the programmer."
+
+No exercises.
+
+---
+
+## msgque
+
+The pub-sub motivation (decoupling producer and consumer) is clearly stated and the progression from simple broker through backpressure, priority queuing, acknowledgments, and consumer groups is the best-structured progression in the course.
+
+The backpressure section is the strongest part of this lesson. The three strategies (drop messages, block publishers, signal publishers) are explained with genuine trade-off analysis, and the exponential backoff implementation with feedback loop reasoning is well-done.
+
+The acknowledgment mechanism is correct but the "at-least-once" framing deserves more discussion. What does a subscriber do if it processes a message and then crashes before acknowledging? The lesson shows the mechanism but not the failure mode it solves or the idempotence requirement it creates for subscribers.
+
+Consumer groups are described as using round-robin assignment. Real systems (Kafka) use partition assignment, which has different properties. The lesson should note this simplification and explain why partition-based assignment matters for ordering guarantees.
+
+Exactly-once delivery is not addressed. This is notoriously hard in distributed systems and students will encounter it immediately in practice.
+
+There are two typos: "sendss" should be "sends" and a missing word around "being."
+
+No exercises.
+
+---
+
+## saga
+
+The travel booking example is a good motivator for distributed transactions. The explanation of why traditional ACID transactions do not work across service boundaries is correct.
+
+The lesson describes both orchestration and choreography but only implements orchestration. Choreography is arguably simpler to reason about in small systems and more common in event-driven architectures. Showing both would let students compare the approaches directly.
+
+The compensation ordering — compensations run in reverse order of the forward steps — is shown in the code but not stated as a rule in the prose. This is a non-obvious requirement that students should be told explicitly.
+
+The code shows services with hard-coded failure rates but does not demonstrate that compensation is actually idempotent. A service could fail partway through a compensation step. The lesson claims idempotence matters but the implementation does not enforce it.
+
+What happens if the orchestrator crashes while a saga is in progress? This is the fundamental challenge of the saga pattern and it is not addressed. In production, the saga state must be persisted to a durable store. The lesson should at minimum raise this question.
+
+Compensation failures — what happens if a compensating transaction also fails — are not addressed. This is a hard problem (the lesson could acknowledge it is hard without solving it).
+
+No exercises.
+
+---
+
+## oauth
+
+The problem statement is clear: allow limited third-party access without sharing passwords. The four-party model (resource owner, client, authorization server, resource server) is correctly identified.
+
+There is a `FIXME: diagram` placeholder for the authorization code flow. This diagram is load-bearing: the six-step flow is described in prose but the interactions between four parties are confusing without a visual. This should be the highest priority addition to this lesson.
+
+PKCE (Proof Key for Code Exchange) is mentioned for mobile apps but not explained. The name "proof key" suggests the mechanism but the code verifier and code challenge are not described. Students who encounter PKCE in practice will not know what it is.
+
+The lesson shows only the authorization code flow. The client credentials flow (machine-to-machine, no human involved) is common in microservices and would take only a few lines to demonstrate.
+
+Token storage security — where a client stores access tokens and refresh tokens safely — is not addressed. This is a significant practical concern and a common source of vulnerabilities.
+
+The "real-world considerations" section lists CSRF attacks, token theft, scope creep, and token revocation without explaining the threat model behind each. A sentence per item explaining what the attacker does would make this section useful rather than decorative.
+
+No exercises.
+
+---
+
+## torrent
+
+The swarming principle ("more demand creates more supply") is the key insight of BitTorrent and is stated well at the start.
+
+Rarest-first piece selection is mentioned and the code includes a reference to it, but the implementation does not show how piece rarity is calculated or tracked. This is the core algorithmic contribution of BitTorrent and deserves a proper implementation.
+
+The tit-for-tat choking algorithm is described in the prose but the code does not implement peer rating or the unchoking rotation. The lesson describes a sophisticated incentive mechanism but demonstrates a much simpler one; the gap is not acknowledged.
+
+Piece verification using SHA-1 hashes is mentioned in the protocol steps and in the implementation notes but not shown in the code. In a lesson that emphasizes integrity, not showing the verification is an omission.
+
+Magnet links are mentioned without explanation. A student who knows BitTorrent only from this lesson would not understand how a magnet link works or why it does not require a tracker.
+
+DHT is mentioned as a real-world alternative to centralized trackers. The lesson correctly identifies it but does not explain how distributed hash tables work even at a high level. A forward reference to a potential DHT lesson, or a brief explanation, would help.
+
+No exercises.
+
+---
+
+## tracing
+
+The motivation — in a microservices system, a slow request may involve dozens of services and you need to reconstruct the causal chain — is clearly stated.
+
+The decorator pattern is the best-explained concept in the lesson. Showing the verbose 15-line version and then the 2-line decorated version makes the value of the abstraction immediately obvious. This is good pedagogy.
+
+The trace context uses a module-level variable, which is not thread-safe. The lesson acknowledges this and says production code would use thread-local storage or `contextvars`, but does not explain what either of these is. A student who copies this code into a multi-threaded service will have a bug.
+
+Sampling — not recording every request — is described as an important concept but not implemented. This is not a minor omission: without sampling, tracing overhead can be prohibitive and students will not understand why production tracers are configured with sampling rates.
+
+Context propagation over the network (passing trace IDs in HTTP headers) is described conceptually but not implemented. All the code shows in-process tracing; the cross-service case, which is the whole motivation, is never demonstrated.
+
+No real-world tracing tools are named (Jaeger, Zipkin, OpenTelemetry, Datadog). The lesson mentions OpenTelemetry briefly but does not explain what it provides or how to use it. Students finishing this lesson will not know what to install when they need distributed tracing.
+
+No exercises.
+
+---
+
+## worksteal
+
+The problem motivation is clear and concise: a centralized task queue becomes a bottleneck when many workers compete for tasks. The work-stealing solution and the asymmetry insight (owners push and pop from one end; thieves steal from the other) are explained well.
+
+The deque implementation uses a Python list, which is noted as a simplification. What is not explained is why a real work-stealing deque (like the Chase-Lev deque) is non-trivial: it requires careful memory ordering and atomic operations to ensure that a thief and an owner do not simultaneously access the same slot. This is the technically hardest part of work-stealing and glossing over it leaves students with a false sense that the implementation is simple.
+
+Atomic operations and memory visibility are never mentioned. In a real parallel system, work-stealing requires careful synchronization. The simulation sidesteps this with event-driven execution, but students should know the simulation is hiding this complexity.
+
+Parent-child task relationships are tracked (a `parent` field in the Task structure) but never used for anything. If this field exists, it should be used — for example, to wait for all children before marking a parent complete.
+
+The livelock prevention strategies (limit search attempts, exponential backoff) are mentioned in one sentence. Livelock in work-stealing — all workers simultaneously trying to steal from each other — is a real problem and deserves more than a sentence.
+
+The comparison of random versus adaptive victim selection is useful, but the lesson does not show the actual performance difference. The granularity analysis shows output numbers but does not explain what they mean.
+
+No exercises.
+
+---
+
+## finale
+
+The file contains only a `FIXME` comment. The conclusion should synthesize the course: what are the recurring themes (the tension between consistency and availability, the role of timeouts and retries, the difficulty of exactly-once semantics, the value of simulation for understanding distributed behavior)? It should also acknowledge what was not covered (consensus algorithms, leader election, distributed databases, geo-replication) and suggest further reading. Without this, the course simply stops.

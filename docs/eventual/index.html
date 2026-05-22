@@ -53,6 +53,18 @@
 </nav>
 <main id="main-content">
 <h1>Eventually Consistent Key-Value Store</h1>
+<div class="objectives">
+<ul>
+<li>Explain what "availability" and "partition tolerance" mean
+    and why a system must choose between them and strong consistency during a network partition.</li>
+<li>Describe how vector clocks track causal history
+    and explain why taking the element-wise maximum is the correct merge operation.</li>
+<li>Trace how a write's causal context is propagated
+    so that a replica can detect out-of-order updates.</li>
+<li>Identify the version explosion problem
+    and explain when it becomes a practical concern.</li>
+</ul>
+</div>
 <p>The <a href="https://en.wikipedia.org/wiki/CAP_theorem">CAP theorem</a> says that when network partitions occur,
 systems must choose between consistency (all nodes see the same data)
 and availability (the system continues to respond).
@@ -90,7 +102,7 @@ or use a simple rule like "last write wins" based on timestamps.</p>
 <h2 id="eventual-clock">Vector Clocks for Causality</h2>
 <p>Vector clocks let us determine if two events are causally related or concurrent.
 Each replica maintains a counter for every replica in the system:</p>
-<div data-inc="vector_clock.py" data-mark="vectorclock"><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="nd">@dataclass</span>
+<div data-inc="vector_clock.py" data-mark="vectorclock"><span aria-label="Source: eventual/vector_clock.py" class="inc-path" role="img" tabindex="0" title="eventual/vector_clock.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">VectorClock</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Vector clock for tracking causality."""</span>
 
@@ -137,15 +149,20 @@ Each replica maintains a counter for every replica in the system:</p>
 <p>In our implementation,
 the vector clock is a dictionary mapping replica IDs to integers.
 When a replica performs an operation, it increments its own counter.
-When a recplica receives a message with a vector clock,
-it takes the maximum of each component with its local clock.
-The key insight is that if clock A happens-before clock B,
-then A's event causally precedes B's.
-If neither happens-before the other,
+When a replica receives a message with a vector clock,
+it takes the element-wise maximum of each component with its local clock.
+"Element-wise maximum" means: for each replica ID in either clock,
+the merged result uses the larger of the two values.
+For example, merging <code>{"R1": 3, "R2": 1}</code> with <code>{"R1": 2, "R2": 4, "R3": 1}</code>
+produces <code>{"R1": 3, "R2": 4, "R3": 1}</code>.</p>
+<p>The key insight is that if clock A happens-before clock B,
+then every entry in A's vector is ≤ the corresponding entry in B's vector,
+with at least one entry strictly less.
+If neither vector dominates the other element-wise,
 the events are concurrent.</p>
 <h2 id="eventual-version">Versioned Values</h2>
 <p>Each value is stored with its vector clock:</p>
-<div data-inc="versioned_value.py" data-mark="versionedvalue"><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="nd">@dataclass</span>
+<div data-inc="versioned_value.py" data-mark="versionedvalue"><span aria-label="Source: eventual/versioned_value.py" class="inc-path" role="img" tabindex="0" title="eventual/versioned_value.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">VersionedValue</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""A value with its vector clock."""</span>
 
@@ -160,7 +177,7 @@ If a new version happens-after an existing version,
 we can discard the old one.</p>
 <h2 id="eventual-storage">Storage Node</h2>
 <p>Storage nodes can exchange four kinds of messages:</p>
-<div data-inc="messages.py" data-mark="messages"><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="nd">@dataclass</span>
+<div data-inc="messages.py" data-mark="messages"><span aria-label="Source: eventual/messages.py" class="inc-path" role="img" tabindex="0" title="eventual/messages.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ReadRequest</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Request to read a key."""</span>
 
@@ -199,7 +216,7 @@ we can discard the old one.</p>
 </div>
 <p>Each storage node maintains a replica of a subset of keys.
 The node's constructor sets up its data store and creates the queue it uses to receive requests:</p>
-<div data-inc="storage_node.py" data-mark="storage_init"><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">StorageNode</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
+<div data-inc="storage_node.py" data-mark="storage_init"><span aria-label="Source: eventual/storage_node.py" class="inc-path" role="img" tabindex="0" title="eventual/storage_node.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">StorageNode</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""A storage node that maintains replicas of keys."""</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
@@ -224,7 +241,7 @@ The node's constructor sets up its data store and creates the queue it uses to r
 </div>
 <p>The <code>run</code> method dispatches reads and writes to dedicated handlers.
 <code>_handle_read</code> returns all stored versions of a key:</p>
-<div data-inc="storage_node.py" data-mark="storage_read"><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">def</span><span class="w"> </span><span class="nf">_handle_read</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">ReadRequest</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ReadResponse</span><span class="p">:</span>
+<div data-inc="storage_node.py" data-mark="storage_read"><span aria-label="Source: eventual/storage_node.py" class="inc-path" role="img" tabindex="0" title="eventual/storage_node.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">def</span><span class="w"> </span><span class="nf">_handle_read</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">ReadRequest</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ReadResponse</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Read all concurrent versions of a key."""</span>
         <span class="n">versions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">key</span><span class="p">,</span> <span class="p">[])</span>
 
@@ -239,8 +256,16 @@ The node's constructor sets up its data store and creates the queue it uses to r
 <p>The write handler is where causality is maintained.
 It increments the local clock,
 merges the client's causal context,
-and discards any stored versions superseded by the new value:</p>
-<div data-inc="storage_node.py" data-mark="storage_write"><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">def</span><span class="w"> </span><span class="nf">_handle_write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">WriteRequest</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">WriteResponse</span><span class="p">:</span>
+and discards any stored versions superseded by the new value.</p>
+<p>"Merging the client's causal context" means the storage node takes the element-wise maximum
+of its local vector clock and the clock the client sent.
+The client's clock represents "what the client has already seen"—
+it was returned to the client after a previous read.
+By merging it in, the storage node ensures the new write is recorded as happening
+<em>after</em> anything the client observed.
+Without this step, a write that the client intended to follow a previous read
+might appear concurrent with it, creating a spurious conflict.</p>
+<div data-inc="storage_node.py" data-mark="storage_write"><span aria-label="Source: eventual/storage_node.py" class="inc-path" role="img" tabindex="0" title="eventual/storage_node.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">def</span><span class="w"> </span><span class="nf">_handle_write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">WriteRequest</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">WriteResponse</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Write a value, handling concurrent versions."""</span>
         <span class="c1"># Increment our clock</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">clock</span><span class="o">.</span><span class="n">increment</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">node_id</span><span class="p">)</span>
@@ -296,7 +321,7 @@ we wait for R replicas to respond to a read and W replicas to respond to a write
 R + W &gt; N guarantees that we see the latest write.</p>
 <p>The constructor takes the list of storage nodes and quorum parameters,
 and <code>_get_replicas</code> uses consistent hashing to choose which nodes store a given key:</p>
-<div data-inc="coordinator.py" data-mark="coord_init"><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Coordinator</span><span class="p">:</span>
+<div data-inc="coordinator.py" data-mark="coord_init"><span aria-label="Source: eventual/coordinator.py" class="inc-path" role="img" tabindex="0" title="eventual/coordinator.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Coordinator</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Coordinates read/write operations across replicas."""</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
@@ -328,7 +353,7 @@ and <code>_get_replicas</code> uses consistent hashing to choose which nodes sto
 </code></pre></div>
 </div>
 <p>A read sends requests to R replicas in parallel and merges their responses:</p>
-<div data-inc="coordinator.py" data-mark="coord_read"><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">client_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">VersionedValue</span><span class="p">]:</span>
+<div data-inc="coordinator.py" data-mark="coord_read"><span aria-label="Source: eventual/coordinator.py" class="inc-path" role="img" tabindex="0" title="eventual/coordinator.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">client_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">VersionedValue</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">"""Read from R replicas and return all versions."""</span>
         <span class="n">replicas</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_replicas</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
 
@@ -366,7 +391,7 @@ and <code>_get_replicas</code> uses consistent hashing to choose which nodes sto
 <p>A write sends the new value to W replicas,
 each of which updates its local clock.
 The coordinator merges those clocks to return a causal context to the client:</p>
-<div data-inc="coordinator.py" data-mark="coord_write"><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">write</span><span class="p">(</span>
+<div data-inc="coordinator.py" data-mark="coord_write"><span aria-label="Source: eventual/coordinator.py" class="inc-path" role="img" tabindex="0" title="eventual/coordinator.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">write</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="n">VectorClock</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">client_id</span><span class="p">:</span> <span class="nb">str</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">VectorClock</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Write to W replicas."""</span>
@@ -398,7 +423,7 @@ The coordinator merges those clocks to return a causal context to the client:</p
 </div>
 <p><code>_merge_versions</code> resolves the list of all versions returned by replicas,
 discarding any version whose clock is dominated by another:</p>
-<div data-inc="coordinator.py" data-mark="coord_merge"><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">def</span><span class="w"> </span><span class="nf">_merge_versions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">versions</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">VersionedValue</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">VersionedValue</span><span class="p">]:</span>
+<div data-inc="coordinator.py" data-mark="coord_merge"><span aria-label="Source: eventual/coordinator.py" class="inc-path" role="img" tabindex="0" title="eventual/coordinator.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">def</span><span class="w"> </span><span class="nf">_merge_versions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">versions</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">VersionedValue</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">VersionedValue</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">"""Merge versions, keeping only concurrent ones."""</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">versions</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">[]</span>
@@ -436,7 +461,7 @@ With N=3, R=2, W=2:</p>
 <h2 id="eventual-client">Client Implementation</h2>
 <p>Clients read values, resolve conflicts, and write back.
 The client stores a causal context per key and works through a list of operations:</p>
-<div data-inc="kv_client.py" data-mark="kv_init"><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">KVClient</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
+<div data-inc="kv_client.py" data-mark="kv_init"><span aria-label="Source: eventual/kv_client.py" class="inc-path" role="img" tabindex="0" title="eventual/kv_client.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">KVClient</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""Client that reads and writes to the key-value store."""</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">init</span><span class="p">(</span>
@@ -471,7 +496,7 @@ The client stores a causal context per key and works through a list of operation
 If a single version is returned there is no conflict.
 If multiple concurrent versions are returned,
 the client resolves them using last-write-wins and merges all their clocks:</p>
-<div data-inc="kv_client.py" data-mark="kv_read"><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<div data-inc="kv_client.py" data-mark="kv_read"><span aria-label="Source: eventual/kv_client.py" class="inc-path" role="img" tabindex="0" title="eventual/kv_client.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Read a key and handle conflicts."""</span>
         <span class="n">versions</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">coordinator</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">client_id</span><span class="p">)</span>
 
@@ -513,7 +538,7 @@ the client resolves them using last-write-wins and merges all their clocks:</p>
 <p>When writing,
 the client passes its current causal context so that
 the coordinator can detect whether the write is concurrent with or follows previous writes:</p>
-<div data-inc="kv_client.py" data-mark="kv_write"><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">):</span>
+<div data-inc="kv_client.py" data-mark="kv_write"><span aria-label="Source: eventual/kv_client.py" class="inc-path" role="img" tabindex="0" title="eventual/kv_client.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">"""Write a key with causal context."""</span>
         <span class="n">context</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
 
@@ -529,7 +554,7 @@ When reading multiple versions (a conflict),
 it resolves using last-write-wins but merges all clocks to capture the complete causality.</p>
 <h2 id="eventual-sim">Running a Simulation</h2>
 <p>Let's create a scenario showing concurrent writes and conflict resolution:</p>
-<div data-inc="ex_basic.py" data-mark="basicexample"><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+<div data-inc="ex_basic.py" data-mark="basicexample"><span aria-label="Source: eventual/ex_basic.py" class="inc-path" role="img" tabindex="0" title="eventual/ex_basic.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
     <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
 
     <span class="c1"># Create 3 storage nodes</span>
@@ -569,7 +594,7 @@ it resolves using last-write-wins but merges all clocks to capture the complete 
     <span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
 </code></pre></div>
 </div>
-<div data-inc="ex_basic.out"><div class="codehilite"><pre class="" tabindex="0"><span></span><code>[0.0] Node1: Wrote X = 1 with clock {Node1:1}
+<div data-inc="ex_basic.out"><span aria-label="Source: eventual/ex_basic.out" class="inc-path" role="img" tabindex="0" title="eventual/ex_basic.out">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code>[0.0] Node1: Wrote X = 1 with clock {Node1:1}
 [0.0] Node2: Wrote X = 1 with clock {Node2:1}
 [0.0] Node3: Wrote X = 1 with clock {Node3:1}
 [0.0] Client1: Wrote X = 1
@@ -587,7 +612,7 @@ it resolves using last-write-wins but merges all clocks to capture the complete 
 </code></pre></div>
 </div>
 <p>Now let's create a more interesting scenario with concurrent conflicting writes:</p>
-<div data-inc="ex_conflict.py" data-mark="conflictexample"><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+<div data-inc="ex_conflict.py" data-mark="conflictexample"><span aria-label="Source: eventual/ex_conflict.py" class="inc-path" role="img" tabindex="0" title="eventual/ex_conflict.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
     <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
 
     <span class="c1"># Create 5 storage nodes</span>
@@ -636,7 +661,7 @@ it resolves using last-write-wins but merges all clocks to capture the complete 
     <span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
 </code></pre></div>
 </div>
-<div data-inc="ex_conflict.out"><div class="codehilite"><pre class="" tabindex="0"><span></span><code>[0.0] Node5: Wrote cart = ['item1'] with clock {Node5:1}
+<div data-inc="ex_conflict.out"><span aria-label="Source: eventual/ex_conflict.out" class="inc-path" role="img" tabindex="0" title="eventual/ex_conflict.out">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code>[0.0] Node5: Wrote cart = ['item1'] with clock {Node5:1}
 [0.0] Node1: Wrote cart = ['item1'] with clock {Node1:1}
 [0.0] Node2: Wrote cart = ['item1'] with clock {Node2:1}
 [0.0] Client1: Wrote cart = ['item1']
@@ -667,7 +692,7 @@ it resolves using last-write-wins but merges all clocks to capture the complete 
 <h2 id="eventual-partition">Handling Network Partitions</h2>
 <p>Let's simulate a network partition to see how the system maintains availability.
 <code>PartitionedCoordinator</code> extends the base coordinator with the ability to mark nodes as unreachable:</p>
-<div data-inc="partitioned_coordinator.py" data-mark="partition_init"><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">PartitionedCoordinator</span><span class="p">(</span><span class="n">Coordinator</span><span class="p">):</span>
+<div data-inc="partitioned_coordinator.py" data-mark="partition_init"><span aria-label="Source: eventual/partitioned_coordinator.py" class="inc-path" role="img" tabindex="0" title="eventual/partitioned_coordinator.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">PartitionedCoordinator</span><span class="p">(</span><span class="n">Coordinator</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""Coordinator that can simulate network partitions."""</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
@@ -695,7 +720,7 @@ it resolves using last-write-wins but merges all clocks to capture the complete 
 <p>Reads skip any partitioned nodes.
 If fewer than R nodes are available the read fails;
 otherwise it proceeds with only the reachable replicas:</p>
-<div data-inc="partitioned_coordinator.py" data-mark="partition_read"><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">client_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">VersionedValue</span><span class="p">]:</span>
+<div data-inc="partitioned_coordinator.py" data-mark="partition_read"><span aria-label="Source: eventual/partitioned_coordinator.py" class="inc-path" role="img" tabindex="0" title="eventual/partitioned_coordinator.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">client_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">VersionedValue</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">"""Read, skipping partitioned nodes."""</span>
         <span class="n">replicas</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_replicas</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
         <span class="n">available_replicas</span> <span class="o">=</span> <span class="p">[</span>
@@ -728,7 +753,7 @@ otherwise it proceeds with only the reachable replicas:</p>
 </code></pre></div>
 </div>
 <p>Writes follow the same pattern, requiring W reachable replicas before proceeding:</p>
-<div data-inc="partitioned_coordinator.py" data-mark="partition_write"><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">write</span><span class="p">(</span>
+<div data-inc="partitioned_coordinator.py" data-mark="partition_write"><span aria-label="Source: eventual/partitioned_coordinator.py" class="inc-path" role="img" tabindex="0" title="eventual/partitioned_coordinator.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">write</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="n">VectorClock</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">client_id</span><span class="p">:</span> <span class="nb">str</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">VectorClock</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Write, skipping partitioned nodes."""</span>
@@ -764,7 +789,7 @@ otherwise it proceeds with only the reachable replicas:</p>
 </code></pre></div>
 </div>
 <p>Let's try it out:</p>
-<div data-inc="ex_partition.py" data-mark="partitionexample"><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+<div data-inc="ex_partition.py" data-mark="partitionexample"><span aria-label="Source: eventual/ex_partition.py" class="inc-path" role="img" tabindex="0" title="eventual/ex_partition.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">"""Demonstrate behavior during network partition."""</span>
     <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
 
@@ -809,7 +834,7 @@ if we detect replicas are out of sync,
 we push the latest version to lagging replicas.
 <code>CoordinatorWithReadRepair</code> overrides <code>read</code> to query all replicas rather than just a quorum
 so that it can identify which ones are behind:</p>
-<div data-inc="coordinator_with_read_repair.py" data-mark="repair_read"><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">CoordinatorWithReadRepair</span><span class="p">(</span><span class="n">Coordinator</span><span class="p">):</span>
+<div data-inc="coordinator_with_read_repair.py" data-mark="repair_read"><span aria-label="Source: eventual/coordinator_with_read_repair.py" class="inc-path" role="img" tabindex="0" title="eventual/coordinator_with_read_repair.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">CoordinatorWithReadRepair</span><span class="p">(</span><span class="n">Coordinator</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""Coordinator that performs read repair."""</span>
 
     <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">client_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">VersionedValue</span><span class="p">]:</span>
@@ -863,7 +888,7 @@ so that it can identify which ones are behind:</p>
 <p>After collecting all responses,
 <code>_perform_read_repair</code> compares each replica's set of versions against the merged result
 and writes missing versions back to any replica that is out of date:</p>
-<div data-inc="coordinator_with_read_repair.py" data-mark="repair_perform"><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_perform_read_repair</span><span class="p">(</span>
+<div data-inc="coordinator_with_read_repair.py" data-mark="repair_perform"><span aria-label="Source: eventual/coordinator_with_read_repair.py" class="inc-path" role="img" tabindex="0" title="eventual/coordinator_with_read_repair.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_perform_read_repair</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
         <span class="n">merged_versions</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">VersionedValue</span><span class="p">],</span>
@@ -917,9 +942,126 @@ Over time, this brings all replicas into sync.</p>
 </li>
 <li>
 <p>Compaction:
-    Nodes merge version history periodically to avoid unbounded growth.</p>
+    Nodes merge version history periodically to avoid unbounded growth.
+    This matters more than it might seem: if many concurrent writes reach the same key
+    before any of them has been "dominated" by a later write,
+    the number of concurrent versions grows.
+    A system under heavy concurrent write load can accumulate hundreds of conflicting versions
+    for a single key, making every subsequent read expensive.
+    Real systems cap the number of concurrent versions and force conflict resolution
+    when the cap is reached.</p>
 </li>
 </ol>
+<h2 id="eventual-partition-out">Partition Example Output</h2>
+<p>Let's try the partition simulation:</p>
+<div data-inc="ex_partition.py" data-mark="partitionexample"><span aria-label="Source: eventual/ex_partition.py" class="inc-path" role="img" tabindex="0" title="eventual/ex_partition.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">"""Demonstrate behavior during network partition."""</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
+
+    <span class="n">nodes</span> <span class="o">=</span> <span class="p">[</span><span class="n">StorageNode</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"Node</span><span class="si">{</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">)]</span>
+    <span class="n">coordinator</span> <span class="o">=</span> <span class="n">PartitionedCoordinator</span><span class="p">(</span>
+        <span class="n">env</span><span class="p">,</span> <span class="n">nodes</span><span class="p">,</span> <span class="n">replication_factor</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">read_quorum</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">write_quorum</span><span class="o">=</span><span class="mi">2</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Initial write</span>
+    <span class="n">KVClient</span><span class="p">(</span>
+        <span class="n">env</span><span class="p">,</span>
+        <span class="s2">"Client1"</span><span class="p">,</span>
+        <span class="n">coordinator</span><span class="p">,</span>
+        <span class="p">[</span>
+            <span class="p">(</span><span class="s2">"write"</span><span class="p">,</span> <span class="s2">"status"</span><span class="p">,</span> <span class="s2">"healthy"</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">"read"</span><span class="p">,</span> <span class="s2">"status"</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+        <span class="p">],</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Client that writes after partition</span>
+    <span class="n">KVClient</span><span class="p">(</span>
+        <span class="n">env</span><span class="p">,</span>
+        <span class="s2">"Client2"</span><span class="p">,</span>
+        <span class="n">coordinator</span><span class="p">,</span>
+        <span class="p">[</span>
+            <span class="p">(</span><span class="s2">"write"</span><span class="p">,</span> <span class="s2">"status"</span><span class="p">,</span> <span class="s2">"degraded"</span><span class="p">),</span>
+            <span class="p">(</span><span class="s2">"read"</span><span class="p">,</span> <span class="s2">"status"</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+        <span class="p">],</span>
+        <span class="n">initial_delay</span><span class="o">=</span><span class="mf">3.0</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Create partition manager</span>
+    <span class="n">PartitionManager</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">coordinator</span><span class="p">)</span>
+
+    <span class="n">env</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">until</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<div data-inc="ex_partition.out"><span aria-label="Source: eventual/ex_partition.out" class="inc-path" role="img" tabindex="0" title="eventual/ex_partition.out">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code>[0.0] Node3: Wrote status = healthy with clock {Node3:1}
+[0.0] Node4: Wrote status = healthy with clock {Node4:1}
+[0.0] Client1: Wrote status = healthy
+[0.5] Node3: Read status -&gt; 1 version(s)
+[0.5] Node4: Read status -&gt; 1 version(s)
+[0.5] Client1: Read status -&gt; CONFLICT: 2 versions
+  - healthy (clock: {Node3:1}, ts: 0)
+  - healthy (clock: {Node4:1}, ts: 0)
+[0.5] Client1: Resolved to healthy
+[2.0] PARTITION: Node3 is unreachable
+[3.0] Node4: Wrote status = degraded with clock {Node4:2}
+[3.0] Node5: Wrote status = degraded with clock {Node5:1}
+[3.0] Client2: Wrote status = degraded
+[3.5] Node4: Read status -&gt; 1 version(s)
+[3.5] Node5: Read status -&gt; 1 version(s)
+[3.5] Client2: Read status -&gt; CONFLICT: 2 versions
+  - degraded (clock: {Node4:2}, ts: 3.0)
+  - degraded (clock: {Node5:1}, ts: 3.0)
+[3.5] Client2: Resolved to degraded
+[5.0] HEALED: Node3 is reachable
+</code></pre></div>
+</div>
+<p>The output shows that reads succeed while nodes are reachable (up to the quorum),
+fail when too few nodes are available,
+and succeed again after the partition heals.
+Notice that the system does not lose data during the partition:
+writes that succeeded on the available replicas
+are picked up by the previously-partitioned replica during the next read repair cycle.</p>
+<section aria-label="Exercises" class="exercises">
+<h2 id="eventual-exercises">Exercises</h2>
+<ol>
+<li>
+<p>The quorum parameters in the basic simulation are N=3, R=2, W=2.
+    Change W to 1 and R to 3 and run the conflict scenario.
+    What happens?
+    Now try W=3 and R=1.
+    For each configuration, describe a scenario where a client could read a stale value.</p>
+</li>
+<li>
+<p>Trace the vector clocks through this scenario manually (no code needed):</p>
+<ul>
+<li>Three replicas: R1, R2, R3. All start with clock <code>{}</code>.</li>
+<li>Client A writes "x=1" to R1. R1's clock becomes <code>{"R1": 1}</code>.</li>
+<li>Client B writes "x=2" to R3. R3's clock becomes <code>{"R3": 1}</code>.</li>
+<li>R1 and R3 merge. What is the resulting set of versions? Are they concurrent or is one dominated?</li>
+<li>Client C then writes "x=3" to R2, passing the merged clock from the previous step.
+  What is R2's clock after this write? Is x=1 or x=2 still in the version set?</li>
+</ul>
+</li>
+<li>
+<p>The write handler merges the client's causal context before storing the new version.
+    Find the storage node's write handler in <code>storage_node.py</code>.
+    Add a <code>print</code> statement that shows the client's clock, the node's clock before merging,
+    and the node's clock after merging.
+    Run the conflict scenario and explain the output.</p>
+</li>
+<li>
+<p>Read repair queries all replicas on every read.
+    This is expensive—in a real system with thousands of keys and many replicas,
+    you would not want to do it every time.
+    Propose two strategies for reducing how often read repair runs.
+    What consistency properties does each strategy sacrifice?</p>
+</li>
+<li>
+<p>The simulation uses last-write-wins (by timestamp) to resolve conflicts.
+    Describe a scenario where this produces the wrong result from the application's perspective.
+    What alternative conflict resolution strategy would work better for that scenario?</p>
+</li>
+</ol>
+</section>
 </main>
 <footer aria-label="Page navigation">
 <div class="row">

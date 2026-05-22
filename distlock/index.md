@@ -1,5 +1,19 @@
 # Distributed Lock Manager
 
+<div class="objectives" markdown="1">
+
+-   Describe the split-brain problem
+    and explain why a lock acquired over an unreliable network
+    can be held by two clients simultaneously.
+-   Explain how fencing tokens prevent stale lock holders from corrupting shared state
+    even after they believe they still hold the lock.
+-   Justify why a majority quorum (more than half the replicas) is the minimum needed
+    to guarantee that two clients cannot both acquire the lock.
+-   Identify what happens to a fencing token counter if the lock server restarts
+    and explain how to prevent counter reuse.
+
+</div>
+
 Multiple processes running on different machines often need to coordinate access to shared resources.
 For example,
 when a database migration runs,
@@ -198,6 +212,29 @@ The replicated manager holds references to all lock server replicas and a config
 
 [%inc replicated_lock_manager.py mark=replicated_init %]
 
+Why majority?
+If we have N replicas and require agreement from M > N/2 of them,
+then any two successful acquires must share at least one replica in common.
+That shared replica can only grant one lock at a time,
+so two clients can never both achieve a majority simultaneously.
+With N=3, majority is 2: if client A gets yes from replicas 1 and 2,
+client B can get yes from at most replica 3 (one), which is not a majority.
+With N=5, majority is 3: any two sets of 3 from 5 must overlap in at least 1 replica.
+
+Majority also determines fault tolerance:
+with N=3 you can tolerate 1 failed replica;
+with N=5 you can tolerate 2.
+In general, a majority quorum tolerates floor(N/2) failures,
+which is why lock clusters almost always have an odd number of nodes.
+
+There is a subtlety around fencing tokens and restarts.
+If the lock server crashes and restarts, it must restore its token counter from durable storage—
+not restart at zero.
+A restarted server that forgets its previous token value could issue token 1 again
+after it has already been used,
+allowing a stale client with the old token 1 to pass the resource's fencing check.
+Real systems write the token to disk before issuing it to the client.
+
 To acquire a lock, the manager sends requests to all replicas and waits until a majority grant it:
 
 [%inc replicated_lock_manager.py mark=replicated_acquire %]
@@ -243,3 +280,36 @@ but production distributed lock managers need additional features:
     real systems use techniques like read-write locks with multiple readers and a single writer,
     hierarchical locking to lock entire subtrees,
     and lock-free algorithms where possible.
+
+<section class="exercises" markdown="1">
+## Exercises {: #distlock-exercises}
+
+1.  In the basic simulation,
+    what happens if the lease duration is set to 0.5 (shorter than the client's work time)?
+    Run the failure scenario with lease duration 0.5 and work duration 2.0.
+    Does the second client always acquire the lock?
+    What problem does this reveal?
+
+2.  The fencing token implementation rejects requests whose token is older than the highest seen.
+    Suppose two clients acquire the lock in sequence: client A gets token 1, then client B gets token 2.
+    Client B finishes and releases. Client A then wakes up from a long pause.
+    Trace through the output and explain what the resource does with client A's request.
+    Why is this the correct behavior even though client A legitimately held the lock at one point?
+
+3.  The replicated manager waits for a majority of replicas to respond before granting the lock.
+    Modify `replicated_lock_manager.py` to print which replicas granted the lock for each acquisition.
+    Run the simulation and verify that the two clients never share a common granting replica
+    at the same time.
+    (Starter: add `print(f"Lock granted by: {granted}")` after collecting majority responses.)
+
+4.  What happens if one of the three lock server replicas is permanently unavailable?
+    Modify the example to disable one replica from the start and verify the system still works.
+    What is the minimum number of available replicas required for the system to function?
+
+5.  The current implementation does not handle the case where a client crashes
+    while holding a replicated lock—it holds the lock on some replicas but not others.
+    Describe what state the system is in after the lease expires.
+    Does the system recover correctly?
+    Trace through the code to verify your answer.
+
+</section>

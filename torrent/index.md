@@ -1,5 +1,18 @@
 # BitTorrent Protocol
 
+<div class="objectives" markdown="1">
+
+-   Explain the swarming property of BitTorrent
+    and why adding more downloaders increases available upload capacity.
+-   Describe the rarest-first piece selection strategy
+    and explain why it maintains piece diversity in the swarm.
+-   Explain how the choking and optimistic-unchoking algorithm implements tit-for-tat
+     without a central enforcer.
+-   Describe how SHA-1 piece verification protects against corrupted or malicious data
+    from untrusted peers.
+
+</div>
+
 When you download a large Linux distribution ISO, a game update, or a software package, you might be using BitTorrent without even knowing it. BitTorrent revolutionized file sharing by turning traditional client-server downloads upside down: instead of downloading from a single server, you download pieces from dozens of peers simultaneously. The more popular a file, the faster it downloads—a property called "swarming" that makes BitTorrent uniquely efficient for distributing large files.
 
 BitTorrent emerged in 2001 as a solution to a fundamental problem: how do you distribute large files to millions of people without overwhelming your servers? Traditional HTTP downloads create a bottleneck—the server's upload bandwidth limits how many people can download simultaneously. BitTorrent solves this by having downloaders help each other: as soon as you download a piece, you can share it with others. This creates a distributed system where upload capacity scales with demand.
@@ -102,6 +115,20 @@ Periodically upload to a random peer who isn't uploading to you. This gives new 
 
 Peers limit uploads to their top 4-5 uploaders. This maximizes efficiency by focusing bandwidth on productive connections rather than spreading it thin.
 
+`ChokingPeer` implements the full choking/unchoking algorithm:
+
+[%inc choking_peer.py mark=upload_record %]
+[%inc choking_peer.py mark=choking_peer %]
+
+The `rechoke` method re-evaluates who gets upload slots based on recent upload history,
+and `rotate_optimistic` gives new peers a chance to prove themselves:
+
+[%inc choking_peer.py mark=unchoke_logic %]
+
+Piece verification checks each downloaded piece against the SHA-1 hash in the torrent metadata:
+
+[%inc choking_peer.py mark=piece_verification %]
+
 ### End Game Mode
 
 When almost complete, aggressively request remaining pieces from all peers. Cancel duplicate requests when pieces arrive. This prevents the last few pieces from taking disproportionately long.
@@ -156,3 +183,34 @@ BitTorrent demonstrates how to build efficient distributed systems through cleve
 These patterns extend beyond file sharing to distributed databases, content delivery networks, and peer-to-peer systems generally. Understanding BitTorrent provides insight into how to coordinate distributed resources without central control—a fundamental challenge in distributed systems.
 
 Our simulation captures the essence of BitTorrent: pieces flowing through a swarm, rarest-first selection, and peers helping each other. While production BitTorrent adds complexity—TCP connection management, detailed choking algorithms, DHT—the core ideas we've demonstrated remain central to how BitTorrent achieves its remarkable efficiency.
+
+<section class="exercises" markdown="1">
+## Exercises {: #torrent-exercises}
+
+1.  Run the basic simulation with 1 seeder and 4 peers.
+    Look at the download times for each peer.
+    Now change the simulation to start with 2 seeders.
+    By how much does the total download time decrease?
+    Why doesn't adding a second seeder halve the download time?
+
+2.  In `simplified_peer.py`, the rarest-first selection sorts pieces by how many peers have them.
+    Change the selection to most common first (reverse the sort order) and run the simulation.
+    What happens to the swarm over time?
+    Which pieces are at risk of disappearing if the only seeder leaves?
+
+3.  The `ChokingPeer` rejects pieces that fail hash verification.
+    Modify the simulation to occasionally corrupt a piece (flip one byte) before the hash check.
+    What fraction of downloads succeed on the first try?
+    How many total download attempts are needed to get all pieces?
+
+4.  Optimistic unchoking gives new peers a chance to start downloading.
+    Simulate a swarm where all peers start at the same time with no pieces.
+    With optimistic unchoking disabled, can the swarm make any progress?
+    With it enabled, how many rounds does it take before the first piece propagates?
+
+5.  A "free-rider" downloads pieces but never uploads.
+    In the choking algorithm, what happens to a free-rider's upload record?
+    Will it ever be unchoked by the top-4 mechanism?
+    Under what circumstances might it receive pieces anyway, and is this a design flaw?
+
+</section>

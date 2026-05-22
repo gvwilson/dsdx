@@ -1,5 +1,18 @@
 # Network Time Protocol (NTP)
 
+<div class="objectives" markdown="1">
+
+-   Derive the NTP offset and round-trip delay formulas from four timestamps
+    and identify the symmetric-delay assumption they rely on.
+-   Explain why synchronization error accumulates across NTP strata
+    and what limits how accurately a stratum-3 server can be synchronized.
+-   Describe what a leap second is
+    and why it can cause problems for software that assumes time always increases monotonically.
+-   Explain why NTP clients query multiple servers and use statistical filtering
+    rather than trusting a single time source.
+
+</div>
+
 In order for computers to coordinate actions,
 they must agree on what time it is.
 [%g ntp "Network Time Protocol" %] (NTP) enables this
@@ -33,6 +46,22 @@ delay = (t4 - t1) - (t3 - t2)
 The offset tells you how to adjust your clock,
 while the delay tells you how reliable this measurement is
 (lower delays are more accurate).
+
+These formulas rest on an assumption that is worth stating explicitly:
+**the network delay is symmetric**, i.e., the time for the request to travel to the server
+equals the time for the response to travel back.
+Under this assumption, the client's transmission time is half the total round-trip time,
+so we split `(t4 - t1)` evenly between outbound and inbound.
+If the assumption holds and the server's processing time `(t3 - t2)` is negligible,
+then `(t2 - t1) ≈ (t4 - t3)` and the offset formula gives the true clock difference.
+
+In practice, network paths are often asymmetric—
+packets may take different routes in each direction.
+This asymmetry introduces an error bounded by half the difference in one-way delays.
+On a LAN with sub-millisecond RTT the error is tiny;
+on a satellite link with an asymmetric path it can be tens of milliseconds.
+NTP clients mitigate this by collecting multiple samples and discarding outliers,
+but they cannot eliminate the error entirely without hardware timestamping.
 
 NTP organizes time servers into levels called [%g ntp-stratum "strata" %]:
 Stratum 0 is reference clocks such as atomic clocks and GPS receivers.
@@ -121,3 +150,52 @@ Synchronization error accumulates as you go down the hierarchy,
 but it's still accurate enough for most purposes.
 A stratum 3 client might be accurate to within a few milliseconds,
 which is perfectly adequate for log timestamps or cache expiration.
+
+Why does error accumulate?
+At each stratum, the server applies the offset it calculated from its upstream.
+That calculation already has some error (because the upstream is not perfectly accurate
+and the network delay is not perfectly symmetric).
+When the downstream server syncs with this slightly-off clock,
+its own offset calculation adds another error on top.
+The errors are not simply additive—they depend on network jitter and path asymmetry—
+but in practice each additional stratum adds roughly 1–5 ms of error in a well-run network.
+Stratum 2 servers are accurate to around 1–10 ms; stratum 3 to around 5–20 ms.
+This is why NTP stops at stratum 15 and treats stratum 16 as "unsynchronized".
+
+<section class="exercises" markdown="1">
+## Exercises {: #ntp-exercises}
+
+1.  Run the basic simulation with network delay doubled.
+    How many sync cycles does each client need to converge within 0.01 of true time?
+    Now try halving the delay.
+    What does this tell you about the relationship between network latency and sync accuracy?
+
+2.  The offset formula assumes symmetric delay.
+    Modify the client to use a one-way delay (simulating asymmetric routing)
+    by passing different outbound and inbound delays.
+    Specifically, set outbound delay to 0.1 and inbound delay to 0.5.
+    What offset does the client calculate?
+    What is the true offset?
+    By how much does asymmetry mislead the client?
+    (Starter: add `inbound_delay` and `outbound_delay` parameters to `NtpClient`.)
+
+3.  A client that syncs once per interval will drift between syncs
+    because real hardware clocks are not perfectly accurate.
+    Add a `drift_rate` parameter to the client that adds a small error per time unit
+    (e.g., 0.001 per unit).
+    How does drift affect the client's accuracy between syncs?
+    What sync interval keeps the client within 0.05 of true time given drift 0.001?
+
+4.  In the stratum hierarchy simulation, what happens if the stratum-1 server is restarted
+    with a large initial offset (say, +10)?
+    Trace through how the error propagates to stratum-2 and then to the end clients.
+    After how many sync cycles do the end clients recover?
+
+5.  Real NTP clients query multiple servers and use a "best" algorithm
+    to reject outliers before computing the offset.
+    Simulate a misbehaving server that always returns an offset 5.0 higher than true time.
+    Add a second honest server.
+    Implement a simple two-server client that takes the offset from whichever server has the lower delay.
+    Does this correctly identify and ignore the misbehaving server?
+
+</section>

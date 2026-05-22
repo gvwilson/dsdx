@@ -1,5 +1,18 @@
 # A Bit of Theory
 
+<div class="objectives" markdown="1">
+
+-   Explain what the happens-before relation is
+    and use it to determine the order of events in a distributed execution.
+-   Describe how logical clocks and vector clocks assign timestamps to events
+    without relying on synchronized physical clocks.
+-   Compare linearizability, sequential consistency, and eventual consistency,
+	and give a concrete example that distinguishes them.
+-   State the CAP theorem
+    and explain why it is an oversimplification of the real trade-offs in distributed systems.
+
+</div>
+
 When you run a program on a single machine,
 you can rely on events happening in a definite order
 and every part of the program seeing the same data.
@@ -49,6 +62,19 @@ a lower timestamp does not prove that one event happened first.
 This means that logical clocks capture a [%g partial-order "partial order" %],
 not a [%g total-order "total order" %].
 
+To make this concrete, consider two processes P and Q:
+
+```
+P:  event p1 (clock=1)  -->send msg (clock=2)-->
+Q:                                            receive msg (clock=3)  -->event q2 (clock=4)
+```
+
+P's clock is 2 when it sends; Q takes max(0, 2) + 1 = 3 when it receives.
+We can conclude p1 → q2 (because p1 → send → receive → q2),
+but if P also had an event p3 with clock=3 at the same real moment as q2's clock=4,
+we cannot say p3 → q2 or q2 → p3—they are concurrent, even though their clock values differ.
+This is what it means for the order to be partial: some pairs of events simply have no causal relationship.
+
 [%g vector-clock "Vector clocks" %] extend this idea to capture the full happens-before relation.
 Instead of a single counter,
 each machine maintains a vector with one entry per machine.
@@ -60,6 +86,19 @@ Two events are concurrent if and only if neither vector is element-wise less tha
 The [G-Counter CRDT](@/crdt/) uses exactly this structure:
 each replica tracks its own count in a vector,
 and merging takes the element-wise maximum.
+
+For example, with three processes A, B, and C starting with clocks [0,0,0]:
+
+```
+A writes:  clock = [1,0,0]  -- sends to B
+B receives: clock = max([0,0,0],[1,0,0]) + B's increment = [1,1,0]  -- sends to C
+C receives: clock = max([0,0,1],[1,1,0]) + C's increment = [1,1,2]
+```
+
+(Here C had already done one local event before receiving B's message, so its own slot was 1.)
+Now suppose A also did a separate event, bringing its clock to [2,0,0].
+Is A's [2,0,0] concurrent with C's [1,1,2]?
+Neither [2,0,0] ≤ [1,1,2] element-wise, nor [1,1,2] ≤ [2,0,0] element-wise, so yes: they are concurrent.
 
 ## Consistency Models {: #theory-consistency}
 
@@ -97,6 +136,10 @@ and all operations are consistent with a single global order.
 This is both very useful and very expensive,
 since it typically requires consensus protocols like [Paxos][paxos] or [Raft][raft].
 
+To make linearizability concrete: if client A writes X=1 and client B immediately reads X,
+linearizability guarantees B sees 1 (assuming A's write finished before B's read started).
+An eventually-consistent system might return X=0 if B happened to hit a replica that hadn't received the write yet.
+
 [%g sequential-consistency "Sequential consistency" %] is slightly weaker:
 operations appear in some total order that respects each machine's local order,
 but that order need not correspond to real time.
@@ -106,6 +149,12 @@ but concurrent operations may be seen in different orders by different replicas.
 This is closely related to Lamport's happens-before relation
 and is often the strongest consistency model
 that can be achieved without expensive global coordination.
+
+As a concrete example of causal consistency: if you post a message and then post a reply to it,
+any other user who sees your reply must also see your original post
+(since the reply causally follows the post).
+But two users may see your reply and a friend's concurrent post in different orders,
+because those two events have no causal relationship.
 
 ## The CAP Theorem {: #theory-cap}
 
@@ -147,3 +196,49 @@ The question is what happens during the (hopefully brief) periods when partition
 Modern systems often provide tunable consistency:
 a database might allow you to choose strong consistency for financial transactions
 and eventual consistency for analytics queries.
+
+The CAP theorem has also been criticized as an oversimplification.
+The [%g pacelc "PACELC model" %] extends it:
+even when there is no partition (the "else" case),
+systems must still trade off latency against consistency.
+A linearizable system that avoids partitions still adds latency to every operation
+because replicas must coordinate before responding.
+This latency–consistency trade-off is often more relevant day-to-day
+than the partition–availability trade-off that CAP focuses on.
+
+<section class="exercises" markdown="1">
+## Exercises {: #theory-exercises}
+
+1.  Consider three processes P, Q, and R.
+    P sends a message to Q; Q processes it and sends a message to R.
+    P also sends a separate message directly to R.
+    Draw the happens-before relationships between all events.
+    Which pairs of events are concurrent?
+
+2.  Suppose a system offers causal consistency.
+    You write a blog post (event A),
+    then write a comment on it (event B).
+    Your friend reads your comment but not the post.
+    Does causal consistency allow this?
+    What about eventual consistency?
+    What about linearizability?
+
+3.  A database has three replicas.
+    You configure it with strong consistency for writes (all three must acknowledge)
+    and eventual consistency for reads (any one replica may respond).
+    Describe a scenario where a client reads a stale value.
+    Is this a violation of strong consistency?
+
+4.  Trace the vector clocks for this scenario:
+    Write each process's vector clock after each event.
+    Which events are concurrent with c1?
+    - Process A does two local events (a1, a2), then sends a message to B.
+    - Process B does one local event (b1) before receiving A's message, then does b2 after.
+    - Process C does one local event (c1) concurrently with everything above.
+
+5.  The OR-Set (covered in the [CRDTs](@/crdt/) lesson) uses "add-wins" semantics.
+    Name two other data types where "last-write-wins" semantics would be more appropriate
+    and two where "add-wins" would be more appropriate.
+    Justify your choices in terms of the consistency model each implies.
+
+</section>

@@ -53,6 +53,19 @@
 </nav>
 <main id="main-content">
 <h1>MapReduce Framework</h1>
+<div class="objectives">
+<ul>
+<li>Describe the five phases of MapReduce (input split, map, shuffle, reduce, output)
+    and explain what happens in each phase.</li>
+<li>Explain what a combiner does,
+    when it is safe to use one,
+    and why it reduces network traffic.</li>
+<li>Explain why MapReduce handles worker failures transparently
+    and what assumption makes re-execution safe.</li>
+<li>Identify the kinds of problems MapReduce handles poorly
+    and explain why iterative algorithms are a poor fit.</li>
+</ul>
+</div>
 <p>[<a class="bib-ref" href="../bibliography/#Dean2004">Dean2004</a>] introduced the MapReduce framework,
 which allowed programmers to perform many different data processing tasks
 by using two abstractions called (as you might guess) map and reduce.
@@ -87,7 +100,7 @@ These two constraints enable parallelism and fault tolerance.</p>
 <p>Let's start by showing how MapReduce is used,
 and then show how it is implemented.
 The classic MapReduce example counts how often each word occurs in a document.</p>
-<div data-inc="ex_word_count.py"><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="sd">"""Classic word count MapReduce example."""</span>
+<div data-inc="ex_word_count.py"><span aria-label="Source: mapreduce/ex_word_count.py" class="inc-path" role="img" tabindex="0" title="mapreduce/ex_word_count.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="sd">"""Classic word count MapReduce example."""</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">asimpy</span><span class="w"> </span><span class="kn">import</span> <span class="n">Environment</span><span class="p">,</span> <span class="n">Process</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">mr_coordinator</span><span class="w"> </span><span class="kn">import</span> <span class="n">MapReduceCoordinator</span>
@@ -162,12 +175,12 @@ The classic MapReduce example counts how often each word occurs in a document.</
 </code></pre></div>
 </div>
 <p>As this example shows,
-he programmer writes two simple functions and runs a process to coordinate them.
+the programmer writes two simple functions and runs a process to coordinate them.
 The framework handles distribution, parallelization, and aggregation.</p>
 <h2 id="mapreduce-datastructures">Core Data Structures</h2>
 <p>Let's start with some dataclasses to represent the data flowing through the framework.
 Input will be split into chunks for the map phase:</p>
-<div data-inc="mr_types.py" data-mark="map"><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="nd">@dataclass</span>
+<div data-inc="mr_types.py" data-mark="map"><span aria-label="Source: mapreduce/mr_types.py" class="inc-path" role="img" tabindex="0" title="mapreduce/mr_types.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">MapTask</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""A map task to be executed."""</span>
 
@@ -176,7 +189,7 @@ Input will be split into chunks for the map phase:</p>
 </code></pre></div>
 </div>
 <p>Intermediate data will be partitioned for reducers:</p>
-<div data-inc="mr_types.py" data-mark="intermediate"><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="nd">@dataclass</span>
+<div data-inc="mr_types.py" data-mark="intermediate"><span aria-label="Source: mapreduce/mr_types.py" class="inc-path" role="img" tabindex="0" title="mapreduce/mr_types.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">IntermediateData</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Intermediate key-value pairs from map phase."""</span>
 
@@ -205,7 +218,7 @@ Input will be split into chunks for the map phase:</p>
 </div>
 <p>And finally,
 intermediate chunks will be reduced:</p>
-<div data-inc="mr_types.py" data-mark="reduce"><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="nd">@dataclass</span>
+<div data-inc="mr_types.py" data-mark="reduce"><span aria-label="Source: mapreduce/mr_types.py" class="inc-path" role="img" tabindex="0" title="mapreduce/mr_types.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ReduceTask</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""A reduce task to be executed."""</span>
 
@@ -226,7 +239,7 @@ sent different chunks of data to different places,
 which in turn meant that runs weren't reproducible.
 To fix this,
 we introduced our own hashing function:</p>
-<div data-inc="mr_types.py" data-mark="hash"><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">_stable_hash</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<div data-inc="mr_types.py" data-mark="hash"><span aria-label="Source: mapreduce/mr_types.py" class="inc-path" role="img" tabindex="0" title="mapreduce/mr_types.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">_stable_hash</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Deterministic hash (not affected by PYTHONHASHSEED)."""</span>
 
     <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">hashlib</span><span class="o">.</span><span class="n">md5</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">key</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">(),</span> <span class="mi">16</span><span class="p">)</span>
@@ -238,7 +251,7 @@ we introduced our own hashing function:</p>
 Each has a unique worker ID,
 a queue of incoming tasks,
 and a reference to the overall work coordinator:</p>
-<div data-inc="mr_worker.py" data-mark="worker"><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">MapReduceWorker</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
+<div data-inc="mr_worker.py" data-mark="worker"><span aria-label="Source: mapreduce/mr_worker.py" class="inc-path" role="img" tabindex="0" title="mapreduce/mr_worker.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">MapReduceWorker</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""Worker that executes map and reduce tasks."""</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">init</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">worker_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">coordinator</span><span class="p">:</span> <span class="s2">"MapReduceCoordinator"</span><span class="p">):</span>
@@ -262,7 +275,7 @@ we will use this last propery when we look at fault tolerance.</p>
 it repeatedly gets a task from its queue and executes it.
 If there's a simulated failure,
 the worker reports that back to the coordinator instead:</p>
-<div data-inc="mr_worker.py" data-mark="run"><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div data-inc="mr_worker.py" data-mark="run"><span aria-label="Source: mapreduce/mr_worker.py" class="inc-path" role="img" tabindex="0" title="mapreduce/mr_worker.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">"""Main worker loop: fetch and execute tasks."""</span>
         <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
             <span class="c1"># Get task from queue</span>
@@ -286,7 +299,7 @@ For simplicity's sake we assume each record needs the same processing time,
 so after waiting that long,
 the worker partitions the results
 and sends them back to the coordinator:</p>
-<div data-inc="mr_worker.py" data-mark="map"><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">execute_map</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">MapTask</span><span class="p">):</span>
+<div data-inc="mr_worker.py" data-mark="map"><span aria-label="Source: mapreduce/mr_worker.py" class="inc-path" role="img" tabindex="0" title="mapreduce/mr_worker.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">execute_map</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">MapTask</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">"""Execute a map task."""</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_task</span> <span class="o">=</span> <span class="n">task</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">maps_executed</span> <span class="o">+=</span> <span class="mi">1</span>
@@ -321,7 +334,7 @@ and sends them back to the coordinator:</p>
 </code></pre></div>
 </div>
 <p>Reducing works the same way:</p>
-<div data-inc="mr_worker.py" data-mark="reduce"><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">execute_reduce</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">ReduceTask</span><span class="p">):</span>
+<div data-inc="mr_worker.py" data-mark="reduce"><span aria-label="Source: mapreduce/mr_worker.py" class="inc-path" role="img" tabindex="0" title="mapreduce/mr_worker.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">execute_reduce</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">ReduceTask</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">"""Execute a reduce task."""</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_task</span> <span class="o">=</span> <span class="n">task</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">reduces_executed</span> <span class="o">+=</span> <span class="mi">1</span>
@@ -364,7 +377,7 @@ and sends them back to the coordinator:</p>
 <h2 id="mapreduce-coordinator">MapReduce Coordinator</h2>
 <p>The coordinator manages the entire lifecycle:
 splitting input, dispatching tasks, collecting results, and handling failures by re-executing failed tasks.</p>
-<div data-inc="mr_coordinator.py"><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="sd">"""MapReduce coordinator that orchestrates computation."""</span>
+<div data-inc="mr_coordinator.py"><span aria-label="Source: mapreduce/mr_coordinator.py" class="inc-path" role="img" tabindex="0" title="mapreduce/mr_coordinator.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="sd">"""MapReduce coordinator that orchestrates computation."""</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">asimpy</span><span class="w"> </span><span class="kn">import</span> <span class="n">Environment</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
@@ -539,7 +552,21 @@ this coroutine is awaited by the <code>Process</code> that the user writes.</p>
 <p>A combiner is a local reduce that runs on each mapper's output before shuffling
 in order to reduce network traffic.
 Doing this can dramatically improve performance for operations like summation or counting.</p>
-<div data-inc="coordinator_with_combiner.py"><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="sd">"""MapReduce coordinator with combiner optimization."""</span>
+<p>To see why, consider the word-count example with the input "the cat sat on the mat".
+Without a combiner, the mapper for this chunk emits six intermediate pairs:
+<code>("the", 1), ("cat", 1), ("sat", 1), ("on", 1), ("the", 1), ("mat", 1)</code>.
+All six travel over the network to the reducers.</p>
+<p>With a combiner that runs the same reduce function locally,
+the mapper first reduces these to <code>("the", 2), ("cat", 1), ("sat", 1), ("on", 1), ("mat", 1)</code>.
+Now only five pairs cross the network, and the saving grows with repetition:
+for a chunk of 10,000 words with a vocabulary of 500, the combiner might reduce 10,000 pairs
+to 500, a 20x reduction in network traffic.</p>
+<p>A combiner is only correct when the reduce function is commutative and associative
+(the same requirement as the reduce phase itself).
+Summation, counting, max, and min all qualify.
+Average does not—<code>average(average(1,2), 3)</code> ≠ <code>average(1,2,3)</code>—so a combiner cannot be used
+for averages without keeping both the sum and count separately.</p>
+<div data-inc="coordinator_with_combiner.py"><span aria-label="Source: mapreduce/coordinator_with_combiner.py" class="inc-path" role="img" tabindex="0" title="mapreduce/coordinator_with_combiner.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="sd">"""MapReduce coordinator with combiner optimization."""</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">asimpy</span><span class="w"> </span><span class="kn">import</span> <span class="n">Environment</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Optional</span>
@@ -568,7 +595,7 @@ The first copy to complete wins,
 while others are discarded.
 This is called <a class="gl-ref" href="../glossary/#speculative-execution">speculative execution</a>,
 and ensures that one slow worker doesn't delay the entire job.</p>
-<div data-inc="speculative_coordinator.py"><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="sd">"""MapReduce coordinator with speculative execution."""</span>
+<div data-inc="speculative_coordinator.py"><span aria-label="Source: mapreduce/speculative_coordinator.py" class="inc-path" role="img" tabindex="0" title="mapreduce/speculative_coordinator.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="sd">"""MapReduce coordinator with speculative execution."""</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">asimpy</span><span class="w"> </span><span class="kn">import</span> <span class="n">Environment</span><span class="p">,</span> <span class="n">Process</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Dict</span>
@@ -641,7 +668,7 @@ and ensures that one slow worker doesn't delay the entire job.</p>
 <p>A simple extension of speculative execution is <a class="gl-ref" href="../glossary/#fault-tolerance">fault tolerance</a>:
 the framework automatically retries failed tasks,
 ensuring that computation completes despite failures.</p>
-<div data-inc="ex_fault_tolerance.py"><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="sd">"""Fault tolerance demonstration with worker failures."""</span>
+<div data-inc="ex_fault_tolerance.py"><span aria-label="Source: mapreduce/ex_fault_tolerance.py" class="inc-path" role="img" tabindex="0" title="mapreduce/ex_fault_tolerance.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="sd">"""Fault tolerance demonstration with worker failures."""</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">asimpy</span><span class="w"> </span><span class="kn">import</span> <span class="n">Environment</span><span class="p">,</span> <span class="n">Process</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">mr_coordinator</span><span class="w"> </span><span class="kn">import</span> <span class="n">MapReduceCoordinator</span>
@@ -748,6 +775,45 @@ The fix is to use <code>hashlib.md5</code> (or another deterministic hash functi
 to convert keys to integers.
 The result is not affected by <code>PYTHONHASHSEED</code>,
 so the examples produce the same output every time.</p>
+<section aria-label="Exercises" class="exercises">
+<h2 id="mapreduce-exercises">Exercises</h2>
+<ol>
+<li>
+<p>Run the word-count example twice without calling <code>random.seed()</code>.
+    Do the results change between runs?
+    Now add <code>random.seed(42)</code> before the simulation and run it again.
+    Are the results now reproducible?
+    Why or why not—is the hash function the only source of non-determinism?</p>
+</li>
+<li>
+<p>The combiner reduces network traffic by pre-aggregating mapper output.
+    Modify the word-count example to count how many key-value pairs the mapper produces
+    and how many it would produce after combining.
+    Use a corpus of 1000 words with a vocabulary of 50 distinct words
+    and measure the reduction factor.</p>
+</li>
+<li>
+<p>The current implementation retries failed tasks until they succeed.
+    What happens if a task always fails (e.g., because the input data is corrupt)?
+    Add a maximum retry count to the coordinator and have it report a permanent failure
+    after three attempts.
+    (Starter: add a <code>retry_count: dict</code> to <code>MRCoordinator.__init__</code> and increment it in the failure handler.)</p>
+</li>
+<li>
+<p>Speculative execution launches a backup copy of a slow task.
+    What happens if both the original and the backup succeed at almost the same time?
+    Trace through <code>speculative_coordinator.py</code> to find where duplicate results are handled.
+    Is there a window where the coordinator could accept both?</p>
+</li>
+<li>
+<p>MapReduce is described as unsuitable for iterative algorithms.
+    Sketch how you would compute PageRank (which requires iterating until convergence)
+    using multiple MapReduce jobs chained together.
+    How many jobs would be needed for 10 iterations?
+    What is the overhead compared to a system that keeps data in memory between iterations?</p>
+</li>
+</ol>
+</section>
 </main>
 <footer aria-label="Page navigation">
 <div class="row">

@@ -1,5 +1,19 @@
 # MapReduce Framework
 
+<div class="objectives" markdown="1">
+
+-   Describe the five phases of MapReduce (input split, map, shuffle, reduce, output)
+    and explain what happens in each phase.
+-   Explain what a combiner does,
+    when it is safe to use one,
+	and why it reduces network traffic.
+-   Explain why MapReduce handles worker failures transparently
+    and what assumption makes re-execution safe.
+-   Identify the kinds of problems MapReduce handles poorly
+    and explain why iterative algorithms are a poor fit.
+
+</div>
+
 [%b Dean2004 %] introduced the MapReduce framework,
 which allowed programmers to perform many different data processing tasks
 by using two abstractions called (as you might guess) map and reduce.
@@ -42,7 +56,7 @@ The classic MapReduce example counts how often each word occurs in a document.
 [%inc ex_word_count.py %]
 
 As this example shows,
-he programmer writes two simple functions and runs a process to coordinate them.
+the programmer writes two simple functions and runs a process to coordinate them.
 The framework handles distribution, parallelization, and aggregation.
 
 ## Core Data Structures {: #mapreduce-datastructures}
@@ -127,6 +141,23 @@ A combiner is a local reduce that runs on each mapper's output before shuffling
 in order to reduce network traffic.
 Doing this can dramatically improve performance for operations like summation or counting.
 
+To see why, consider the word-count example with the input "the cat sat on the mat".
+Without a combiner, the mapper for this chunk emits six intermediate pairs:
+`("the", 1), ("cat", 1), ("sat", 1), ("on", 1), ("the", 1), ("mat", 1)`.
+All six travel over the network to the reducers.
+
+With a combiner that runs the same reduce function locally,
+the mapper first reduces these to `("the", 2), ("cat", 1), ("sat", 1), ("on", 1), ("mat", 1)`.
+Now only five pairs cross the network, and the saving grows with repetition:
+for a chunk of 10,000 words with a vocabulary of 500, the combiner might reduce 10,000 pairs
+to 500, a 20x reduction in network traffic.
+
+A combiner is only correct when the reduce function is commutative and associative
+(the same requirement as the reduce phase itself).
+Summation, counting, max, and min all qualify.
+Average does not—`average(average(1,2), 3)` ≠ `average(1,2,3)`—so a combiner cannot be used
+for averages without keeping both the sum and count separately.
+
 [%inc coordinator_with_combiner.py %]
 
 ## Handling Stragglers with Speculative Execution {: #mapreduce-speculative}
@@ -188,3 +219,37 @@ The fix is to use `hashlib.md5` (or another deterministic hash function)
 to convert keys to integers.
 The result is not affected by `PYTHONHASHSEED`,
 so the examples produce the same output every time.
+
+<section class="exercises" markdown="1">
+## Exercises {: #mapreduce-exercises}
+
+1.  Run the word-count example twice without calling `random.seed()`.
+    Do the results change between runs?
+    Now add `random.seed(42)` before the simulation and run it again.
+    Are the results now reproducible?
+    Why or why not—is the hash function the only source of non-determinism?
+
+2.  The combiner reduces network traffic by pre-aggregating mapper output.
+    Modify the word-count example to count how many key-value pairs the mapper produces
+    and how many it would produce after combining.
+    Use a corpus of 1000 words with a vocabulary of 50 distinct words
+    and measure the reduction factor.
+
+3.  The current implementation retries failed tasks until they succeed.
+    What happens if a task always fails (e.g., because the input data is corrupt)?
+    Add a maximum retry count to the coordinator and have it report a permanent failure
+    after three attempts.
+    (Starter: add a `retry_count: dict` to `MRCoordinator.__init__` and increment it in the failure handler.)
+
+4.  Speculative execution launches a backup copy of a slow task.
+    What happens if both the original and the backup succeed at almost the same time?
+    Trace through `speculative_coordinator.py` to find where duplicate results are handled.
+    Is there a window where the coordinator could accept both?
+
+5.  MapReduce is described as unsuitable for iterative algorithms.
+    Sketch how you would compute PageRank (which requires iterating until convergence)
+    using multiple MapReduce jobs chained together.
+    How many jobs would be needed for 10 iterations?
+    What is the overhead compared to a system that keeps data in memory between iterations?
+
+</section>

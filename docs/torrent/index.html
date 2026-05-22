@@ -53,6 +53,18 @@
 </nav>
 <main id="main-content">
 <h1>BitTorrent Protocol</h1>
+<div class="objectives">
+<ul>
+<li>Explain the swarming property of BitTorrent
+    and why adding more downloaders increases available upload capacity.</li>
+<li>Describe the rarest-first piece selection strategy
+    and explain why it maintains piece diversity in the swarm.</li>
+<li>Explain how the choking and optimistic-unchoking algorithm implements tit-for-tat
+     without a central enforcer.</li>
+<li>Describe how SHA-1 piece verification protects against corrupted or malicious data
+    from untrusted peers.</li>
+</ul>
+</div>
 <p>When you download a large Linux distribution ISO, a game update, or a software package, you might be using BitTorrent without even knowing it. BitTorrent revolutionized file sharing by turning traditional client-server downloads upside down: instead of downloading from a single server, you download pieces from dozens of peers simultaneously. The more popular a file, the faster it downloads—a property called "swarming" that makes BitTorrent uniquely efficient for distributing large files.</p>
 <p>BitTorrent emerged in 2001 as a solution to a fundamental problem: how do you distribute large files to millions of people without overwhelming your servers? Traditional HTTP downloads create a bottleneck—the server's upload bandwidth limits how many people can download simultaneously. BitTorrent solves this by having downloaders help each other: as soon as you download a piece, you can share it with others. This creates a distributed system where upload capacity scales with demand.</p>
 <p>This pattern powers countless systems: Linux distributions use BitTorrent for ISO distribution, game companies use it for patches and updates, academic institutions share datasets, and content delivery networks use BitTorrent-inspired protocols for video streaming. Understanding BitTorrent reveals fundamental principles of peer-to-peer systems, incentive design, and distributed consensus.</p>
@@ -80,7 +92,7 @@
 <h2>Core Data Structures</h2>
 <p>Let's start with the fundamental types.
 The file types describe pieces and torrent metadata:</p>
-<div data-inc="bittorrent_types.py" data-mark="file_types"><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="nd">@dataclass</span>
+<div data-inc="bittorrent_types.py" data-mark="file_types"><span aria-label="Source: torrent/bittorrent_types.py" class="inc-path" role="img" tabindex="0" title="torrent/bittorrent_types.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">Piece</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""A piece of the file being shared."""</span>
 
@@ -131,7 +143,7 @@ The file types describe pieces and torrent metadata:</p>
 </code></pre></div>
 </div>
 <p>The message types describe the protocol exchanges between peers and tracker:</p>
-<div data-inc="bittorrent_types.py" data-mark="message_types"><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="nd">@dataclass</span>
+<div data-inc="bittorrent_types.py" data-mark="message_types"><span aria-label="Source: torrent/bittorrent_types.py" class="inc-path" role="img" tabindex="0" title="torrent/bittorrent_types.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">TrackerRequest</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Request to tracker."""</span>
 
@@ -196,7 +208,7 @@ The file types describe pieces and torrent metadata:</p>
 <h2>Tracker Implementation</h2>
 <p>The tracker coordinates the swarm by maintaining a list of active peers.
 The class and its constructor set up the request queue and swarm registry:</p>
-<div data-inc="tracker.py" data-mark="tracker_init"><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Tracker</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
+<div data-inc="tracker.py" data-mark="tracker_init"><span aria-label="Source: torrent/tracker.py" class="inc-path" role="img" tabindex="0" title="torrent/tracker.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Tracker</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""BitTorrent tracker coordinating peers."""</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">init</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -218,7 +230,7 @@ The class and its constructor set up the request queue and swarm registry:</p>
 </code></pre></div>
 </div>
 <p>When a peer announces itself, <code>handle_request</code> updates the swarm and returns a list of known peers:</p>
-<div data-inc="tracker.py" data-mark="tracker_handle"><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handle_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">TrackerRequest</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<div data-inc="tracker.py" data-mark="tracker_handle"><span aria-label="Source: torrent/tracker.py" class="inc-path" role="img" tabindex="0" title="torrent/tracker.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handle_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">TrackerRequest</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Handle tracker announce request."""</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Tracker: Received </span><span class="si">{</span><span class="n">request</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
@@ -274,7 +286,7 @@ The class and its constructor set up the request queue and swarm registry:</p>
 <h2>Simplified Peer</h2>
 <p>The peer is the heart of BitTorrent—it downloads pieces, uploads to others, and manages connections.
 The constructor stores the peer's identity, piece inventory, and connections to other peers:</p>
-<div data-inc="simplified_peer.py" data-mark="peer_init"><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SimplifiedPeer</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
+<div data-inc="simplified_peer.py" data-mark="peer_init"><span aria-label="Source: torrent/simplified_peer.py" class="inc-path" role="img" tabindex="0" title="torrent/simplified_peer.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SimplifiedPeer</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""Simplified peer for simulation purposes."""</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">init</span><span class="p">(</span>
@@ -308,7 +320,7 @@ The constructor stores the peer's identity, piece inventory, and connections to 
 </code></pre></div>
 </div>
 <p>The <code>run</code> method announces to the tracker, then loops through download rounds until all pieces are obtained:</p>
-<div data-inc="simplified_peer.py" data-mark="peer_run"><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<div data-inc="simplified_peer.py" data-mark="peer_run"><span aria-label="Source: torrent/simplified_peer.py" class="inc-path" role="img" tabindex="0" title="torrent/simplified_peer.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Simplified download loop."""</span>
         <span class="c1"># Announce to tracker</span>
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">announce</span><span class="p">(</span><span class="s2">"started"</span><span class="p">)</span>
@@ -332,7 +344,7 @@ The constructor stores the peer's identity, piece inventory, and connections to 
 </code></pre></div>
 </div>
 <p>Each download round selects pieces to request using rarest-first ordering, then attempts to download from available peers:</p>
-<div data-inc="simplified_peer.py" data-mark="peer_download_round"><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">download_round</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<div data-inc="simplified_peer.py" data-mark="peer_download_round"><span aria-label="Source: torrent/simplified_peer.py" class="inc-path" role="img" tabindex="0" title="torrent/simplified_peer.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">download_round</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Attempt to download pieces from peers."""</span>
         <span class="n">needed</span> <span class="o">=</span> <span class="p">[</span>
             <span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">total_pieces</span><span class="p">)</span> <span class="k">if</span> <span class="n">i</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">have_pieces</span>
@@ -361,7 +373,7 @@ The constructor stores the peer's identity, piece inventory, and connections to 
 </code></pre></div>
 </div>
 <p><code>_download_from_peer</code> applies the tit-for-tat rule—only downloading from a peer if it has uploaded to us recently—and on success updates piece state and broadcasts a HAVE message:</p>
-<div data-inc="simplified_peer.py" data-mark="peer_download_from"><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">download_piece_from</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">peer</span><span class="p">:</span> <span class="s2">"SimplifiedPeer"</span><span class="p">,</span> <span class="n">piece_idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<div data-inc="simplified_peer.py" data-mark="peer_download_from"><span aria-label="Source: torrent/simplified_peer.py" class="inc-path" role="img" tabindex="0" title="torrent/simplified_peer.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">download_piece_from</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">peer</span><span class="p">:</span> <span class="s2">"SimplifiedPeer"</span><span class="p">,</span> <span class="n">piece_idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Download a piece from a peer."""</span>
         <span class="c1"># Simulate transfer time</span>
         <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="mf">0.2</span><span class="p">)</span>
@@ -380,7 +392,7 @@ The constructor stores the peer's identity, piece inventory, and connections to 
 <p>This simplified version captures the essence of BitTorrent without all the protocol complexity.</p>
 <h2>Basic Simulation</h2>
 <p>Let's see BitTorrent in action:</p>
-<div data-inc="example_basic_bittorrent.py" data-mark="basicexample"><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">run_basic_bittorrent</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<div data-inc="example_basic_bittorrent.py" data-mark="basicexample"><span aria-label="Source: torrent/example_basic_bittorrent.py" class="inc-path" role="img" tabindex="0" title="torrent/example_basic_bittorrent.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">run_basic_bittorrent</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Demonstrate basic BitTorrent operation."""</span>
     <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">()</span>
 
@@ -447,6 +459,186 @@ The constructor stores the peer's identity, piece inventory, and connections to 
 <p>Periodically upload to a random peer who isn't uploading to you. This gives new peers a chance to join the ecosystem and discover faster peers.</p>
 <h3>Choking Algorithm</h3>
 <p>Peers limit uploads to their top 4-5 uploaders. This maximizes efficiency by focusing bandwidth on productive connections rather than spreading it thin.</p>
+<p><code>ChokingPeer</code> implements the full choking/unchoking algorithm:</p>
+<div data-inc="choking_peer.py" data-mark="upload_record"><span aria-label="Source: torrent/choking_peer.py" class="inc-path" role="img" tabindex="0" title="torrent/choking_peer.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">UploadRecord</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Tracks how much a peer has uploaded to us in the recent window."""</span>
+
+    <span class="n">peer_id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">bytes_received</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>   <span class="c1"># bytes downloaded FROM this peer recently</span>
+    <span class="n">is_choked</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>    <span class="c1"># are we choking this peer (refusing to upload)?</span>
+</code></pre></div>
+</div>
+<div data-inc="choking_peer.py" data-mark="choking_peer"><span aria-label="Source: torrent/choking_peer.py" class="inc-path" role="img" tabindex="0" title="torrent/choking_peer.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ChokingPeer</span><span class="p">(</span><span class="n">Process</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Peer with a proper choking algorithm and piece verification.</span>
+
+<span class="sd">    Hidden complexity:</span>
+<span class="sd">    The real BitTorrent choking algorithm measures upload rate over a 20-second</span>
+<span class="sd">    rolling window, not total bytes.  Peers that have good upload rates *recently*</span>
+<span class="sd">    are unchoked; peers whose rates drop are re-choked.  This prevents a peer that</span>
+<span class="sd">    uploaded a lot in the past but is now idle from monopolizing upload slots.</span>
+<span class="sd">    We use a simpler sliding counter here; the structure is the same.</span>
+<span class="sd">    """</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">init</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">peer_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">metadata</span><span class="p">:</span> <span class="n">TorrentMetadata</span><span class="p">,</span>
+        <span class="n">other_peers</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="s2">"SimplifiedPeer"</span><span class="p">],</span>
+        <span class="n">initial_pieces</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">peer_id</span> <span class="o">=</span> <span class="n">peer_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span> <span class="o">=</span> <span class="n">metadata</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">other_peers</span> <span class="o">=</span> <span class="n">other_peers</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">have_pieces</span><span class="p">:</span> <span class="n">Set</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">initial_pieces</span> <span class="ow">or</span> <span class="p">[])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">upload_records</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">UploadRecord</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">optimistic_peer</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># Statistics</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">downloaded_pieces</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">have_pieces</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">uploaded_pieces</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rejected_pieces</span> <span class="o">=</span> <span class="mi">0</span>   <span class="c1"># failed hash verification</span>
+
+        <span class="k">for</span> <span class="n">peer</span> <span class="ow">in</span> <span class="n">other_peers</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">upload_records</span><span class="p">[</span><span class="n">peer</span><span class="o">.</span><span class="n">peer_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">UploadRecord</span><span class="p">(</span><span class="n">peer_id</span><span class="o">=</span><span class="n">peer</span><span class="o">.</span><span class="n">peer_id</span><span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Peer </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">peer_id</span><span class="si">}</span><span class="s2">: Started with "</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">have_pieces</span><span class="p">)</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">metadata</span><span class="o">.</span><span class="n">total_pieces</span><span class="si">}</span><span class="s2"> pieces"</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">is_complete</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">have_pieces</span><span class="p">)</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">total_pieces</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Download loop with concurrent unchoke timer."""</span>
+        <span class="n">_UnchokeTimer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_env</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+        <span class="n">_OptimisticUnchokeTimer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_env</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+
+        <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_complete</span><span class="p">():</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_download_round</span><span class="p">()</span>
+            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Peer </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">peer_id</span><span class="si">}</span><span class="s2">: Download complete!"</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<p>The <code>rechoke</code> method re-evaluates who gets upload slots based on recent upload history,
+and <code>rotate_optimistic</code> gives new peers a chance to prove themselves:</p>
+<div data-inc="choking_peer.py" data-mark="unchoke_logic"><span aria-label="Source: torrent/choking_peer.py" class="inc-path" role="img" tabindex="0" title="torrent/choking_peer.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">def</span><span class="w"> </span><span class="nf">rechoke</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Re-evaluate which peers to unchoke based on upload rate.</span>
+
+<span class="sd">        The top MAX_UNCHOKED peers by bytes_received are unchoked.</span>
+<span class="sd">        All others are choked (unless they are the current optimistic unchoke).</span>
+<span class="sd">        After evaluating, reset the counters for the next interval.</span>
+<span class="sd">        """</span>
+        <span class="n">records</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">upload_records</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+        <span class="n">records</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">r</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">bytes_received</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">record</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">records</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">record</span><span class="o">.</span><span class="n">peer_id</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">optimistic_peer</span><span class="p">:</span>
+                <span class="n">record</span><span class="o">.</span><span class="n">is_choked</span> <span class="o">=</span> <span class="kc">False</span>   <span class="c1"># Always unchoke the optimistic slot.</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">record</span><span class="o">.</span><span class="n">is_choked</span> <span class="o">=</span> <span class="n">i</span> <span class="o">&gt;=</span> <span class="n">MAX_UNCHOKED</span>
+
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Peer </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">peer_id</span><span class="si">}</span><span class="s2">: Rechoked. "</span>
+            <span class="sa">f</span><span class="s2">"Unchoked: </span><span class="si">{</span><span class="p">[</span><span class="n">r</span><span class="o">.</span><span class="n">peer_id</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">records</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="ow">not</span><span class="w"> </span><span class="n">r</span><span class="o">.</span><span class="n">is_choked</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Reset counters for next interval.</span>
+        <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">records</span><span class="p">:</span>
+            <span class="n">record</span><span class="o">.</span><span class="n">bytes_received</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">rotate_optimistic</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Rotate the optimistic unchoke to a randomly-chosen choked peer.</span>
+
+<span class="sd">        This gives new or slow peers a chance to prove they can upload.</span>
+<span class="sd">        Without optimistic unchoking, a peer that joined the swarm after the</span>
+<span class="sd">        top uploaders were established would never get unchoked and could</span>
+<span class="sd">        never start downloading.</span>
+<span class="sd">        """</span>
+        <span class="n">choked</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span><span class="o">.</span><span class="n">peer_id</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">upload_records</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">is_choked</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">choked</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">optimistic_peer</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">choked</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">optimistic_peer</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">upload_records</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">upload_records</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">optimistic_peer</span><span class="p">]</span><span class="o">.</span><span class="n">is_choked</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Peer </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">peer_id</span><span class="si">}</span><span class="s2">: "</span>
+                <span class="sa">f</span><span class="s2">"Optimistically unchoked </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">optimistic_peer</span><span class="si">}</span><span class="s2">"</span>
+            <span class="p">)</span>
+</code></pre></div>
+</div>
+<p>Piece verification checks each downloaded piece against the SHA-1 hash in the torrent metadata:</p>
+<div data-inc="choking_peer.py" data-mark="piece_verification"><span aria-label="Source: torrent/choking_peer.py" class="inc-path" role="img" tabindex="0" title="torrent/choking_peer.py">i</span><div class="codehilite"><pre class="" tabindex="0"><span></span><code>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_download_round</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Download one piece using rarest-first selection."""</span>
+        <span class="n">needed</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">total_pieces</span><span class="p">)</span> <span class="k">if</span> <span class="n">i</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">have_pieces</span>
+        <span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">needed</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="c1"># Rarest-first: count how many peers have each piece.</span>
+        <span class="n">piece_counts</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">peer</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">other_peers</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">peer</span><span class="o">.</span><span class="n">have_pieces</span><span class="p">:</span>
+                <span class="n">piece_counts</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">piece_counts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+
+        <span class="n">needed</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">idx</span><span class="p">:</span> <span class="n">piece_counts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+
+        <span class="k">for</span> <span class="n">piece_idx</span> <span class="ow">in</span> <span class="n">needed</span><span class="p">[:</span><span class="mi">3</span><span class="p">]:</span>
+            <span class="n">candidates</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">other_peers</span>
+                <span class="k">if</span> <span class="n">piece_idx</span> <span class="ow">in</span> <span class="n">p</span><span class="o">.</span><span class="n">have_pieces</span>
+                <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">upload_records</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">peer_id</span><span class="p">,</span> <span class="n">UploadRecord</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">peer_id</span><span class="p">))</span><span class="o">.</span><span class="n">is_choked</span> <span class="ow">is</span> <span class="kc">False</span>
+            <span class="p">]</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">candidates</span><span class="p">:</span>
+                <span class="c1"># No unchoked peer has this piece; try any peer.</span>
+                <span class="n">candidates</span> <span class="o">=</span> <span class="p">[</span>
+                    <span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">other_peers</span> <span class="k">if</span> <span class="n">piece_idx</span> <span class="ow">in</span> <span class="n">p</span><span class="o">.</span><span class="n">have_pieces</span>
+                <span class="p">]</span>
+            <span class="k">if</span> <span class="n">candidates</span><span class="p">:</span>
+                <span class="n">source</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">candidates</span><span class="p">)</span>
+                <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_download_and_verify</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">piece_idx</span><span class="p">)</span>
+                <span class="c1"># Record that this peer uploaded to us.</span>
+                <span class="k">if</span> <span class="n">source</span><span class="o">.</span><span class="n">peer_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">upload_records</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">upload_records</span><span class="p">[</span><span class="n">source</span><span class="o">.</span><span class="n">peer_id</span><span class="p">]</span><span class="o">.</span><span class="n">bytes_received</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">source</span><span class="o">.</span><span class="n">uploaded_pieces</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">break</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_download_and_verify</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="s2">"SimplifiedPeer"</span><span class="p">,</span> <span class="n">piece_idx</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">"""Download a piece and verify its SHA-1 hash.</span>
+
+<span class="sd">        If verification fails the piece is discarded.</span>
+<span class="sd">        In real BitTorrent, a peer that repeatedly sends bad pieces is banned.</span>
+<span class="sd">        """</span>
+        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="mf">0.2</span><span class="p">)</span>   <span class="c1"># simulate transfer time</span>
+
+        <span class="c1"># Simulate the piece data (in a real system this would be actual bytes).</span>
+        <span class="n">fake_data</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"piece-</span><span class="si">{</span><span class="n">piece_idx</span><span class="si">}</span><span class="s2">-from-</span><span class="si">{</span><span class="n">source</span><span class="o">.</span><span class="n">peer_id</span><span class="si">}</span><span class="s2">"</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
+        <span class="n">expected_hash</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">piece_hashes</span><span class="p">[</span><span class="n">piece_idx</span><span class="p">]</span>
+        <span class="n">actual_hash</span> <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha1</span><span class="p">(</span><span class="n">fake_data</span><span class="p">)</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">actual_hash</span> <span class="o">==</span> <span class="n">expected_hash</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">have_pieces</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">piece_idx</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">downloaded_pieces</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Peer </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">peer_id</span><span class="si">}</span><span class="s2">: "</span>
+                <span class="sa">f</span><span class="s2">"Verified piece </span><span class="si">{</span><span class="n">piece_idx</span><span class="si">}</span><span class="s2"> from </span><span class="si">{</span><span class="n">source</span><span class="o">.</span><span class="n">peer_id</span><span class="si">}</span><span class="s2"> "</span>
+                <span class="sa">f</span><span class="s2">"(</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">have_pieces</span><span class="p">)</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">total_pieces</span><span class="si">}</span><span class="s2">)"</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Hash mismatch — corrupt or tampered piece.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rejected_pieces</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">now</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">] Peer </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">peer_id</span><span class="si">}</span><span class="s2">: "</span>
+                <span class="sa">f</span><span class="s2">"REJECTED piece </span><span class="si">{</span><span class="n">piece_idx</span><span class="si">}</span><span class="s2"> from </span><span class="si">{</span><span class="n">source</span><span class="o">.</span><span class="n">peer_id</span><span class="si">}</span><span class="s2"> "</span>
+                <span class="sa">f</span><span class="s2">"(hash mismatch)"</span>
+            <span class="p">)</span>
+</code></pre></div>
+</div>
 <h3>End Game Mode</h3>
 <p>When almost complete, aggressively request remaining pieces from all peers. Cancel duplicate requests when pieces arrive. This prevents the last few pieces from taking disproportionately long.</p>
 <h2>DHT (Distributed Hash Table)</h2>
@@ -482,6 +674,42 @@ The constructor stores the peer's identity, piece inventory, and connections to 
 </ol>
 <p>These patterns extend beyond file sharing to distributed databases, content delivery networks, and peer-to-peer systems generally. Understanding BitTorrent provides insight into how to coordinate distributed resources without central control—a fundamental challenge in distributed systems.</p>
 <p>Our simulation captures the essence of BitTorrent: pieces flowing through a swarm, rarest-first selection, and peers helping each other. While production BitTorrent adds complexity—TCP connection management, detailed choking algorithms, DHT—the core ideas we've demonstrated remain central to how BitTorrent achieves its remarkable efficiency.</p>
+<section aria-label="Exercises" class="exercises">
+<h2 id="torrent-exercises">Exercises</h2>
+<ol>
+<li>
+<p>Run the basic simulation with 1 seeder and 4 peers.
+    Look at the download times for each peer.
+    Now change the simulation to start with 2 seeders.
+    By how much does the total download time decrease?
+    Why doesn't adding a second seeder halve the download time?</p>
+</li>
+<li>
+<p>In <code>simplified_peer.py</code>, the rarest-first selection sorts pieces by how many peers have them.
+    Change the selection to most common first (reverse the sort order) and run the simulation.
+    What happens to the swarm over time?
+    Which pieces are at risk of disappearing if the only seeder leaves?</p>
+</li>
+<li>
+<p>The <code>ChokingPeer</code> rejects pieces that fail hash verification.
+    Modify the simulation to occasionally corrupt a piece (flip one byte) before the hash check.
+    What fraction of downloads succeed on the first try?
+    How many total download attempts are needed to get all pieces?</p>
+</li>
+<li>
+<p>Optimistic unchoking gives new peers a chance to start downloading.
+    Simulate a swarm where all peers start at the same time with no pieces.
+    With optimistic unchoking disabled, can the swarm make any progress?
+    With it enabled, how many rounds does it take before the first piece propagates?</p>
+</li>
+<li>
+<p>A "free-rider" downloads pieces but never uploads.
+    In the choking algorithm, what happens to a free-rider's upload record?
+    Will it ever be unchoked by the top-4 mechanism?
+    Under what circumstances might it receive pieces anyway, and is this a design flaw?</p>
+</li>
+</ol>
+</section>
 </main>
 <footer aria-label="Page navigation">
 <div class="row">

@@ -2,6 +2,19 @@
 
 <p class="subtitle" markdown="1">loosely-coupled communication</p>
 
+<div class="objectives" markdown="1">
+
+-   Explain what decoupling means in a pub-sub system
+    and why it makes producers and consumers easier to scale independently.
+-   Describe the three backpressure strategies (drop, block, signal)
+    and the trade-offs each one makes between throughput and message loss.
+-   Explain why acknowledgment-based delivery gives at-least-once semantics
+    and what subscribers must do to handle duplicate messages safely.
+-   Compare round-robin and partition-based consumer group assignment
+    and explain why the choice affects message ordering guarantees.
+
+</div>
+
 When a web server processes an order,
 it might need to notify the inventory system,
 trigger an email,
@@ -78,7 +91,7 @@ the broker looks up the topic and places the message in each subscriber's queue:
 [%inc broker.py mark=publish %]
 
 To test this,
-let's create a publisher that sendss messages to a specific topic at some rate:
+let's create a publisher that sends messages to a specific topic at some rate:
 
 [%inc publisher.py mark=publisher %]
 
@@ -111,7 +124,7 @@ Let's create a scenario with multiple publishers and subscribers to see the syst
 
 [%inc ex_simple.py mark=simulate %]
 
-The output shows being published and consumed asynchronously:
+The output shows messages being published and consumed asynchronously:
 
 [%inc ex_simple.out head=10 tail=6 %]
 
@@ -262,6 +275,20 @@ Messages not acknowledged within the timeout are redelivered.
 
 [%inc ack_broker.py mark=acknowledge %]
 
+At-least-once delivery makes redelivery possible,
+so subscribers must be prepared to receive the same message more than once.
+This is the **idempotence requirement**: processing a message twice must have the same effect as processing it once.
+
+Consider a subscriber that increments a counter in a database when it receives an "order placed" message.
+If the broker redelivers the message because the subscriber crashed before acknowledging,
+the counter will be incremented a second time, double-counting the order.
+The fix is to make the operation idempotent: check whether the order ID has already been processed
+before incrementing, and skip the increment if so.
+This "exactly-once processing" pattern—at-least-once delivery plus idempotent consumers—
+is the standard way to achieve reliable message processing in production systems.
+Exactly-once delivery at the broker level is theoretically possible but requires distributed transactions,
+which are expensive and rarely worth the cost compared to idempotent consumers.
+
 ## Consumer Groups and Load Balancing {: #msgque-balance}
 
 In production systems,
@@ -287,6 +314,31 @@ or partition-based assignment.
 <section class="exercises" markdown="1">
 ## Exercises {: #msgque-exercises}
 
-FIXME: add exercises.
+1.  In the backpressure simulation, what happens if you increase the publisher's
+    base interval to match the subscriber's processing time?
+    What if you set the queue size to 1?
+    Run both variations and describe the equilibrium behavior in each case.
+
+2.  The priority broker evicts low-priority messages when the queue is full.
+    Add a counter to track how many messages of each priority level were dropped.
+    Run a simulation where the publisher sends equal numbers of high- and low-priority messages.
+    What fraction of each priority level was dropped?
+    (Starter: add `dropped_by_priority: dict` to the broker's `init`.)
+
+3.  A subscriber crashes after dequeuing a message but before acknowledging it.
+    In the acknowledgment broker, what happens to that message?
+    Trace through `ack_broker.py` to find where the timeout fires and what it does.
+    What would happen if the subscriber crashed again on the redelivered message?
+
+4.  The consumer group uses round-robin distribution.
+    Write a simulation where one consumer in a group is 10x slower than the others
+    (it takes 10 time units to process each message instead of 1).
+    Does round-robin distribute load evenly in this case?
+    Propose a least-loaded distribution strategy and describe what state the distributor would need to track.
+
+5.  The current broker does not persist messages to disk.
+    If the broker process crashes, all queued messages are lost.
+    Describe the changes needed to support durable messaging (messages survive broker restarts).
+    What is the performance cost of each change?
 
 </section>

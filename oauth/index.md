@@ -1,5 +1,19 @@
 # OAuth
 
+<div class="objectives" markdown="1">
+
+-   Trace the authorization code flow through all four parties
+    (resource owner, client, authorization server, resource server)
+    and explain what each step accomplishes.
+-   Explain what PKCE adds to the authorization code flow
+    and why it is necessary for public clients such as mobile apps.
+-   Describe the client credentials flow
+    and explain when to use it instead of the authorization code flow.
+-   Identify the risks of storing access tokens insecurely
+    and describe what an attacker can do with a stolen token.
+
+</div>
+
 When you use your identity on one site to sign in on another,
 you're using [OAuth][oauth].
 This protocol has become the standard way for applications to access user data
@@ -230,6 +244,52 @@ which the client was never granted permission to read.
 
 [%inc ex_basic_oauth.out %]
 
+## PKCE for Public Clients {: #oauth-pkce}
+
+The authorization code flow above assumes the client has a `client_secret`—
+a shared secret between the client and the authorization server.
+Mobile apps and single-page apps cannot keep a secret:
+anyone who installs the app or reads the JavaScript source code can extract it.
+PKCE (Proof Key for Code Exchange, RFC 7636) solves this.
+
+Before making the authorization request, the client generates a random *code verifier*
+and computes a *code challenge* by hashing it with SHA-256:
+
+[%inc pkce_client.py mark=pkce_helpers %]
+
+The client sends the challenge (not the verifier) in the authorization request.
+When exchanging the code for a token, it sends the original verifier.
+The server hashes it and checks that it matches the stored challenge.
+An attacker who intercepts the code cannot use it without knowing the verifier,
+which was never sent over the network.
+
+[%inc pkce_client.py mark=pkce_client %]
+
+**Token storage:** Once a client has an access token, it must store it securely.
+On mobile apps, use the platform's secure storage (iOS Keychain, Android Keystore).
+In web apps, prefer `sessionStorage` over `localStorage`—
+tokens in `localStorage` are accessible to any JavaScript on the page,
+including third-party analytics scripts.
+Never store tokens in non-`HttpOnly` cookies,
+which are readable by JavaScript and vulnerable to XSS.
+
+## Client Credentials Flow {: #oauth-cc}
+
+The authorization code flow authenticates *users*.
+Server-to-server communication—batch jobs, microservices, scheduled tasks—often has no user.
+The Client Credentials flow handles this case:
+the application authenticates itself directly and receives a token representing the application,
+not any particular user.
+
+[%inc client_credentials.py mark=cc_token_request %]
+
+[%inc client_credentials.py mark=cc_client %]
+
+The flow is simpler than authorization code:
+there is no redirect, no authorization code, and no user consent screen.
+The client sends its `client_id` and `client_secret` directly to the token endpoint.
+This means the `client_secret` is the application's password and must be protected accordingly.
+
 ## Refresh Tokens {: #oauth-refresh}
 
 Access tokens expire quickly (typically 1 hour).
@@ -252,3 +312,38 @@ to prevent CSRF attacks.
 They also need token management,
 so that a resource server can check token validity with an authorization server
 or a user can revoke a token in order to do things like sign out of all devices.
+
+<section class="exercises" markdown="1">
+## Exercises {: #oauth-exercises}
+
+1.  In the basic OAuth simulation, the authorization server accepts any redirect URI
+    that was pre-registered.
+    Modify the example to register two redirect URIs for `photo_app`:
+    `"https://photo.example.com/callback"` and `"https://photo.example.com/mobile"`.
+    Verify that a request with a URI that is not in the registered list is rejected.
+    Why is this check important?
+
+2.  The authorization code is single-use.
+    Find the line in `authorization_server.py` that marks a code as used.
+    What would happen if this line were removed?
+    Write a test that reuses the same code twice and verify that the second use fails.
+
+3.  Trace through the PKCE flow for this interception scenario:
+    An attacker has intercepted the authorization code but does not know the code verifier.
+    What happens when the attacker sends the code to the token endpoint without a verifier?
+    What happens if the attacker sends the code with a wrong verifier?
+    Verify by modifying `PKCEClient._exchange_code` to send a tampered verifier.
+
+4.  The client credentials flow is used for machine-to-machine authentication.
+    Modify `ClientCredentialsClient` to automatically retry token acquisition
+    if the first attempt fails, with exponential backoff.
+    What should the retry limit be, and why?
+
+5.  Access tokens expire (after 60 seconds in the simulation).
+    What happens if a client tries to use an expired token?
+    Trace through `resource_server.py` to find the expiry check.
+    Now modify `OAuthClient` to detect a token-expired error in the resource response
+    and automatically request a new token before retrying.
+    (This is the "token refresh" pattern; you can use a refresh token or re-run the full flow.)
+
+</section>

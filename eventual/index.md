@@ -1,5 +1,18 @@
 # Eventually Consistent Key-Value Store
 
+<div class="objectives" markdown="1">
+
+-   Explain what "availability" and "partition tolerance" mean
+    and why a system must choose between them and strong consistency during a network partition.
+-   Describe how vector clocks track causal history
+    and explain why taking the element-wise maximum is the correct merge operation.
+-   Trace how a write's causal context is propagated
+    so that a replica can detect out-of-order updates.
+-   Identify the version explosion problem
+    and explain when it becomes a practical concern.
+
+</div>
+
 The [CAP theorem][cap-theorem] says that when network partitions occur,
 systems must choose between consistency (all nodes see the same data)
 and availability (the system continues to respond).
@@ -50,11 +63,17 @@ Each replica maintains a counter for every replica in the system:
 In our implementation,
 the vector clock is a dictionary mapping replica IDs to integers.
 When a replica performs an operation, it increments its own counter.
-When a recplica receives a message with a vector clock,
-it takes the maximum of each component with its local clock.
+When a replica receives a message with a vector clock,
+it takes the element-wise maximum of each component with its local clock.
+"Element-wise maximum" means: for each replica ID in either clock,
+the merged result uses the larger of the two values.
+For example, merging `{"R1": 3, "R2": 1}` with `{"R1": 2, "R2": 4, "R3": 1}`
+produces `{"R1": 3, "R2": 4, "R3": 1}`.
+
 The key insight is that if clock A happens-before clock B,
-then A's event causally precedes B's.
-If neither happens-before the other,
+then every entry in A's vector is ≤ the corresponding entry in B's vector,
+with at least one entry strictly less.
+If neither vector dominates the other element-wise,
 the events are concurrent.
 
 ## Versioned Values {: #eventual-version}
@@ -87,7 +106,16 @@ The `run` method dispatches reads and writes to dedicated handlers.
 The write handler is where causality is maintained.
 It increments the local clock,
 merges the client's causal context,
-and discards any stored versions superseded by the new value:
+and discards any stored versions superseded by the new value.
+
+"Merging the client's causal context" means the storage node takes the element-wise maximum
+of its local vector clock and the clock the client sent.
+The client's clock represents "what the client has already seen"—
+it was returned to the client after a previous read.
+By merging it in, the storage node ensures the new write is recorded as happening
+*after* anything the client observed.
+Without this step, a write that the client intended to follow a previous read
+might appear concurrent with it, creating a spurious conflict.
 
 [%inc storage_node.py mark=storage_write %]
 
@@ -225,3 +253,59 @@ Our implementation demonstrates core concepts, but production systems need addit
 
 1.  Compaction:
     Nodes merge version history periodically to avoid unbounded growth.
+    This matters more than it might seem: if many concurrent writes reach the same key
+    before any of them has been "dominated" by a later write,
+    the number of concurrent versions grows.
+    A system under heavy concurrent write load can accumulate hundreds of conflicting versions
+    for a single key, making every subsequent read expensive.
+    Real systems cap the number of concurrent versions and force conflict resolution
+    when the cap is reached.
+
+## Partition Example Output {: #eventual-partition-out}
+
+Let's try the partition simulation:
+
+[%inc ex_partition.py mark=partitionexample %]
+[%inc ex_partition.out %]
+
+The output shows that reads succeed while nodes are reachable (up to the quorum),
+fail when too few nodes are available,
+and succeed again after the partition heals.
+Notice that the system does not lose data during the partition:
+writes that succeeded on the available replicas
+are picked up by the previously-partitioned replica during the next read repair cycle.
+
+<section class="exercises" markdown="1">
+## Exercises {: #eventual-exercises}
+
+1.  The quorum parameters in the basic simulation are N=3, R=2, W=2.
+    Change W to 1 and R to 3 and run the conflict scenario.
+    What happens?
+    Now try W=3 and R=1.
+    For each configuration, describe a scenario where a client could read a stale value.
+
+2.  Trace the vector clocks through this scenario manually (no code needed):
+    - Three replicas: R1, R2, R3. All start with clock `{}`.
+    - Client A writes "x=1" to R1. R1's clock becomes `{"R1": 1}`.
+    - Client B writes "x=2" to R3. R3's clock becomes `{"R3": 1}`.
+    - R1 and R3 merge. What is the resulting set of versions? Are they concurrent or is one dominated?
+    - Client C then writes "x=3" to R2, passing the merged clock from the previous step.
+      What is R2's clock after this write? Is x=1 or x=2 still in the version set?
+
+3.  The write handler merges the client's causal context before storing the new version.
+    Find the storage node's write handler in `storage_node.py`.
+    Add a `print` statement that shows the client's clock, the node's clock before merging,
+    and the node's clock after merging.
+    Run the conflict scenario and explain the output.
+
+4.  Read repair queries all replicas on every read.
+    This is expensive—in a real system with thousands of keys and many replicas,
+    you would not want to do it every time.
+    Propose two strategies for reducing how often read repair runs.
+    What consistency properties does each strategy sacrifice?
+
+5.  The simulation uses last-write-wins (by timestamp) to resolve conflicts.
+    Describe a scenario where this produces the wrong result from the application's perspective.
+    What alternative conflict resolution strategy would work better for that scenario?
+
+</section>

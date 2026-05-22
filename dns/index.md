@@ -1,5 +1,16 @@
 # Domain Name System (DNS)
 
+<div class="objectives" markdown="1">
+
+-   Trace the full resolution walk from root name server to TLD to authoritative server
+    for a domain name.
+-   Explain how TTL-based caching reduces DNS query load
+    and why negative caching (for non-existent domains) matters.
+-   Describe how cache poisoning works and what DNSSEC does to prevent it.
+-   Explain the difference between a recursive resolver and an iterative resolver.
+
+</div>
+
 Every time you visit a website or send an email,
 your computer translates a human-readable name like "www.example.com"
 into an IP addresses like "192.0.2.1".
@@ -144,20 +155,53 @@ but subsequent users (or repeated lookups) get instant responses.
 
 [%inc ex_usage.out %]
 
-`ex_hierarchy.py` is a more comples simulation
-that demonstrate several key properties of DNS,
-including the use of ultiple resolvers,
+`ex_hierarchy.py` is a more complex simulation
+that demonstrates several key properties of DNS,
+including the use of multiple resolvers,
 load distribution,
 and the effectiveness of multiple caches.
 Its output shows how the cache hit rate increases over time as more domains get cached.
+
+## Hierarchical Resolution {: #dns-hier}
+
+Our simplified resolver jumps directly to the best-matching authoritative server.
+Real DNS resolvers cannot do this: they only know about the root servers at startup
+and must walk the delegation chain to find the authoritative server for a new domain.
+
+`HierarchicalResolver` implements this:
+
+[%inc hierarchical_resolver.py mark=hier_init %]
+
+Its `_walk_hierarchy` method starts at the root server,
+follows NS referrals until it reaches an authoritative server, and returns the answer:
+
+[%inc hierarchical_resolver.py mark=hier_walk %]
+
+The first query for `www.example.com` requires two round-trips—one to the root, one to `.com`—
+before reaching `example.com`'s authoritative server.
+All subsequent queries for anything in `example.com` can skip this walk because the answers are cached.
+
+## Negative Caching {: #dns-negative}
+
+The `HierarchicalResolver` also caches negative responses (NXDOMAIN):
+
+[%inc hierarchical_resolver.py mark=hier_negative %]
+
+Without negative caching, every lookup of a non-existent domain (a typo, a deleted record)
+results in a full hierarchy walk—one round-trip to the root, one to the TLD, one to the authoritative server.
+Caching "this domain does not exist" for the TTL specified in the zone's SOA record
+means that repeated lookups of the same nonexistent name are answered locally.
+This is especially important for protecting authoritative servers from DNS amplification attacks,
+where an attacker repeatedly queries nonexistent subdomains to exhaust server resources.
 
 ## Real-World Considerations
 
 Our implementation simplifies several DNS complexities:
 
 -   Hierarchy walking:
-    Real resolvers start at root servers and work down the hierarchy.
-    We skip directly to authoritative servers for clarity.
+    The `HierarchicalResolver` above implements the basic walk.
+    Real resolvers also handle glue records (A records for name servers embedded in referral responses)
+    so they don't need a second hierarchy walk just to resolve the name server's IP address.
 
 -   Multiple answers:
     DNS records can have multiple values (like multiple A records for load balancing).
@@ -179,3 +223,36 @@ however,
 is security.
 DNS was designed without it;
 [%g dnssec "DNSSEC" %] adds cryptographic signatures to prevent spoofing and cache poisoning.
+
+<section class="exercises" markdown="1">
+## Exercises {: #dns-exercises}
+
+1.  In the basic simulation, look up the same domain three times in a row.
+    On which lookups is the cache hit?
+    Now look up a domain whose TTL is 1 second, wait 2 seconds, and look it up again.
+    What happens?
+    (Hint: check how `CacheEntry.is_expired` uses the simulation clock.)
+
+2.  The simplified resolver matches the *longest* zone suffix.
+    For example, `api.example.com` would match `example.com` before `.com`.
+    Construct a test with zones `"."`, `"com"`, and `"example.com"`.
+    Query for `api.example.com` and trace which server handles it and why.
+
+3.  Negative caching stores a sentinel record with value `"NXDOMAIN"`.
+    Simulate a sequence where a domain genuinely does not exist,
+    then (after the negative TTL expires) a record is added for it and queried again.
+    Does the hierarchical resolver eventually return the correct answer?
+    What would happen if the negative TTL were longer than the positive TTL?
+
+4.  Real DNS resolvers query multiple root servers for redundancy and choose the fastest.
+    Modify `HierarchicalResolver` to accept a list of root server queues
+    and send the query to the first one that responds.
+    (Starter: use `asimpy.FirstOf` to wait on multiple queues.)
+
+5.  DNS cache poisoning is an attack where a malicious responder injects a false record
+    into a resolver's cache.
+    In our simulation, what would happen if an attacker intercepted the resolver's query
+    and replied with a forged IP address before the real authoritative server responded?
+    What does DNSSEC do to prevent this, and at what cost?
+
+</section>

@@ -1,5 +1,18 @@
 # Distributed Tracing
 
+<div class="objectives" markdown="1">
+
+-   Explain what a span and a trace are,
+    and describe how spans form a tree that represents a distributed call graph.
+-   Describe how a decorator can add tracing to a function without modifying the function's body.
+-   Explain what head-based sampling is,
+    how it reduces overhead,
+	and what class of problems it cannot detect.
+-   Explain how trace context is propagated across service boundaries
+    and why a module-level variable is not sufficient in a concurrent service.
+
+</div>
+
 If a monolithic application is slow,
 we can profile a single process to find out why.
 In a [%g microservice "microservices" %] architecture,
@@ -182,9 +195,102 @@ A sample clause of this JSON looks like this:
 It isn't something anyone would browse for fun,
 but (hopefully) everything needed to track down problems is there.
 
+## Sampling {: #tracing-sampling}
+
+Recording every trace in a high-traffic system is prohibitively expensive.
+A service processing 10,000 requests per second produces 10,000 root spans per second,
+plus all their children.
+Sampling records only a fraction of traces and discards the rest.
+
+Head-based sampling decides at the *start* of a trace—before any spans are created—
+whether to record it:
+
+[%inc sampled_tracer.py mark=sampler %]
+
+The sampling decision is made once and propagated with the trace context.
+Every service in the chain checks `ctx` before creating a span:
+if `ctx` is `None`, no span is created, so unsampled requests have zero tracing overhead.
+
+## Cross-Service Propagation {: #tracing-propagation}
+
+The basic tracer stores context in a module-level variable.
+This works in a single process but breaks across service boundaries.
+The only correct way to propagate context between services is to include it
+in the request itself—conventionally as HTTP headers.
+
+`PropagatedRequest` carries the trace context as a field:
+
+[%inc sampled_tracer.py mark=propagated_context %]
+
+`SampledService` reads the context from the request and passes a child context
+to any downstream service it calls:
+
+[%inc sampled_tracer.py mark=sampled_service %]
+
+**Thread safety and `contextvars`:**
+In the basic tracer, `Storage` is a module-level singleton.
+In a real async service, many coroutines run concurrently in the same process.
+If two requests are being processed at the same time, both would read and write
+the same `Storage._current_context`, causing one request's context to leak into the other.
+
+Python's `contextvars.ContextVar` solves this:
+each asyncio task automatically gets its own copy of a `ContextVar`.
+When a new task is created (e.g., by `asyncio.create_task`), it inherits
+the parent task's context at the moment of creation.
+This means you can `set` a `ContextVar` in a request handler without
+affecting any other concurrent request handler.
+The pattern is:
+
+```python
+from contextvars import ContextVar
+
+_active_context: ContextVar[TraceContext | None] = ContextVar(
+    "_active_context", default=None
+)
+
+# In a traced function:
+token = _active_context.set(new_context)
+try:
+    await some_work()
+finally:
+    _active_context.reset(token)   # restores previous value in this task
+```
+
+Our simulation uses a single event loop with cooperative scheduling,
+so module-level state is safe.
+But any production tracing library must use `ContextVar` (or thread-local storage)
+to be correct under real concurrency.
+
 <section class="exercises" markdown="1">
 ## Exercises {: #tracing-exercises}
 
-FIXME: add exercises.
+1.  Run the basic decorator example and count how many spans are produced.
+    Now wrap the client in a sampler with rate=0.5 and run 10 requests.
+    On average, how many traces are recorded?
+    What is the variance?
+    Why might a 50% sample rate still miss the single slowest request?
+
+2.  The `SampledService` creates a child context and passes it to downstream services.
+    Add a third service (Database) as a downstream of the second service.
+    Run a sampled trace and verify that the span tree has three levels:
+    Client → Service A → Service B → Database.
+    Print the `parent_span_id` of each span to confirm the chain.
+
+3.  The basic tracer stores context in a module-level variable.
+    Write a scenario that demonstrates the concurrency bug:
+    start two requests at the same time and print the `trace_id` that each service sees.
+    Do both requests always see their own `trace_id`?
+    (Hint: since asimpy is single-threaded, you may need to add a yield point.)
+
+4.  Tail-based sampling buffers all spans for a trace and decides whether to keep them
+    only after the root span completes (allowing it to always record slow requests).
+    Sketch the data structure needed to buffer spans until the root span finishes.
+    What is the maximum memory cost per in-flight request?
+
+5.  The JSON collector (in `json_collector.py`) generates over 300 lines of output
+    for a simple example.
+    Write a summary function that takes the collector's completed traces and prints,
+    for each trace: total duration, number of spans, and the name of the slowest span.
+    (Starter: iterate `collector.completed_traces` and use `Trace.duration()`.)
 
 </section>

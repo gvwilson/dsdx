@@ -1,5 +1,18 @@
 # Building TCP on UDP
 
+<div class="objectives" markdown="1">
+
+-   Explain how sequence numbers, acknowledgments, and retransmission together
+    guarantee reliable delivery over an unreliable network.
+-   Describe how a sliding window allows multiple segments to be in flight simultaneously
+    and why this improves throughput.
+-   Explain the AIMD (additive increase, multiplicative decrease) algorithm
+    and why it causes multiple flows sharing a link to converge to fair shares.
+-   Distinguish between the congestion window and the receive window,
+    and explain what each one limits.
+
+</div>
+
 When you open a website, stream a video, or send an email,
 you're almost certainly using [%g tcp "Transmission Control Protocol" %] (TCP).
 TCP provides reliable, ordered delivery of data over the internet,
@@ -231,18 +244,57 @@ is that if the sender receives three duplicate ACKs for the same sequence number
 it immediately retransmits without waiting for timeout.
 This recovers from loss faster.
 
+## Congestion Control {: #tcp-congestion}
+
+Our implementation uses a fixed window size.
+Real TCP adapts its window dynamically based on network conditions
+using [%g aimd "Additive Increase, Multiplicative Decrease" %] (AIMD).
+
+The sender maintains a *congestion window* (`cwnd`).
+It has two phases:
+
+**Slow Start**: begin with `cwnd = 1` segment and double it every RTT.
+Double may sound fast, but starting from 1 prevents overwhelming a slow link on connection open.
+
+**Congestion Avoidance**: once `cwnd` exceeds a threshold (`ssthresh`),
+increase by 1 segment per RTT instead of doubling.
+This probes for additional capacity without overshooting.
+
+**Multiplicative Decrease**: when a segment times out, halve `cwnd` and `ssthresh`.
+Starting slow again recovers quickly because each RTT doubles `cwnd` back to `ssthresh`.
+
+**Fast Retransmit**: three consecutive duplicate ACKs for the same sequence number
+means a segment was probably lost (not just delayed).
+The sender retransmits immediately without waiting for the timeout—
+this recovers from a single drop faster than a 2-second timeout would.
+On a fast retransmit, `cwnd` is halved (less severe than a timeout, which resets to 1).
+
+Here is the congestion state machine:
+
+[%inc congestion_control.py mark=cwnd_state %]
+
+And the sender that uses it:
+
+[%inc congestion_control.py mark=cc_sender %]
+
+AIMD is the reason the internet does not collapse under load.
+If all senders backed off linearly on loss, they would overshoot and undershoot repeatedly.
+The multiplicative decrease is aggressive enough to clear congestion quickly,
+while additive increase is conservative enough that multiple flows converge to equal shares.
+
 ## Real-World Considerations
 
 Production TCP implementations include features we've omitted:
 
 -   **Selective Acknowledgments (SACK)** acknowledge non-contiguous blocks of data,
     which allows efficient retransmission of only the missing segments.
+    Without SACK, a lost segment in the middle of a window forces retransmission of everything after it.
 
--   **Congestion Control**:
-    Adapt sending rate to network capacity using algorithms like:
-    - **Slow Start**: Exponentially increase window until loss detected
-    - **Congestion Avoidance**: Linearly increase window
-    - **Fast Recovery**: Reduce window on loss, then recover
+-   **Flow Control** (distinct from congestion control):
+    the *receiver* advertises its available buffer space in each ACK's window field.
+    The sender limits in-flight data to the min of `cwnd` and the receiver's window.
+    This prevents a fast sender from overwhelming a slow receiver's buffer.
+    Our implementation uses `cwnd` as the only window—adding the receiver window is left as an exercise.
 
 -   **Nagle's Algorithm** batches small writes to reduce overhead.
 
@@ -267,3 +319,45 @@ The throughput efficiency is therefore
 efficiency = successful_transmission_rate / available_bandwidth
            ≈ (1 - loss_rate) / (1 + loss_rate × retransmissions)
 ```
+
+<section class="exercises" markdown="1">
+## Exercises {: #tcp-exercises}
+
+1.  Run the basic example with 0% loss, then with 30% loss.
+    Count the number of retransmissions in each case.
+    Now increase the window size from 4 to 8.
+    Does a larger window help or hurt under high loss?
+    Why?
+
+2.  The fixed retransmission timeout is set to a constant.
+    Real TCP uses the Karn/Jacobson formula:
+    `RTO = smoothed_RTT + 4 * RTT_variance`.
+    Add `smoothed_rtt` and `rtt_variance` fields to `TCPConnection`.
+    When an ACK arrives, update them:
+    `smoothed_rtt = 0.875 * smoothed_rtt + 0.125 * sample_rtt`
+    and `rtt_variance = 0.75 * rtt_variance + 0.25 * |sample_rtt - smoothed_rtt|`.
+    (Starter: record `sent_time` in `SegmentBuffer` and compute `sample_rtt` when the ACK arrives.)
+
+3.  Trace through the congestion control state machine for this sequence:
+    - cwnd starts at 1, ssthresh = 8.
+    - ACKs arrive for seq 0, 1, 2, 3 (no loss).
+    - What is cwnd after each ACK (draw the table)?
+    - Segment 4 times out.
+    - What are the new cwnd and ssthresh?
+    - ACKs arrive for seq 4, 5, 6.
+    - What is cwnd after each ACK?
+
+4.  The receiver advertises a window in every ACK (flow control).
+    Suppose the receiver's buffer is only 2 segments.
+    Modify `CongestionControlledSender` to accept a `receiver_window` parameter
+    and limit in-flight data to `min(cwnd, receiver_window)`.
+    What happens when the receiver's window is smaller than cwnd?
+
+5.  SACK (Selective Acknowledgment) allows the receiver to acknowledge
+    non-contiguous ranges of received data.
+    Without SACK, if segment 3 is lost but segments 4–7 arrive,
+    the sender must retransmit segment 3 and cannot know whether 4–7 need retransmission.
+    Describe the data structure the receiver would need to send SACK information,
+    and how the sender would use it to retransmit only the missing segment.
+
+</section>

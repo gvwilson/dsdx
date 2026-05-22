@@ -2,6 +2,18 @@
 
 <p class="subtitle" markdown="1">scalable data structures</p>
 
+<div class="objectives" markdown="1">
+
+-   Explain why last-write-wins registers can lose updates in concurrent systems
+    and when that trade-off is acceptable.
+-   Implement a grow-only counter and a positive-negative counter using the merge-by-maximum rule.
+-   Describe the add-wins semantics of an OR-Set
+    and trace through a concurrent add-and-remove to show the correct outcome.
+-   Explain what "convergence" means for a replicated data structure
+    and why it holds even after a network partition.
+
+</div>
+
 When multiple people edit an online document simultaneously,
 the system ensures everyone eventually sees the same content.
 Similarly,
@@ -167,10 +179,35 @@ Each remains monotonically increasing, so the G-Counter merge properties still a
 Sets are trickier to implement than counters.
 If Ahmed adds X and Baemi removes X concurrently, should X be in the final set?
 
-The OR-Set uses unique tags to track which adds have been observed by which removes.
-The key idea is that an element is in the set if there is an add tag that hasn't been removed.
-This gives "add-wins" semantics:
-concurrent add and remove operations result in the element being present.
+The most natural answer is "remove wins": the element is absent.
+But this makes it impossible to add an element back after a concurrent remove has been received—
+the remove has already been applied.
+The OR-Set chooses "add-wins" semantics instead,
+by using unique tags to distinguish each add operation.
+
+When Ahmed adds element X, the OR-Set creates a unique tag (say, `(Ahmed, 42)`) and records the pair `(X, {(Ahmed,42)})`.
+When Baemi later removes X, the remove records *which tags it has seen*—in this case `(Ahmed, 42)`.
+If Chiti concurrently adds X with a new tag `(Chiti, 7)`, that tag has never been seen by Baemi's remove.
+After merging all three replicas, X is still present because tag `(Chiti, 7)` was added but never removed.
+The element is present if and only if there exists at least one add tag that no remove has ever seen.
+
+To make the concurrent case concrete:
+
+```
+Time 0: all replicas have {}
+
+Ahmed adds X → Ahmed's state: {X: {(Ahmed,1)}}
+Baemi removes X → Baemi observes {X: {(Ahmed,1)}}, so removes tag (Ahmed,1)
+                   Baemi's state: {} (no remaining tags for X)
+Chiti adds X  → (concurrent with Baemi's remove)
+                   Chiti's state: {X: {(Chiti,1)}}
+
+Merge all three:
+  Ahmed: {X: {(Ahmed,1)}}
+  Baemi: {} removes={(Ahmed,1)}
+  Chiti: {X: {(Chiti,1)}}
+  Result: X is present because (Chiti,1) was never removed.
+```
 
 [%inc orset.py mark=orset %]
 
@@ -197,6 +234,13 @@ to ensure that every operation reaches every replica exactly once.
 In practice,
 this means tracking which operations have been delivered and handling duplicates,
 which is what the `applied_ops` member of the `OpBasedCounter` class above does.
+
+"Exactly once" does not mean the network must guarantee it—networks never do.
+Instead, the sender can re-send operations as many times as needed (achieving "at least once"),
+and the receiver deduplicates using the unique operation ID (`applied_ops`).
+Together these give "exactly once" *effect*: the operation changes state only the first time it arrives.
+This is why operation IDs must be globally unique (not just unique per replica) and must be stored permanently—
+discarding `applied_ops` would allow a re-delivered operation to be applied twice, breaking convergence.
 
 The `Replica` class below exercises this counter:
 
@@ -254,6 +298,31 @@ the counter recovers from the partitioning:
 <section class="exercises" markdown="1">
 ## Exercises {: #crdt-exercises}
 
-FIXME: add exercises.
+1.  The LWW-Register breaks ties by comparing replica IDs alphabetically.
+    Change the simulation so that Chiti's replica ID is "AAA" (alphabetically first).
+    What is the final value after merging?
+    Why might choosing the alphabetically last ID as the winner be a bad choice for real deployments?
+
+2.  In the G-Counter, each replica only modifies its own slot in the vector.
+    What happens if two replicas accidentally use the same replica ID?
+    Trace through a scenario with two replicas both named "R1" doing one increment each and then merging.
+    What is the final value, and why is it wrong?
+
+3.  The OR-Set gives "add-wins" semantics.
+    Design an "remove-wins" set where a concurrent add and remove results in the element being absent.
+    Sketch the data structure:
+	you do not need to implement it fully,
+	just describe what the merge operation must do differently.
+
+4.  In the operation-based counter, `applied_ops` grows without bound.
+    Propose a strategy to bound its size.
+    What guarantee must hold for your strategy to be safe?
+    (Hint: think about what it means for all replicas to have received an operation.)
+
+5.  In the network partition simulation, the counter recovers after the partition heals.
+    Run the simulation with the partition lasting twice as long.
+    Does the final value change?
+    Now run it with the partition never healing.
+    What happens, and does this violate any of the three CRDT guarantees?
 
 </section>

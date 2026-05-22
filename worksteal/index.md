@@ -1,5 +1,19 @@
 # A Work-Stealing Scheduler
 
+<div class="objectives" markdown="1">
+
+-   Explain why a single centralized task queue becomes a bottleneck at high worker counts
+    and how per-worker deques address this.
+-   Describe the asymmetry between owner operations (push/pop from one end)
+    and thief operations (steal from the other end)
+	and explain why this asymmetry matters.
+-   Explain why a real work-stealing deque requires atomic operations and careful memory ordering,
+    and why a Python list is not sufficient.
+-   Describe what livelock looks like in a work-stealing system
+    and identify at least one strategy to prevent it.
+
+</div>
+
 How do you distribute work
 When you have hundreds or thousands of tasks to execute and a handful of CPU cores?
 A naïve approach is to use a single queue,
@@ -145,15 +159,83 @@ we can easily experiment with the effect of changing task size:
 
 [%inc ex_granularity.out %]
 
+## Parent-Child Join {: #worksteal-join}
+
+The current workers spawn child tasks and move on immediately.
+For divide-and-conquer algorithms,
+the parent usually needs to wait for all children to finish before it can complete its own work—
+this is the [%g fork-join "fork-join" %] pattern.
+
+`JoiningWorker` implements this by suspending the parent at the join point
+and resuming it only when all children have signaled completion:
+
+[%inc joining_worker.py mark=joining %]
+
+Each child posts to the parent's join queue when it finishes;
+the parent counts down to zero and then resumes.
+
+**Hidden complexity:** In a real multi-threaded work-stealing runtime
+(Go's goroutine scheduler, Java's ForkJoin, Tokio in Rust),
+the parent cannot simply `await` a queue—
+doing so would block the OS thread, preventing that thread from stealing and running other tasks.
+Instead, the runtime saves the parent's continuation (the code to run after the join)
+and suspends the parent without blocking the thread.
+The thread is free to steal and execute other tasks while the parent waits.
+When the last child completes, it decrements an atomic counter;
+if the counter reaches zero, it schedules the parent's continuation back onto the deque.
+This requires lock-free atomic operations on the counter and careful memory ordering
+to ensure the parent sees all of the children's writes before it resumes.
+Our simulation sidesteps all of this with asimpy's event-driven, single-threaded model,
+but students building a real scheduler must address it.
+
+## Preventing Livelock {: #worksteal-livelock}
+
 Our implementations demonstrate the core concepts of work stealing,
 but production systems go further.
 In particular,
 they try to prevent [%g livelock "livelock" %] by limiting how long a worker searches for victims,
 and use exponential backoff rather than spinning continuously when trying to steal work.
 
+Livelock in work-stealing looks like this:
+all workers are simultaneously idle (no local tasks),
+all try to steal from each other at the same instant,
+all fail (because everyone is already popping from the top),
+all wait and retry,
+and the cycle repeats.
+The fix is:
+(1) cap the number of steal attempts per idle cycle so workers don't spin-steal forever, and
+(2) use exponential backoff—after each failed steal attempt, wait twice as long before trying again.
+The backoff period is bounded (typically at 1–10 ms) so a newly available task is still noticed quickly.
+
 <section class="exercises" markdown="1">
 ## Exercises {: #worksteal-exercises}
 
-FIXME: add exercises.
+1.  In the basic simulation, vary the number of workers from 2 to 8
+    while keeping the total number of tasks fixed at 20.
+    How does the steal rate change?
+    At what worker count does adding more workers stop helping?
+
+2.  The deque uses a Python list,
+    which would require a lock if multiple threads accessed it simultaneously.
+    Find the `push_bottom`, `pop_bottom`, and `steal_top` methods in `worker_deque.py`.
+    For each method, identify which operation would be unsafe if two threads called it concurrently
+    without a lock (e.g., what can go wrong if `steal_top` and `pop_bottom` run at the same time?).
+
+3.  Run the joining worker simulation.
+    Find a task in the output where the parent waits for children.
+    How much longer does the parent take to complete compared to what it would take without children?
+    What determines the critical path length when tasks have children?
+
+4.  Add exponential backoff to the basic worker's steal loop.
+    After each failed steal attempt, double the wait time (starting at 0.05, capped at 0.5).
+    Reset the wait time to 0.05 on a successful steal.
+    Compare the total simulation time and idle time against the baseline.
+    (Starter: add `backoff = 0.05` to the worker's `init` and update it in `try_steal`.)
+
+5.  The adaptive worker steals from the largest queue.
+    Compare its steal count and total simulation time against the random-target worker
+    on a workload where tasks arrive in bursts (e.g., all tasks for worker 0 arrive at t=0,
+    all tasks for worker 1 arrive at t=5).
+    Does adaptive selection help or hurt in this case?
 
 </section>
