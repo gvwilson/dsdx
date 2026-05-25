@@ -16,7 +16,7 @@
     <a class="skip-link" href="#main-content">Skip to main content</a>
     <nav class="nav" aria-label="Site navigation">
       <div class="nav-left">
-        <a class="brand" href="@/">{{ book_title }}</a>
+        <a class="brand" href="@/">{{ brand }}</a>
         <div class="dropdown">
           <button aria-haspopup="true" aria-controls="nav-lessons">Lessons</button>
           <ul id="nav-lessons" class="dropdown-content">
@@ -25,6 +25,16 @@
 {% endfor %}
           </ul>
         </div>
+{% if slides %}
+        <div class="dropdown">
+          <button aria-haspopup="true" aria-controls="nav-slides">Slides</button>
+          <ul id="nav-slides" class="dropdown-content">
+{% for href, title in slides %}
+            <li><a href="{{ href }}">{{title}}</a></li>
+{% endfor %}
+          </ul>
+        </div>
+{% endif %}
         <div class="dropdown">
           <button aria-haspopup="true" aria-controls="nav-appendices">Appendices</button>
           <ul id="nav-appendices" class="dropdown-content">
@@ -48,15 +58,15 @@
     <footer aria-label="Page navigation">
       <div class="row">
 	<div class="col-3 left">
-	  {% if prev[0] %}<span aria-hidden="true">&#8656;</span> <a href="@/{{prev[0]}}/">{{prev[1]}}</a>{% endif %}
+	  {% if prev[0] %}<span aria-hidden="true">&#8656;</span> <a href="@/{{prev[0]}}">{{prev[1]}}</a>{% endif %}
 	</div>
 	<div class="col-6 center">
-	  <a href="@/">{{ book_title }}</a>
+	  <a href="@/">{{ brand }}</a>
 	  &copy;
 	  <a href="@/#acknowledgments">the authors</a>
 	</div>
 	<div class="col-3 right">
-	  {% if next[0] %}<a href="@/{{next[0]}}/">{{next[1]}}</a> <span aria-hidden="true">&#8658;</span>{% endif %}
+	  {% if next[0] %}<a href="@/{{next[0]}}">{{next[1]}}</a> <span aria-hidden="true">&#8658;</span>{% endif %}
 	</div>
       </div>
     </footer>

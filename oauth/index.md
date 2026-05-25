@@ -1,6 +1,6 @@
 # OAuth
 
-<div class="objectives" markdown="1">
+<div class="callout" markdown="1">
 
 -   Trace the authorization code flow through all four parties
     (resource owner, client, authorization server, resource server)

@@ -1,6 +1,6 @@
 # Distributed Tracing
 
-<div class="objectives" markdown="1">
+<div class="callout" markdown="1">
 
 -   Explain what a span and a trace are,
     and describe how spans form a tree that represents a distributed call graph.

@@ -17,7 +17,6 @@ be protected carefully—it acts as the application's password.
 
 from asimpy import Process, Queue
 from typing import Optional
-from oauth_types import generate_token
 
 
 # mccole: cc_token_request

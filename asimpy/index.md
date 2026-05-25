@@ -1,7 +1,5 @@
 # Discrete Event Simulation with asimpy
 
-<p class="subtitle" markdown="1">a short introduction to our toolbox</p>
-
 Discrete event simulation (DES) simulates systems in which events occur at discrete points in time.
 The simulation maintains a virtual clock and executes events in chronological order.
 Unlike real-time systems,

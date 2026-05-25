@@ -1,6 +1,6 @@
 # A Bit of Theory
 
-<div class="objectives" markdown="1">
+<div class="callout" markdown="1">
 
 -   Explain what the happens-before relation is
     and use it to determine the order of events in a distributed execution.

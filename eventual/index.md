@@ -1,6 +1,6 @@
 # Eventually Consistent Key-Value Store
 
-<div class="objectives" markdown="1">
+<div class="callout" markdown="1">
 
 -   Explain what "availability" and "partition tolerance" mean
     and why a system must choose between them and strong consistency during a network partition.

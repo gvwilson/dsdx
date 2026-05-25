@@ -1,8 +1,6 @@
 # A Publish-Subscribe Message Queue
 
-<p class="subtitle" markdown="1">loosely-coupled communication</p>
-
-<div class="objectives" markdown="1">
+<div class="callout" markdown="1">
 
 -   Explain what decoupling means in a pub-sub system
     and why it makes producers and consumers easier to scale independently.

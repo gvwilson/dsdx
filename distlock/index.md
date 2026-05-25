@@ -1,6 +1,6 @@
 # Distributed Lock Manager
 
-<div class="objectives" markdown="1">
+<div class="callout" markdown="1">
 
 -   Describe the split-brain problem
     and explain why a lock acquired over an unreliable network

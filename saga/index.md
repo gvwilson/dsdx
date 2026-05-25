@@ -1,6 +1,6 @@
 # The Saga Pattern
 
-<div class="objectives" markdown="1">
+<div class="callout" markdown="1">
 
 -   Explain why traditional ACID transactions cannot span multiple independent services
     and what problem sagas solve.

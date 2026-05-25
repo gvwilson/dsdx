@@ -1,6 +1,6 @@
 # Network Time Protocol (NTP)
 
-<div class="objectives" markdown="1">
+<div class="callout" markdown="1">
 
 -   Derive the NTP offset and round-trip delay formulas from four timestamps
     and identify the symmetric-delay assumption they rely on.

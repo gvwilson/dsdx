@@ -1,6 +1,6 @@
 # Domain Name System (DNS)
 
-<div class="objectives" markdown="1">
+<div class="callout" markdown="1">
 
 -   Trace the full resolution walk from root name server to TLD to authoritative server
     for a domain name.

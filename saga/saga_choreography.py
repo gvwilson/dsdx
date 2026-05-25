@@ -86,7 +86,6 @@ class ChoreographedFlightService(Process):
 
     async def run(self) -> None:
         """Process events concurrently: forward bookings and compensations."""
-        import asyncio
         while True:
             # Wait for either a new booking or a compensation request.
             from asimpy import FirstOf

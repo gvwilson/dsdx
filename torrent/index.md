@@ -1,13 +1,13 @@
 # BitTorrent Protocol
 
-<div class="objectives" markdown="1">
+<div class="callout" markdown="1">
 
 -   Explain the swarming property of BitTorrent
     and why adding more downloaders increases available upload capacity.
 -   Describe the rarest-first piece selection strategy
     and explain why it maintains piece diversity in the swarm.
 -   Explain how the choking and optimistic-unchoking algorithm implements tit-for-tat
-     without a central enforcer.
+    without a central enforcer.
 -   Describe how SHA-1 piece verification protects against corrupted or malicious data
     from untrusted peers.
 

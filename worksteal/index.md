@@ -1,6 +1,6 @@
 # A Work-Stealing Scheduler
 
-<div class="objectives" markdown="1">
+<div class="callout" markdown="1">
 
 -   Explain why a single centralized task queue becomes a bottleneck at high worker counts
     and how per-worker deques address this.

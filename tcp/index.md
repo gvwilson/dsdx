@@ -1,6 +1,6 @@
 # Building TCP on UDP
 
-<div class="objectives" markdown="1">
+<div class="callout" markdown="1">
 
 -   Explain how sequence numbers, acknowledgments, and retransmission together
     guarantee reliable delivery over an unreliable network.

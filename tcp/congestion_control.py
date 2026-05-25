@@ -23,9 +23,9 @@ Together these give AIMD (Additive Increase, Multiplicative Decrease), which
 has been proven to converge to a fair share of bandwidth among competing flows.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from asimpy import Process, Queue
-from tcp_types import Packet, PacketType, ConnectionState, SegmentBuffer
+from tcp_types import Packet, PacketType
 from unreliable_network import UnreliableNetwork
 
 
@@ -130,8 +130,6 @@ class CongestionControlledSender(Process):
 
     async def run(self) -> None:
         """Send all data, adapting window based on ACKs and losses."""
-        ack_handler = _AckHandler(self._env, self)
-
         for chunk in self.data:
             # Wait until the congestion window allows another segment in flight.
             while len(self.unacked) >= self.cong.effective_window(64):

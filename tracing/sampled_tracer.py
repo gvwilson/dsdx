@@ -39,10 +39,9 @@ This module addresses two gaps in the basic tracing implementation:
 """
 
 import random
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from asimpy import Process, Queue
 from tracing_types import TraceContext, Span, generate_id, BaseCollector
-from tracing_decorators import Storage
 
 
 # mccole: sampler

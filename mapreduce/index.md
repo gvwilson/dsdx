@@ -1,6 +1,6 @@
 # MapReduce Framework
 
-<div class="objectives" markdown="1">
+<div class="callout" markdown="1">
 
 -   Describe the five phases of MapReduce (input split, map, shuffle, reduce, output)
     and explain what happens in each phase.

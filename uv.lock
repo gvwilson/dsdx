@@ -156,7 +156,7 @@ wheels = [
 
 [[package]]
 name = "mccole"
-version = "5.0.0"
+version = "5.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "beautifulsoup4" },
@@ -167,9 +167,9 @@ dependencies = [
     { name = "python-frontmatter" },
     { name = "tomli" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ad/26/a4b03681101e67cebaf43c1bc99c5a8dfd1bfd2b976537e78d748a63b423/mccole-5.0.0.tar.gz", hash = "sha256:01e5e3c649f052ef7b1362077ff7ed70a91f006f7b500f4285940589a91a3c7c", size = 745725, upload-time = "2026-05-22T16:02:15.004Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f4/86/c644b231baea7c896c55c14725b42b9caed10fbc946cb3fe314df564ca78/mccole-5.2.0.tar.gz", hash = "sha256:3631818abd4b0903cd03d120f3fe0063c623c53d87cd49ed6f005d46ae5760fc", size = 716709, upload-time = "2026-05-23T02:26:35.447Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3b/be/f0e3eb9e8c313ac50a7ac100e083fc4057148e26dfcf3e0de773126d71f4/mccole-5.0.0-py3-none-any.whl", hash = "sha256:0020d7b4c33601ee6a1cc0a70b5718e4c09c08bc1c6d6fe4723603815202978f", size = 50868, upload-time = "2026-05-22T16:02:13.797Z" },
+    { url = "https://files.pythonhosted.org/packages/56/c9/d5b1375d5035d3982379dd37d6884affae1e086b6298e7212bbcffa3c44a/mccole-5.2.0-py3-none-any.whl", hash = "sha256:9d6f3c64b8bbd2ebf655161ae4e61e8c12cbde5bb3966f225b7b2e8e4522e1ed", size = 50981, upload-time = "2026-05-23T02:26:34.348Z" },
 ]
 
 [[package]]
@@ -274,11 +274,11 @@ wheels = [
 
 [[package]]
 name = "soupsieve"
-version = "2.8.3"
+version = "2.8.4"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/7b/ae/2d9c981590ed9999a0d91755b47fc74f74de286b0f5cee14c9269041e6c4/soupsieve-2.8.3.tar.gz", hash = "sha256:3267f1eeea4251fb42728b6dfb746edc9acaffc4a45b27e19450b676586e8349", size = 118627, upload-time = "2026-01-20T04:27:02.457Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/47/2c/0a5f6f8ee0d5589e48c7640213ed5175d52cf540a06725b628cc1a45d6ce/soupsieve-2.8.4.tar.gz", hash = "sha256:e121fd02e975c695e4e9e8774a5ee35d74714b59307868dcc5319ad2d9e3328e", size = 121110, upload-time = "2026-05-24T13:55:57.154Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/46/2c/1462b1d0a634697ae9e55b3cecdcb64788e8b7d63f54d923fcd0bb140aed/soupsieve-2.8.3-py3-none-any.whl", hash = "sha256:ed64f2ba4eebeab06cc4962affce381647455978ffc1e36bb79a545b91f45a95", size = 37016, upload-time = "2026-01-20T04:27:01.012Z" },
+    { url = "https://files.pythonhosted.org/packages/5e/f5/0c41cb68dcae6b7de4fac4188a3a9589e21fb31df21ea3a2e888db95e6c9/soupsieve-2.8.4-py3-none-any.whl", hash = "sha256:e7e6b0769c8f51ed59acab6e994b00621096cfb1c640a7509295987388fbaf65", size = 37304, upload-time = "2026-05-24T13:55:55.406Z" },
 ]
 
 [[package]]

@@ -1,8 +1,6 @@
 # Conflict-Free Replicated Data Types
 
-<p class="subtitle" markdown="1">scalable data structures</p>
-
-<div class="objectives" markdown="1">
+<div class="callout" markdown="1">
 
 -   Explain why last-write-wins registers can lose updates in concurrent systems
     and when that trade-off is acceptable.

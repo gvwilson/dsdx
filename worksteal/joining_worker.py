@@ -1,8 +1,8 @@
 """Worker that waits for child tasks to complete before finishing the parent."""
 
 import random
-from typing import Dict, Set
-from asimpy import Process, Queue
+from typing import Dict
+from asimpy import Queue
 from task import Task
 from worker import Worker
 
