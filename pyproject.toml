@@ -45,8 +45,9 @@ skips = [
     "*.py",
     "*.sh",
     "*~",
-    ".ruff_cache/**",
-    "__pycache__/**",
-    "docs/**",
+    ".ruff_cache",
+    "__pycache__",
+    "docs",
+    "Makefile",
     "uv.lock",
 ]

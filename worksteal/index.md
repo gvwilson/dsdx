@@ -67,7 +67,7 @@ but our simulation focuses on the algorithmic pattern rather than low-level sync
 A worker executes tasks from its local deque and steals when idle.
 We start by setting up its members:
 
-[%inc worker.py mark=deque %]
+[%inc worker.py mark=worker %]
 
 and then define its behavior:
 
@@ -122,7 +122,7 @@ and then create a worker that spawns subtasks with some random probability
 
 The final step is to write a scheduler that creates these workers:
 
-[%inc scheduler_with_spawning.py mark=gen %]
+[%inc scheduler_with_spawning.py mark=scheduler %]
 
 Our simulation looks similar to our first one:
 
